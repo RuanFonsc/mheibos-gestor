@@ -39,6 +39,12 @@
             <p class="mt-1 whitespace-pre-line text-sm">{{ pedido.observacoes }}</p>
           </div>
         {% endif %}
+        {% if pedido.caminho_arquivo_corel %}
+          <div class="mt-4 border-t border-[#2d3154] pt-4">
+            <p class="text-xs uppercase text-[var(--text-secondary)]">Arquivo Corel</p>
+            <a href="#" data-corel-path="{{ pedido.caminho_arquivo_corel }}" class="mt-1 inline-flex text-sm font-semibold text-[#00e5ff]">{{ pedido.caminho_arquivo_corel }}</a>
+          </div>
+        {% endif %}
       </div>
 
       <div class="card p-5">
@@ -132,4 +138,16 @@
     </aside>
   </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll("[data-corel-path]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const caminho = link.dataset.corelPath || "";
+      if (!caminho) return;
+      window.open(`file:///${caminho.replaceAll("\\", "/")}`);
+    });
+  });
+</script>
 {% endblock %}

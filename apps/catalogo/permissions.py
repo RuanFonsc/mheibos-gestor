@@ -12,8 +12,12 @@ def operador_padrao():
     return operador
 
 
-def operador_atual():
-    nome = (carregar_preferencias().get("usuario") or "").strip()
+def operador_atual(request=None):
+    nome = ""
+    if request is not None:
+        nome = (request.session.get("operador_nome") or "").strip()
+    if not nome:
+        nome = (carregar_preferencias().get("usuario") or "").strip()
     if nome:
         operador = OperadorGestor.objects.filter(nome__iexact=nome, ativo=True).first()
         if operador:

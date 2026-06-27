@@ -1,8 +1,10 @@
 import json
 import hashlib
+from collections import defaultdict
 
 from django.contrib import messages
 from django.conf import settings
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -10,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 
-from apps.catalogo.assistencia import dias_uteis_restantes, pedidos_assistencia
+from apps.catalogo.assistencia import categorias_do_pedido, dias_uteis_restantes, pedido_em_alerta, pedidos_assistencia
 from apps.catalogo.bootstrap import primeiro_admin_pendente
 from apps.catalogo.forms import (
     CategoriaServicoForm,
@@ -33,7 +35,72 @@ from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os,
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
 from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
-from apps.pedidos.models import Pedido, StatusPedido
+from apps.pedidos.models import Pedido, PrioridadePedido, StatusPedido
+
+
+def _destino_seguro(request, padrao):
+    proximo = request.GET.get("next") or request.POST.get("next") or ""
+    if proximo.startswith("/") and not proximo.startswith("//"):
+        return proximo
+    return reverse(padrao)
+
+
+def login_operador(request):
+    garantir_operadores_padrao()
+    if request.session.get("operador_nome"):
+        return redirect("home")
+    if request.method == "POST":
+        nome = request.POST.get("usuario", "").strip()
+        senha = request.POST.get("senha", "")
+        operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
+        if operador and operador.senha == senha:
+            request.session["operador_nome"] = operador.nome
+            salvar_preferencias({"usuario": operador.nome})
+            return redirect(_destino_seguro(request, "home"))
+        messages.error(request, "Usuario ou senha invalidos.")
+    return render(
+        request,
+        "catalogo/login.html",
+        {
+            "titulo": "Mheibos Gestor",
+            "subtitulo": "Acesse o sistema administrativo.",
+            "usuarios": OperadorGestor.objects.filter(ativo=True).order_by("nome"),
+            "next": request.GET.get("next", ""),
+            "producao": False,
+        },
+    )
+
+
+def login_producao(request):
+    garantir_operadores_padrao()
+    if request.session.get("operador_nome"):
+        return redirect("producao_home")
+    if request.method == "POST":
+        nome = request.POST.get("usuario", "").strip()
+        senha = request.POST.get("senha", "")
+        operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
+        if operador and operador.senha == senha:
+            request.session["operador_nome"] = operador.nome
+            salvar_preferencias({"usuario": operador.nome})
+            return redirect(_destino_seguro(request, "producao_home"))
+        messages.error(request, "Usuario ou senha invalidos.")
+    return render(
+        request,
+        "catalogo/login.html",
+        {
+            "titulo": "Mheibos Producao",
+            "subtitulo": "Acesse a fila de producao.",
+            "usuarios": OperadorGestor.objects.filter(ativo=True).order_by("nome"),
+            "next": request.GET.get("next", ""),
+            "producao": True,
+        },
+    )
+
+
+def logout_operador(request):
+    request.session.flush()
+    destino = request.GET.get("app")
+    return redirect("producao_login" if destino == "producao" else "login")
 
 
 def primeiro_admin(request):
@@ -175,9 +242,9 @@ def assistencia_envio(request):
 
 def assistencia_marcar_enviado(request, pk):
     pedido = get_object_or_404(Pedido, pk=pk)
-    pedido.status = StatusPedido.PRONTO
+    pedido.status = StatusPedido.EM_PRODUCAO
     pedido.save(update_fields=["status", "atualizado_em"])
-    messages.success(request, f"Pedido #{pedido.pk} marcado como pronto.")
+    messages.success(request, f"Pedido #{pedido.pk} enviado para producao.")
     return redirect("assistencia_envio")
 
 
@@ -346,6 +413,97 @@ def configuracoes(request):
     return render(request, "catalogo/configuracoes.html", contexto)
 
 
+def _salvar_regras_alerta(request):
+    for categoria in CategoriaServico.objects.all():
+        prefixo = f"categoria_{categoria.pk}"
+        categoria.alerta_prazo_ativo = request.POST.get(f"{prefixo}_ativo") == "on"
+        try:
+            categoria.alerta_dias_uteis = max(0, int(request.POST.get(f"{prefixo}_dias") or 0))
+        except ValueError:
+            categoria.alerta_dias_uteis = 2
+        categoria.alerta_mesmo_dia_apos_14h = request.POST.get(f"{prefixo}_mesmo_dia") == "on"
+        categoria.save(update_fields=["alerta_prazo_ativo", "alerta_dias_uteis", "alerta_mesmo_dia_apos_14h"])
+
+
+def producao_home(request):
+    status = request.GET.get("status", "").strip()
+    prioridade = request.GET.get("prioridade", "").strip()
+    categoria = request.GET.get("categoria", "").strip()
+    ordem = request.GET.get("ordem", "asc").strip()
+    if ordem not in {"asc", "desc"}:
+        ordem = "asc"
+
+    pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "artes").filter(status=StatusPedido.EM_PRODUCAO)
+    if status == StatusPedido.EM_PRODUCAO:
+        pedidos = pedidos.filter(status=status)
+    if prioridade:
+        pedidos = pedidos.filter(prioridade=prioridade)
+    if categoria:
+        pedidos = pedidos.filter(
+            Q(itens__categoria_servico_id=categoria) | Q(itens__produto__categoria_servico_id=categoria)
+        ).distinct()
+
+    categorias = list(CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"))
+    pedidos_lista = list(pedidos.order_by("data_entrega" if ordem == "asc" else "-data_entrega", "id")[:180])
+    grupos_map = defaultdict(list)
+    sem_categoria = []
+    for pedido in pedidos_lista:
+        pedido.alerta_prazo = pedido_em_alerta(pedido)
+        categorias_pedido = sorted(categorias_do_pedido(pedido), key=lambda item: (item.ordem, item.nome))
+        if not categorias_pedido:
+            sem_categoria.append(pedido)
+            continue
+        for categoria_pedido in categorias_pedido:
+            grupos_map[categoria_pedido.id].append(pedido)
+
+    grupos = [
+        {"categoria": categoria_item, "pedidos": grupos_map.get(categoria_item.id, [])}
+        for categoria_item in categorias
+        if grupos_map.get(categoria_item.id)
+    ]
+    if sem_categoria:
+        grupos.append({"categoria": None, "pedidos": sem_categoria})
+
+    contexto = {
+        "active": "producao",
+        "modo_producao": True,
+        "grupos": grupos,
+        "status_atual": status,
+        "prioridade_atual": prioridade,
+        "categoria_atual": categoria,
+        "ordem": ordem,
+        "ordem_inversa": "desc" if ordem == "asc" else "asc",
+        "categorias_tabs": categorias,
+        "prioridade_choices": PrioridadePedido.choices,
+        "liberados": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
+        "produzindo": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
+        "urgentes": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO, prioridade=PrioridadePedido.URGENTE).count(),
+    }
+    return render(request, "pedidos/producao.html", contexto)
+
+
+def producao_configuracoes(request):
+    operador = operador_atual(request)
+    if request.method == "POST":
+        acao = request.POST.get("acao")
+        if acao == "salvar_alertas":
+            _salvar_regras_alerta(request)
+            messages.success(request, "Regras de notificacoes e alertas salvas.")
+            return redirect("producao_configuracoes")
+    contexto = {
+        "active": "producao_configuracoes",
+        "modo_producao": True,
+        "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
+        "preferencias": carregar_preferencias(),
+        "db": settings.DATABASES["default"],
+        "zoom_opcoes": [85, 90, 95, 100, 110, 125, 150, 175],
+        "intervalo_opcoes": [5, 10, 15, 30, 60],
+        "visivel_opcoes": [30, 60, 120, 300],
+        "operador": operador,
+    }
+    return render(request, "catalogo/producao_configuracoes.html", contexto)
+
+
 def _categorias_da_requisicao(request):
     valor = request.GET.get("categorias", "")
     if not valor.strip():
@@ -400,6 +558,7 @@ def api_launcher_login(request):
     operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
     if not operador or operador.senha != senha:
         return JsonResponse({"ok": False, "erro": "Usuario ou senha invalidos."}, status=403)
+    request.session["operador_nome"] = operador.nome
     salvar_preferencias({"usuario": operador.nome})
     return JsonResponse(
         {

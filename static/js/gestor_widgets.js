@@ -151,6 +151,7 @@
   }
 
   async function atualizarAssistencia(cicloCompleto) {
+    if (document.body?.dataset.app === "producao" || !toast) return;
     const conf = prefs().widgets.assistencia;
     if (!conf.ativo) {
       esconderToast();

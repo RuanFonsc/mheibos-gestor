@@ -9,6 +9,8 @@ from config.views import home
 
 urlpatterns = [
     path("", home, name="home"),
+    path("login/", catalogo_views.login_operador, name="login"),
+    path("sair/", catalogo_views.logout_operador, name="logout"),
     path("primeiro-admin/", catalogo_views.primeiro_admin, name="primeiro_admin"),
     path("", include("apps.financeiro.urls")),
     path("pedidos/", include("apps.pedidos.urls")),
@@ -19,6 +21,9 @@ urlpatterns = [
     path("assistencia-envio/", catalogo_views.assistencia_envio, name="assistencia_envio"),
     path("assistencia-envio/<int:pk>/enviado/", catalogo_views.assistencia_marcar_enviado, name="assistencia_marcar_enviado"),
     path("configuracoes/", catalogo_views.configuracoes, name="configuracoes"),
+    path("producao/login/", catalogo_views.login_producao, name="producao_login"),
+    path("producao/", catalogo_views.producao_home, name="producao_home"),
+    path("producao/configuracoes/", catalogo_views.producao_configuracoes, name="producao_configuracoes"),
     path("api/widgets/prazos/", catalogo_views.api_widget_prazos, name="api_widget_prazos"),
     path("api/notificacoes/assistencia/", catalogo_views.api_notificacao_assistencia, name="api_notificacao_assistencia"),
     path("api/preferencias/", catalogo_views.api_preferencias, name="api_preferencias"),

@@ -31,6 +31,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "config.middleware.PrimeiroAdminMiddleware",
+    "config.middleware.OperadorLoginMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 

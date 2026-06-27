@@ -3,7 +3,6 @@
 {% block page_title %}Assistencia de Envio{% endblock %}
 {% block top_tabs %}
   <a href="{% url 'assistencia_envio' %}" class="top-tab active"><i data-lucide="send" class="h-5 w-5"></i> Alertas</a>
-  <a href="{% url 'producao_list' %}" class="top-tab"><i data-lucide="printer" class="h-5 w-5"></i> Producao</a>
   <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="package-check" class="h-5 w-5"></i> Entrega</a>
 {% endblock %}
 {% block content %}
@@ -53,7 +52,7 @@
 Entrega: {{ pedido.data_entrega|date:"d/m/Y"|default:"-" }} {{ pedido.hora_entrega|time:"H:i" }}</p>
               <div class="mt-3 flex flex-wrap gap-2">
                 <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary min-h-[38px] text-xs">Abrir</a>
-                <a href="{% url 'assistencia_marcar_enviado' pedido.pk %}" class="btn-primary min-h-[38px] text-xs">Marcar pronto</a>
+                <a href="{% url 'assistencia_marcar_enviado' pedido.pk %}" class="btn-primary min-h-[38px] text-xs">Enviar para producao</a>
               </div>
             </article>
           {% empty %}

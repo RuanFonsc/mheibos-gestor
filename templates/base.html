@@ -287,7 +287,7 @@
   </style>
   {% block head %}{% endblock %}
 </head>
-<body>
+<body data-app="{% if modo_producao %}producao{% else %}gestor{% endif %}">
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
@@ -298,8 +298,8 @@
         </div>
       </div>
       <nav class="side-nav">
-        <a href="{% url 'pedido_create' %}" class="side-link {% if active == 'novo_pedido' or active == 'pedidos' %}active{% endif %}">
-          <i data-lucide="messages-square" class="h-5 w-5"></i> Vendas e arte
+        {% if not modo_producao %}<a href="{% url 'pedido_create' %}" class="side-link {% if active == 'novo_pedido' or active == 'pedidos' %}active{% endif %}">
+          <i data-lucide="messages-square" class="h-5 w-5"></i> Gestor de Pedidos
         </a>
         <a href="{% url 'dashboard' %}" class="side-link {% if active == 'dashboard' %}active{% endif %}">
           <i data-lucide="layout-dashboard" class="h-5 w-5"></i> Dashboard
@@ -310,15 +310,27 @@
         <a href="{% url 'assistencia_envio' %}" class="side-link {% if active == 'assistencia' %}active{% endif %}">
           <i data-lucide="send" class="h-5 w-5"></i> Assist&ecirc;ncia de envio
         </a>
-        <a href="{% url 'producao_list' %}" class="side-link {% if active == 'producao' %}active{% endif %}">
-          <i data-lucide="printer" class="h-5 w-5"></i> Produção
-        </a>
         <a href="{% url 'entrega_list' %}" class="side-link {% if active == 'entrega' %}active{% endif %}">
           <i data-lucide="package-check" class="h-5 w-5"></i> Entrega/Loja
         </a>
         <a href="{% url 'configuracoes' %}" class="side-link {% if active == 'configuracoes' %}active{% endif %}">
           <i data-lucide="settings" class="h-5 w-5"></i> Alertas
-        </a>
+        </a>{% endif %}
+        {% if modo_producao %}
+          <a href="{% url 'producao_home' %}" class="side-link {% if active == 'producao' %}active{% endif %}">
+            <i data-lucide="printer" class="h-5 w-5"></i> Producao
+          </a>
+          <a href="{% url 'producao_configuracoes' %}" class="side-link {% if active == 'producao_configuracoes' %}active{% endif %}">
+            <i data-lucide="settings" class="h-5 w-5"></i> Configurações
+          </a>
+          <a href="{% url 'logout' %}?app=producao" class="side-link">
+            <i data-lucide="log-out" class="h-5 w-5"></i> Sair
+          </a>
+        {% else %}
+          <a href="{% url 'logout' %}" class="side-link">
+            <i data-lucide="log-out" class="h-5 w-5"></i> Sair
+          </a>
+        {% endif %}
       </nav>
       <div class="side-footer">Cache global 30s</div>
     </aside>
@@ -331,7 +343,7 @@
         <div class="top-meta">
           <span>{% now "d/m/Y" %}</span>
           <span>{% now "H:i" %}</span>
-          <a class="user-pill" id="topbarUsuarioLink" href="{% url 'configuracoes' %}?aba=usuarios#perfil-usuario" title="Perfil do usuário">
+          <a class="user-pill" id="topbarUsuarioLink" href="{% if modo_producao %}{% url 'producao_configuracoes' %}{% else %}{% url 'configuracoes' %}?aba=usuarios#perfil-usuario{% endif %}" title="Perfil do usuário">
             <i data-lucide="circle-user-round" class="h-5 w-5"></i>
             <span id="topbarUsuario">{{ preferencias_ui_json.usuario|default:"Usuario" }}</span>
           </a>
@@ -357,13 +369,15 @@
     <button type="button" id="widgetPrazosClose" class="widget-prazos-close" title="Fechar widget">×</button>
   </div>
 
-  <div id="notifAssistencia" class="notif-assistencia hidden" aria-hidden="true">
-    <div>
-      <p id="notifAssistenciaTexto"></p>
-      <a id="notifAssistenciaLink" href="{% url 'assistencia_envio' %}">Abrir assistência de envio</a>
+  {% if not modo_producao %}
+    <div id="notifAssistencia" class="notif-assistencia hidden" aria-hidden="true">
+      <div>
+        <p id="notifAssistenciaTexto"></p>
+        <a id="notifAssistenciaLink" href="{% url 'assistencia_envio' %}">Abrir assistência de envio</a>
+      </div>
+      <button type="button" id="notifAssistenciaClose" class="notif-assistencia-close" title="Fechar notificação">×</button>
     </div>
-    <button type="button" id="notifAssistenciaClose" class="notif-assistencia-close" title="Fechar notificação">×</button>
-  </div>
+  {% endif %}
 
   <script>lucide.createIcons();</script>
   <script src="{% static 'js/gestor_widgets.js' %}"></script>

@@ -73,6 +73,7 @@ class Pedido(models.Model):
     data_entrega = models.DateField(null=True, blank=True)
     hora_entrega = models.TimeField(null=True, blank=True)
     observacoes = models.TextField(blank=True)
+    caminho_arquivo_corel = models.CharField(max_length=500, blank=True)
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     valor_pago_legado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     desconto_ajuste = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -125,6 +126,9 @@ class Pedido(models.Model):
     def status_assistencia(self):
         from apps.catalogo.assistencia import categorias_do_pedido, pedido_entrou_na_regra, regra_categoria, dias_uteis_restantes
         from django.utils import timezone
+
+        if self.status not in STATUS_PRE_PRODUCAO:
+            return {"na_assistencia": False, "mensagem": "Fora da assistência de envio"}
         
         agora = timezone.localtime()
         categorias = categorias_do_pedido(self)

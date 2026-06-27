@@ -6,7 +6,7 @@ from django.db.models import Prefetch
 from django.utils import timezone
 
 from apps.catalogo.models import CategoriaServico, ProdutoServico
-from apps.pedidos.models import Pedido, PedidoItem, STATUS_PRE_PRODUCAO, STATUS_PRODUCAO, StatusPedido
+from apps.pedidos.models import Pedido, PedidoItem, STATUS_PRE_PRODUCAO
 
 
 def normalizar(texto):
@@ -148,7 +148,7 @@ def pedidos_assistencia():
     )
     pedidos = (
         Pedido.objects.filter(
-            status__in=[*STATUS_PRE_PRODUCAO, *STATUS_PRODUCAO, StatusPedido.PRONTO],
+            status__in=STATUS_PRE_PRODUCAO,
         )
         .select_related("cliente")
         .prefetch_related(itens_prefetch, "artes")

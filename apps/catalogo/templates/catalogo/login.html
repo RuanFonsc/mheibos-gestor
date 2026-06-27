@@ -1,0 +1,61 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ titulo }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root { --bg:#121521; --card:#20243a; --input:#171a29; --border:#343a66; --accent:#4b66ff; --text:#fff; --muted:#9aa7d3; --danger:#ff4b4b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: radial-gradient(circle at 20% 0%, rgba(75,102,255,.28), transparent 30%), var(--bg); color: var(--text); font-family: "Segoe UI", system-ui, sans-serif; }
+    .login-shell { width: min(440px, calc(100vw - 32px)); border: 1px solid var(--border); border-radius: 18px; background: rgba(32,36,58,.96); padding: 28px; box-shadow: 0 24px 80px rgba(0,0,0,.35); }
+    .mark { width: 68px; height: 54px; margin-bottom: 20px; position: relative; }
+    .mark::before, .mark::after { content: ""; position: absolute; top: 0; width: 48px; height: 50px; border-radius: 999px; background: white; }
+    .mark::before { left: 0; }
+    .mark::after { left: 18px; background: #f8fafc; border-left: 2px solid var(--card); }
+    h1 { margin: 0; font-size: 28px; font-weight: 950; }
+    p { margin: 8px 0 0; color: var(--muted); }
+    label { display:block; margin: 18px 0 7px; color: var(--muted); font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+    input, select { width: 100%; min-height: 52px; border: 1px solid var(--border); border-radius: 10px; background: var(--input); color: var(--text); padding: 0 14px; outline: none; }
+    button { width: 100%; min-height: 52px; margin-top: 22px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 950; text-transform: uppercase; cursor: pointer; }
+    .msg { margin-top: 14px; border: 1px solid rgba(255,75,75,.35); border-radius: 10px; background: rgba(255,75,75,.12); padding: 10px 12px; color: #ffd1d1; font-weight: 700; }
+    .switch { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; font-size: 13px; }
+    .switch a { color: #00e5ff; text-decoration: none; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <main class="login-shell">
+    <div class="mark"></div>
+    <h1>{{ titulo }}</h1>
+    <p>{{ subtitulo }}</p>
+    {% if messages %}
+      {% for message in messages %}<div class="msg">{{ message }}</div>{% endfor %}
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <label>Usuario</label>
+      <select name="usuario" autofocus>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario.nome }}">{{ usuario.nome }}</option>
+        {% endfor %}
+      </select>
+      <label>Senha</label>
+      <input name="senha" type="password" autocomplete="current-password" placeholder="Digite sua senha">
+      <button type="submit">Entrar</button>
+    </form>
+    <div class="switch">
+      {% if producao %}
+        <a href="{% url 'login' %}">Abrir Mheibos Gestor</a>
+      {% else %}
+        <a href="{% url 'producao_login' %}">Abrir Mheibos Producao</a>
+      {% endif %}
+      <span>Senha padrao: 1234</span>
+    </div>
+  </main>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

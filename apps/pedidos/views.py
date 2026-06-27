@@ -1,4 +1,3 @@
-from collections import defaultdict
 from decimal import Decimal
 
 from django.contrib import messages
@@ -6,7 +5,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.catalogo.assistencia import categorias_do_pedido, pedido_em_alerta
+from apps.catalogo.assistencia import pedido_em_alerta
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
@@ -18,6 +17,7 @@ from apps.pedidos.models import (
     PagamentoPedido,
     Pedido,
     PedidoItem,
+    HistoricoStatusPedido,
     PrioridadePedido,
     STATUS_ENTREGA,
     STATUS_PRE_PRODUCAO,
@@ -73,64 +73,6 @@ def pedido_list(request):
     return render(request, "pedidos/list.html", contexto)
 
 
-def producao_list(request):
-    status = request.GET.get("status", "").strip()
-    prioridade = request.GET.get("prioridade", "").strip()
-    categoria = request.GET.get("categoria", "").strip()
-    ordem = request.GET.get("ordem", "asc").strip()
-    if ordem not in {"asc", "desc"}:
-        ordem = "asc"
-    pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "artes").filter(
-        status__in=STATUS_PRODUCAO
-    )
-
-    if status in STATUS_PRODUCAO:
-        pedidos = pedidos.filter(status=status)
-    if prioridade:
-        pedidos = pedidos.filter(prioridade=prioridade)
-    if categoria:
-        pedidos = pedidos.filter(
-            Q(itens__categoria_servico_id=categoria) | Q(itens__produto__categoria_servico_id=categoria)
-        ).distinct()
-
-    categorias = list(CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"))
-    pedidos_lista = list(pedidos.order_by("data_entrega" if ordem == "asc" else "-data_entrega", "id")[:180])
-    grupos_map = defaultdict(list)
-    sem_categoria = []
-    for pedido in pedidos_lista:
-        pedido.alerta_prazo = pedido_em_alerta(pedido)
-        categorias_pedido = sorted(categorias_do_pedido(pedido), key=lambda item: (item.ordem, item.nome))
-        if not categorias_pedido:
-            sem_categoria.append(pedido)
-            continue
-        for categoria_pedido in categorias_pedido:
-            grupos_map[categoria_pedido.id].append(pedido)
-
-    grupos = [
-        {"categoria": categoria_item, "pedidos": grupos_map.get(categoria_item.id, [])}
-        for categoria_item in categorias
-        if grupos_map.get(categoria_item.id)
-    ]
-    if sem_categoria:
-        grupos.append({"categoria": None, "pedidos": sem_categoria})
-
-    contexto = {
-        "active": "producao",
-        "grupos": grupos,
-        "status_atual": status,
-        "prioridade_atual": prioridade,
-        "categoria_atual": categoria,
-        "ordem": ordem,
-        "ordem_inversa": "desc" if ordem == "asc" else "asc",
-        "categorias_tabs": categorias,
-        "prioridade_choices": PrioridadePedido.choices,
-        "liberados": Pedido.objects.filter(status=StatusPedido.LIBERADO_PRODUCAO).count(),
-        "produzindo": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
-        "urgentes": Pedido.objects.filter(status__in=STATUS_PRODUCAO, prioridade=PrioridadePedido.URGENTE).count(),
-    }
-    return render(request, "pedidos/producao.html", contexto)
-
-
 def entrega_list(request):
     pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "pagamentos").filter(
         status__in=STATUS_ENTREGA
@@ -152,7 +94,7 @@ def pedido_detail(request, pk):
         Pedido.objects.select_related("cliente").prefetch_related("itens", "artes", "pagamentos"),
         pk=pk,
     )
-    operador = operador_atual()
+    operador = operador_atual(request)
     return render(
         request,
         "pedidos/detail.html",
@@ -201,7 +143,7 @@ def pedido_edit(request, pk):
         Pedido.objects.select_related("cliente").prefetch_related("itens", "artes"),
         pk=pk,
     )
-    operador = operador_atual()
+    operador = operador_atual(request)
     if not pode_editar_pedido(pedido, operador):
         messages.error(request, "Seu perfil só permite editar pedidos cadastrados por você.")
         return redirect("pedido_detail", pk=pedido.pk)
@@ -215,6 +157,7 @@ def pedido_edit(request, pk):
         "data_entrega": pedido.data_entrega,
         "hora_entrega": pedido.hora_entrega,
         "observacoes": pedido.observacoes,
+        "caminho_arquivo_corel": pedido.caminho_arquivo_corel,
         "valor_pago": pedido.valor_pago_legado,
         "forma_pagamento": pedido.forma_pagamento_legada,
         "desconto_ajuste": pedido.desconto_ajuste,
@@ -266,25 +209,62 @@ def pedido_edit(request, pk):
 
 def pedido_update_status(request, pk):
     pedido = get_object_or_404(Pedido, pk=pk)
-    operador = operador_atual()
+    operador = operador_atual(request)
+    retorno = request.POST.get("next")
+    if not (retorno and retorno.startswith("/") and not retorno.startswith("//")):
+        retorno = None
     form = PedidoStatusForm(request.POST)
     if form.is_valid():
         novo_status = form.cleaned_data["status"]
+        origem_producao = bool(retorno and retorno.startswith("/producao/"))
         if novo_status == StatusPedido.CANCELADO and not operador.pode_cancelar_pedido:
             messages.error(request, "Seu perfil não tem permissão para cancelar pedidos.")
+            if retorno:
+                return redirect(retorno)
             return redirect("pedido_detail", pk=pedido.pk)
-        if not pode_editar_pedido(pedido, operador) and novo_status != pedido.status:
+        if not origem_producao and not pode_editar_pedido(pedido, operador) and novo_status != pedido.status:
             messages.error(request, "Seu perfil não tem permissão para alterar este pedido.")
+            if retorno:
+                return redirect(retorno)
             return redirect("pedido_detail", pk=pedido.pk)
         pedido.status = novo_status
         pedido.save(update_fields=["status", "atualizado_em"])
         sincronizar_financeiro_pedido(pedido)
         messages.success(request, "Status atualizado.")
+    if retorno:
+        return redirect(retorno)
     return redirect("pedido_detail", pk=pedido.pk)
 
 
+def pedido_rejeitar_producao(request, pk):
+    pedido = get_object_or_404(Pedido, pk=pk)
+    retorno = request.POST.get("next")
+    if not (retorno and retorno.startswith("/") and not retorno.startswith("//")):
+        retorno = "producao_home"
+    motivo = (request.POST.get("motivo") or "").strip()
+    if request.method != "POST":
+        return redirect(retorno)
+    if not motivo:
+        messages.error(request, "Informe o motivo para devolver o pedido aos designers.")
+        return redirect(retorno)
+    if pedido.status != StatusPedido.EM_PRODUCAO:
+        messages.error(request, "Somente pedidos em producao podem ser rejeitados.")
+        return redirect(retorno)
+    status_anterior = pedido.status
+    pedido.status = StatusPedido.AGUARDANDO_ARTE
+    pedido.save(update_fields=["status", "atualizado_em"])
+    HistoricoStatusPedido.objects.create(
+        pedido=pedido,
+        status_anterior=status_anterior,
+        status_novo=pedido.status,
+        observacao=f"Rejeitado pela producao: {motivo}",
+    )
+    messages.warning(request, f"Pedido #{pedido.pk} devolvido para os designers.")
+    return redirect(retorno)
+
+
 def pedido_create(request):
-    operador = operador_atual()
+    operador = operador_atual(request)
     hoje = timezone.localdate()
     if request.method == "POST":
         dados_post = request.POST.copy()
@@ -360,6 +340,7 @@ def _criar_pedido(form, arquivos):
         data_entrega=dados["data_entrega"],
         hora_entrega=dados.get("hora_entrega"),
         observacoes=dados.get("observacoes", ""),
+        caminho_arquivo_corel=(dados.get("caminho_arquivo_corel") or "").strip(),
         valor_total=valor_total,
         valor_pago_legado=dados["valor_pago"],
         desconto_ajuste=dados["desconto_ajuste"],
@@ -443,6 +424,7 @@ def _atualizar_pedido(pedido, form, arquivos):
     pedido.data_entrega = dados["data_entrega"]
     pedido.hora_entrega = dados.get("hora_entrega")
     pedido.observacoes = dados.get("observacoes", "")
+    pedido.caminho_arquivo_corel = (dados.get("caminho_arquivo_corel") or "").strip()
     pedido.prioridade = dados["prioridade"]
     pedido.valor_total = subtotal + dados["desconto_ajuste"]
     pedido.valor_pago_legado = dados["valor_pago"]

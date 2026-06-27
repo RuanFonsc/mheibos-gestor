@@ -2,16 +2,14 @@
 {% block title %}Producao{% endblock %}
 {% block page_title %}Producao{% endblock %}
 {% block top_tabs %}
-  <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="send" class="h-5 w-5"></i> Assistencia</a>
-  <a href="{% url 'producao_list' %}" class="top-tab active"><i data-lucide="printer" class="h-5 w-5"></i> Fila</a>
-  <a href="{% url 'producao_list' %}?status=LIBERADO_PRODUCAO&ordem={{ ordem }}" class="top-tab {% if status_atual == 'LIBERADO_PRODUCAO' %}active{% endif %}"><i data-lucide="badge-check" class="h-5 w-5"></i> Liberados</a>
-  <a href="{% url 'producao_list' %}?status=EM_PRODUCAO&ordem={{ ordem }}" class="top-tab {% if status_atual == 'EM_PRODUCAO' %}active{% endif %}"><i data-lucide="loader" class="h-5 w-5"></i> Produzindo</a>
-  <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="package-check" class="h-5 w-5"></i> Entrega</a>
+  <a href="{% url 'producao_home' %}" class="top-tab active"><i data-lucide="printer" class="h-5 w-5"></i> Fila</a>
+  <a href="{% url 'producao_home' %}?status=EM_PRODUCAO&ordem={{ ordem }}" class="top-tab {% if status_atual == 'EM_PRODUCAO' %}active{% endif %}"><i data-lucide="badge-check" class="h-5 w-5"></i> Enviados</a>
+  <a href="{% url 'producao_configuracoes' %}" class="top-tab"><i data-lucide="settings" class="h-5 w-5"></i> Config</a>
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
   <section class="grid gap-3 md:grid-cols-3">
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Liberados</p><strong class="mt-2 block text-2xl text-[#00e5ff]">{{ liberados }}</strong></div>
+    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Enviados</p><strong class="mt-2 block text-2xl text-[#00e5ff]">{{ liberados }}</strong></div>
     <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Em producao</p><strong class="mt-2 block text-2xl text-[#ffb347]">{{ produzindo }}</strong></div>
     <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Urgentes</p><strong class="mt-2 block text-2xl text-[#ff4b4b]">{{ urgentes }}</strong></div>
   </section>
@@ -83,25 +81,77 @@
                     <p>Sem itens normalizados.</p>
                   {% endfor %}
                   {% if pedido.alerta_prazo %}<p class="mt-2 font-semibold text-[#ffd1d1]">Alerta de prazo da categoria</p>{% endif %}
+                  {% if pedido.caminho_arquivo_corel %}
+                    <a href="#" data-corel-path="{{ pedido.caminho_arquivo_corel }}" class="mt-2 inline-flex text-xs font-semibold text-[#00e5ff]">
+                      <i data-lucide="folder-open" class="mr-1 h-4 w-4"></i> Abrir arquivo Corel
+                    </a>
+                  {% endif %}
                 </div>
               </div>
 
               <div class="mt-4 flex flex-wrap gap-2 border-t border-[#2d3154] pt-4">
-                <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary"><i data-lucide="eye" class="h-4 w-4"></i> Abrir</a>
-                <a href="{% url 'pedido_ordem_servico' pedido.pk %}" target="_blank" class="btn-secondary"><i data-lucide="printer" class="h-4 w-4"></i> OS</a>
                 <form method="post" action="{% url 'pedido_update_status' pedido.pk %}">
                   {% csrf_token %}
                   <input type="hidden" name="status" value="PRONTO">
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
                   <button class="btn-primary" type="submit"><i data-lucide="check" class="h-4 w-4"></i> Pronto</button>
                 </form>
+                <button class="btn-danger btn-rejeitar" type="button" data-pedido="{{ pedido.pk }}" data-label="#{{ pedido.legado_id|default:pedido.pk }}">
+                  <i data-lucide="undo-2" class="h-4 w-4"></i> Rejeitar
+                </button>
               </div>
             </article>
           {% endfor %}
         </div>
       </div>
     {% empty %}
-      <div class="card p-8 text-center text-[#8892b0] xl:col-span-3">Nenhum pedido liberado para producao.</div>
+      <div class="card p-8 text-center text-[#8892b0] xl:col-span-3">Nenhum pedido enviado para producao.</div>
     {% endfor %}
   </section>
 </div>
+
+<div id="modalRejeitar" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
+  <form id="formRejeitar" method="post" class="card w-full max-w-lg p-5">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <h2 class="text-lg font-semibold">Devolver para os designers?</h2>
+    <p id="modalRejeitarPedido" class="mt-2 text-sm text-[#8892b0]"></p>
+    <label class="mt-4 block">Motivo obrigatório</label>
+    <textarea name="motivo" rows="4" required class="mt-1" placeholder="Descreva o problema na arte ou no arquivo..."></textarea>
+    <div class="mt-4 flex justify-end gap-2">
+      <button type="button" id="btnCancelarRejeicao" class="btn-secondary">Cancelar</button>
+      <button type="submit" class="btn-danger">Enviar de volta</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll("[data-corel-path]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const caminho = link.dataset.corelPath || "";
+      if (!caminho) return;
+      window.open(`file:///${caminho.replaceAll("\\", "/")}`);
+    });
+  });
+
+  const modal = document.getElementById("modalRejeitar");
+  const form = document.getElementById("formRejeitar");
+  const label = document.getElementById("modalRejeitarPedido");
+  document.querySelectorAll(".btn-rejeitar").forEach((botao) => {
+    botao.addEventListener("click", () => {
+      form.action = `/pedidos/${botao.dataset.pedido}/rejeitar-producao/`;
+      label.textContent = `Pedido ${botao.dataset.label} voltará para os designers.`;
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      form.motivo.focus();
+    });
+  });
+  document.getElementById("btnCancelarRejeicao")?.addEventListener("click", () => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    form.reset();
+  });
+</script>
 {% endblock %}
