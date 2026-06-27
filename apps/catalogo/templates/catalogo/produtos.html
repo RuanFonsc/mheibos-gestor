@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+{% block page_title %}Produtos{% endblock %}
+{% block content %}
+<div class="page-content grid w-full gap-5 xl:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+  <section class="space-y-5">
+    <div class="card p-5">
+      <h2 class="mb-4 text-lg font-semibold">{% if produto_editando %}Editar produto{% else %}Cadastrar novo produto{% endif %}</h2>
+      <form method="post" class="space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="produto">
+        <div><label>Nome</label>{{ produto_form.nome }}</div>
+        <div><label>Categoria</label>{{ produto_form.categoria_servico }}</div>
+        <div><label>Unidade</label>{{ produto_form.unidade }}</div>
+        <div class="grid gap-3 md:grid-cols-2">
+          <div><label>Preço de venda</label>{{ produto_form.preco_venda_padrao }}</div>
+          <div><label>Custo</label>{{ produto_form.custo_estimado }}</div>
+        </div>
+        <label class="flex items-center gap-2">{{ produto_form.ativo }} Ativo</label>
+        <div class="flex gap-3">
+          <button class="btn-primary flex-1" type="submit">{% if produto_editando %}Salvar alterações{% else %}Salvar produto{% endif %}</button>
+          {% if produto_editando %}<a class="btn-secondary" href="{% url 'produtos' %}">Cancelar</a>{% endif %}
+        </div>
+      </form>
+    </div>
+
+    <div class="card p-5">
+      <h2 class="mb-4 text-lg font-semibold">Nova categoria de serviço</h2>
+      <p class="mb-4 text-sm text-[#8892b0]">Categorias alimentam os filtros, os produtos e a Assistência de envio.</p>
+      <form method="post" class="space-y-3" action="{% url 'produtos' %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="categoria">
+        <div><label>Nome</label>{{ categoria_form.nome }}</div>
+        <div><label>Ordem</label>{{ categoria_form.ordem }}</div>
+        <label class="flex items-center gap-2">{{ categoria_form.ativa }} Ativa</label>
+        <button class="btn-primary w-full" type="submit">Salvar categoria</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="space-y-5">
+    <div class="card p-5">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Categorias de serviço</h2>
+        <span class="text-sm text-[#8892b0]">{{ categorias|length }} cadastrada(s)</span>
+      </div>
+      <div class="grid gap-3 md:grid-cols-3">
+        {% for categoria in categorias %}
+          <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-3">
+            <strong>{{ categoria.nome }}</strong>
+            <p class="mt-1 text-xs text-[#8892b0]">Ordem {{ categoria.ordem }} · {% if categoria.ativa %}ativa{% else %}inativa{% endif %}</p>
+          </div>
+        {% empty %}
+          <p class="text-[#8892b0]">Nenhuma categoria criada.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <div class="border-b border-[#2d3154] p-5">
+        <h2 class="text-lg font-semibold">Lista de produtos</h2>
+        <p class="mt-1 text-sm text-[#8892b0]">Esta lista alimenta o campo Item, preço unitário, categoria e custo dos pedidos.</p>
+      </div>
+      <div class="max-h-[min(62vh,720px)] overflow-auto">
+        <table class="w-full min-w-[820px] text-left text-sm">
+          <thead class="sticky top-0 bg-[#171a29] text-[#8892b0]">
+            <tr>
+              <th class="p-3">Produto</th>
+              <th class="p-3">Categoria</th>
+              <th class="p-3">Unidade</th>
+              <th class="p-3">Preço</th>
+              <th class="p-3">Custo</th>
+              <th class="p-3">Origem</th>
+              <th class="p-3 text-right">Editar</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#2d3154]">
+            {% for produto in produtos %}
+              <tr>
+                <td class="p-3 font-semibold">{{ produto.nome }}</td>
+                <td class="p-3">{{ produto.categoria_servico.nome|default:"Sem categoria" }}</td>
+                <td class="p-3">{{ produto.get_unidade_display }}</td>
+                <td class="p-3">R$ {{ produto.preco_venda_padrao|floatformat:2 }}</td>
+                <td class="p-3">R$ {{ produto.custo_estimado|floatformat:2 }}</td>
+                <td class="p-3">{{ produto.origem_legado|default:"manual" }}</td>
+                <td class="p-3 text-right">
+                  <a class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#3d4275] bg-[#171a29] text-[#00e5ff]" href="{% url 'produto_editar' produto.pk %}" title="Editar produto">
+                    <i data-lucide="pencil" class="h-4 w-4"></i>
+                  </a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td class="p-5 text-[#8892b0]" colspan="7">Nenhum produto cadastrado ainda.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

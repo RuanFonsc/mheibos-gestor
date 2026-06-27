@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Gestor Web{% endblock %}
+{% block page_title %}Gestor Web{% endblock %}
+{% block page_subtitle %}Escolha um módulo na lateral para começar.{% endblock %}
+{% block content %}
+<div class="grid gap-4 md:grid-cols-3">
+  <a href="{% url 'dashboard' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
+    <div class="mb-4 text-[#00e5ff]"><i data-lucide="layout-dashboard"></i></div>
+    <h2 class="font-semibold">Dashboard</h2>
+    <p class="mt-2 text-sm text-[#8892b0]">Visão moderna com CRM, pedidos e fluxo de caixa.</p>
+  </a>
+  <a href="{% url 'pedido_list' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
+    <div class="mb-4 text-[#00e5ff]"><i data-lucide="clipboard-list"></i></div>
+    <h2 class="font-semibold">Gestor de Pedidos</h2>
+    <p class="mt-2 text-sm text-[#8892b0]">Lista, filtros, status, valores, itens e artes.</p>
+  </a>
+  <a href="{% url 'pedido_create' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
+    <div class="mb-4 text-[#00e5ff]"><i data-lucide="plus-circle"></i></div>
+    <h2 class="font-semibold">Novo Pedido</h2>
+    <p class="mt-2 text-sm text-[#8892b0]">Fluxo inspirado no Gestor Novo, já sem Base64.</p>
+  </a>
+</div>
+{% endblock %}

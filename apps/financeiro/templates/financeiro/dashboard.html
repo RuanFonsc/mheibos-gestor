@@ -1,0 +1,346 @@
+﻿{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block top_tabs %}
+  <a href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}" class="top-tab {% if aba == 'dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard" class="h-5 w-5"></i> Dashboard</a>
+  <a href="{% url 'dashboard' %}?aba=crm&ano={{ ano }}" class="top-tab {% if aba == 'crm' %}active{% endif %}"><i data-lucide="table" class="h-5 w-5"></i> CRM</a>
+{% endblock %}
+{% block content %}
+<div class="page-content w-full space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="section-title">{% if aba == 'crm' %}CRM Financeiro{% else %}Dashboard{% endif %}</h2>
+      <p class="text-sm text-[var(--text-secondary)]">
+        {% if aba == 'crm' %}
+          Receitas, despesas e fluxo de caixa no modelo da planilha Sólides — integrado aos pedidos do gestor.
+        {% else %}
+          Visão geral de pedidos, receitas e margem do negócio.
+        {% endif %}
+      </p>
+    </div>
+    <form method="get" class="flex items-center gap-2">
+      <input type="hidden" name="aba" value="{{ aba }}">
+      <label class="field-label mb-0">Ano</label>
+      <select name="ano" class="max-w-[120px]" onchange="this.form.submit()">
+        {% for item in anos_disponiveis %}
+          <option value="{{ item }}" {% if item == ano %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  {% if aba == 'dashboard' %}
+  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div class="card p-5">
+      <p class="text-sm text-[var(--text-secondary)]">Receita total</p>
+      <strong class="mt-4 block text-3xl">R$ {{ receita_total|floatformat:2 }}</strong>
+    </div>
+    <div class="card p-5">
+      <p class="text-sm text-[var(--text-secondary)]">Pedidos</p>
+      <strong class="mt-4 block text-3xl">{{ total_pedidos }}</strong>
+      <span class="mt-2 inline-block text-xs text-[#ffb347]">{{ em_producao }} em produção</span>
+    </div>
+    <div class="card p-5">
+      <p class="text-sm text-[var(--text-secondary)]">Ticket médio</p>
+      <strong class="mt-4 block text-3xl">R$ {{ ticket_medio|floatformat:2 }}</strong>
+    </div>
+    <div class="card p-5">
+      <p class="text-sm text-[var(--text-secondary)]">Margem real</p>
+      <strong class="mt-4 block text-3xl">{{ margem|floatformat:1 }}%</strong>
+      <span class="mt-2 inline-block text-xs text-[var(--text-secondary)]">Custo R$ {{ custo_producao|floatformat:2 }}</span>
+    </div>
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-[1.35fr_.95fr]">
+    <div class="card p-5">
+      <h2 class="mb-4 font-semibold">Fluxo de caixa mensal ({{ ano }})</h2>
+      <canvas id="cashflowChart" height="118"></canvas>
+    </div>
+    <div class="card p-5">
+      <h2 class="mb-4 font-semibold">Status dos pedidos</h2>
+      <canvas id="statusChart" height="150"></canvas>
+      <div class="mt-4 space-y-2">
+        {% for row in status_rows %}
+          <div class="flex items-center justify-between rounded-lg bg-[#171a29] px-3 py-2 text-sm">
+            <span>{{ row.status }}</span>
+            <strong>{{ row.total }}</strong>
+          </div>
+        {% empty %}
+          <p class="text-sm text-[var(--text-secondary)]">Sem pedidos importados ainda.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
+    <div class="card p-5">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="font-semibold">Vendas por mês</h2>
+        <a href="{% url 'pedido_list' %}" class="text-sm text-[#00e5ff]">Ver pedidos</a>
+      </div>
+      <canvas id="salesChart" height="130"></canvas>
+    </div>
+    <div class="card p-5">
+      <h2 class="mb-4 font-semibold">Produtos em destaque</h2>
+      <div class="divide-y divide-[#2d3154]">
+        {% for produto in top_produtos %}
+          <div class="flex items-center justify-between py-3 text-sm">
+            <span>{{ produto.nome }}</span>
+            <span class="text-[#00c896]">{{ produto.quantidade }}x</span>
+          </div>
+        {% empty %}
+          <p class="text-sm text-[var(--text-secondary)]">Sem produtos para exibir.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% else %}
+  <section class="grid gap-5 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
+    <div class="card p-5">
+      <h3 class="mb-4 text-lg font-semibold">Novo lançamento</h3>
+      <form method="post" class="space-y-3">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="criar_lancamento">
+        <div><label>Tipo</label>{{ lancamento_form.tipo }}</div>
+        <div><label>Categoria</label>{{ lancamento_form.categoria }}</div>
+        <div><label>Descrição</label>{{ lancamento_form.descricao }}</div>
+        <div class="grid gap-3 md:grid-cols-2">
+          <div><label>Valor</label>{{ lancamento_form.valor }}</div>
+          <div><label>Competência</label>{{ lancamento_form.data_competencia }}</div>
+        </div>
+        <div class="grid gap-3 md:grid-cols-2">
+          <div><label>Vencimento</label>{{ lancamento_form.data_vencimento }}</div>
+          <div><label>Pagamento</label>{{ lancamento_form.data_pagamento }}</div>
+        </div>
+        <div><label>Status</label>{{ lancamento_form.status }}</div>
+        <div><label>Observações</label>{{ lancamento_form.observacoes }}</div>
+        <button class="btn-primary w-full" type="submit">Salvar lançamento</button>
+      </form>
+      <p class="mt-4 text-xs text-[var(--text-secondary)]">
+        Receitas de pedidos entram automaticamente em "Vendas de pedidos" quando o pagamento é registrado no gestor.
+      </p>
+    </div>
+
+    <div class="card p-5">
+      <h3 class="mb-2 text-lg font-semibold">Resumo anual {{ ano }}</h3>
+      <div class="grid gap-3 md:grid-cols-4">
+        <div class="rounded-lg bg-[#171a29] p-3"><p class="text-xs text-[var(--text-secondary)]">Receitas</p><strong class="text-xl text-[#00c896]">R$ {{ crm.fluxo.total_receitas|floatformat:2 }}</strong></div>
+        <div class="rounded-lg bg-[#171a29] p-3"><p class="text-xs text-[var(--text-secondary)]">Despesas</p><strong class="text-xl text-[#ff4b4b]">R$ {{ crm.fluxo.total_despesas|floatformat:2 }}</strong></div>
+        <div class="rounded-lg bg-[#171a29] p-3"><p class="text-xs text-[var(--text-secondary)]">Lucro líquido</p><strong class="text-xl">R$ {{ crm.fluxo.lucro|floatformat:2 }}</strong></div>
+        <div class="rounded-lg bg-[#171a29] p-3"><p class="text-xs text-[var(--text-secondary)]">Margem</p><strong class="text-xl">{{ crm.fluxo.margem|floatformat:1 }}%</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card overflow-hidden">
+    <div class="border-b border-[#2d3154] p-4">
+      <h3 class="text-lg font-semibold">Receitas (Entradas)</h3>
+    </div>
+    <div class="overflow-auto">
+      <table class="w-full min-w-[980px] text-left text-sm">
+        <thead class="bg-[#171a29] text-[var(--text-secondary)]">
+          <tr>
+            <th class="p-3">Descrição</th>
+            {% for mes in crm.meses %}<th class="p-3 text-right">{{ mes }}</th>{% endfor %}
+            <th class="p-3 text-right">Total anual</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#2d3154]">
+          {% for linha in crm.receitas.linhas %}
+            <tr>
+              <td class="p-3 font-semibold">{{ linha.categoria.nome }}</td>
+              {% for valor in linha.meses %}<td class="p-3 text-right">R$ {{ valor|floatformat:2 }}</td>{% endfor %}
+              <td class="p-3 text-right font-semibold text-[#00c896]">R$ {{ linha.total|floatformat:2 }}</td>
+            </tr>
+          {% empty %}
+            <tr><td class="p-4 text-[var(--text-secondary)]" colspan="14">Nenhuma receita lançada.</td></tr>
+          {% endfor %}
+          <tr class="bg-[#171a29] font-semibold">
+            <td class="p-3">Total</td>
+            {% for valor in crm.receitas.total_mensal %}<td class="p-3 text-right">R$ {{ valor|floatformat:2 }}</td>{% endfor %}
+            <td class="p-3 text-right text-[#00c896]">R$ {{ crm.receitas.total_anual|floatformat:2 }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card overflow-hidden">
+    <div class="border-b border-[#2d3154] p-4">
+      <h3 class="text-lg font-semibold">Despesas (Saídas)</h3>
+    </div>
+    <div class="overflow-auto">
+      <table class="w-full min-w-[980px] text-left text-sm">
+        <thead class="bg-[#171a29] text-[var(--text-secondary)]">
+          <tr>
+            <th class="p-3">Descrição</th>
+            {% for mes in crm.meses %}<th class="p-3 text-right">{{ mes }}</th>{% endfor %}
+            <th class="p-3 text-right">Total anual</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#2d3154]">
+          {% for linha in crm.despesas.linhas %}
+            <tr>
+              <td class="p-3 font-semibold">{{ linha.categoria.nome }}</td>
+              {% for valor in linha.meses %}<td class="p-3 text-right">R$ {{ valor|floatformat:2 }}</td>{% endfor %}
+              <td class="p-3 text-right font-semibold text-[#ff4b4b]">R$ {{ linha.total|floatformat:2 }}</td>
+            </tr>
+          {% empty %}
+            <tr><td class="p-4 text-[var(--text-secondary)]" colspan="14">Nenhuma despesa lançada.</td></tr>
+          {% endfor %}
+          <tr class="bg-[#171a29] font-semibold">
+            <td class="p-3">Total</td>
+            {% for valor in crm.despesas.total_mensal %}<td class="p-3 text-right">R$ {{ valor|floatformat:2 }}</td>{% endfor %}
+            <td class="p-3 text-right text-[#ff4b4b]">R$ {{ crm.despesas.total_anual|floatformat:2 }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card overflow-hidden">
+    <div class="border-b border-[#2d3154] p-4">
+      <h3 class="text-lg font-semibold">Fluxo de Caixa</h3>
+    </div>
+    <div class="overflow-auto">
+      <table class="w-full min-w-[640px] text-left text-sm">
+        <thead class="bg-[#171a29] text-[var(--text-secondary)]">
+          <tr>
+            <th class="p-3">Mês</th>
+            <th class="p-3 text-right">Receitas (Entradas)</th>
+            <th class="p-3 text-right">Despesas (Saídas)</th>
+            <th class="p-3 text-right">Lucro líquido</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#2d3154]">
+          {% for linha in crm.fluxo.linhas %}
+            <tr>
+              <td class="p-3 font-semibold">{{ linha.mes }}</td>
+              <td class="p-3 text-right text-[#00c896]">R$ {{ linha.receitas|floatformat:2 }}</td>
+              <td class="p-3 text-right text-[#ff4b4b]">R$ {{ linha.despesas|floatformat:2 }}</td>
+              <td class="p-3 text-right">R$ {{ linha.lucro|floatformat:2 }}</td>
+            </tr>
+          {% endfor %}
+          <tr class="bg-[#171a29] font-semibold">
+            <td class="p-3">Total</td>
+            <td class="p-3 text-right text-[#00c896]">R$ {{ crm.fluxo.total_receitas|floatformat:2 }}</td>
+            <td class="p-3 text-right text-[#ff4b4b]">R$ {{ crm.fluxo.total_despesas|floatformat:2 }}</td>
+            <td class="p-3 text-right">R$ {{ crm.fluxo.lucro|floatformat:2 }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card overflow-hidden">
+    <div class="border-b border-[#2d3154] p-4">
+      <h3 class="text-lg font-semibold">Lançamentos recentes ({{ ano }})</h3>
+    </div>
+    <div class="overflow-auto">
+      <table class="w-full min-w-[900px] text-left text-sm">
+        <thead class="bg-[#171a29] text-[var(--text-secondary)]">
+          <tr>
+            <th class="p-3">Data</th>
+            <th class="p-3">Tipo</th>
+            <th class="p-3">Categoria</th>
+            <th class="p-3">Descrição</th>
+            <th class="p-3 text-right">Valor</th>
+            <th class="p-3">Origem</th>
+            <th class="p-3 text-right">Ação</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#2d3154]">
+          {% for item in lancamentos_recentes %}
+            <tr>
+              <td class="p-3">{{ item.data_competencia|date:"d/m/Y" }}</td>
+              <td class="p-3">{{ item.get_tipo_display }}</td>
+              <td class="p-3">{{ item.categoria.nome }}</td>
+              <td class="p-3">{{ item.descricao }}</td>
+              <td class="p-3 text-right {% if item.tipo == 'RECEITA' %}text-[#00c896]{% else %}text-[#ff4b4b]{% endif %}">R$ {{ item.valor|floatformat:2 }}</td>
+              <td class="p-3 text-xs text-[var(--text-secondary)]">{% if item.pedido_id %}Pedido #{{ item.pedido_id }}{% else %}Manual{% endif %}</td>
+              <td class="p-3 text-right">
+                {% if not item.pagamento_pedido_id %}
+                  <form method="post" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="excluir_lancamento">
+                    <input type="hidden" name="lancamento_id" value="{{ item.pk }}">
+                    <button class="btn-danger min-h-[34px] px-3 text-xs" type="submit">Excluir</button>
+                  </form>
+                {% else %}
+                  <span class="text-xs text-[var(--text-secondary)]">Automático</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td class="p-4 text-[var(--text-secondary)]" colspan="7">Nenhum lançamento neste ano.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+{% if aba == 'dashboard' %}
+{{ meses|json_script:"months-data" }}
+{{ receita_mensal|json_script:"revenue-data" }}
+{{ despesa_mensal|json_script:"expense-data" }}
+<script>
+  const months = JSON.parse(document.getElementById("months-data").textContent);
+  const revenue = JSON.parse(document.getElementById("revenue-data").textContent);
+  const expense = JSON.parse(document.getElementById("expense-data").textContent);
+  const grid = { color: "rgba(136,146,176,.18)" };
+  const ticks = { color: "#8892b0" };
+
+  new Chart(document.getElementById("cashflowChart"), {
+    type: "line",
+    data: {
+      labels: months,
+      datasets: [
+        { label: "Receitas", data: revenue, borderColor: "#00e5ff", backgroundColor: "rgba(0,229,255,.12)", tension: .42, fill: true },
+        { label: "Despesas", data: expense, borderColor: "#ffb347", backgroundColor: "rgba(255,179,71,.1)", tension: .42, fill: true }
+      ]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid, ticks }, y: { grid, ticks } } }
+  });
+
+  new Chart(document.getElementById("salesChart"), {
+    type: "bar",
+    data: { labels: months, datasets: [{ data: revenue, backgroundColor: "#0d5da8", borderRadius: 8, maxBarThickness: 26 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks }, y: { grid, ticks } } }
+  });
+
+  new Chart(document.getElementById("statusChart"), {
+    type: "doughnut",
+    data: {
+      labels: [{% for row in status_rows %}"{{ row.status }}",{% endfor %}],
+      datasets: [{ data: [{% for row in status_rows %}{{ row.total }},{% endfor %}], backgroundColor: ["#4b66ff", "#00e5ff", "#00c896", "#ffb347", "#ff4b4b"], borderWidth: 0 }]
+    },
+    options: { cutout: "68%", plugins: { legend: { display: false } } }
+  });
+</script>
+{% else %}
+<script>
+  const tipo = document.querySelector("[name=tipo]");
+  const categoria = document.querySelector("[name=categoria]");
+  const receitas = [{% for cat in categorias_receita %}{ id: {{ cat.pk }}, nome: "{{ cat.nome|escapejs }}" },{% endfor %}];
+  const despesas = [{% for cat in categorias_despesa %}{ id: {{ cat.pk }}, nome: "{{ cat.nome|escapejs }}" },{% endfor %}];
+  function atualizarCategorias() {
+    if (!tipo || !categoria) return;
+    const lista = tipo.value === "RECEITA" ? receitas : despesas;
+    const atual = categoria.value;
+    categoria.innerHTML = "";
+    lista.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = item.nome;
+      if (String(item.id) === String(atual)) option.selected = true;
+      categoria.appendChild(option);
+    });
+  }
+  tipo?.addEventListener("change", atualizarCategorias);
+  atualizarCategorias();
+</script>
+{% endif %}
+{% endblock %}

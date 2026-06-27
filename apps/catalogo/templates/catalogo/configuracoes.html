@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% block title %}Configurações{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+{% block content %}
+<div class="page-content space-y-5">
+  <div>
+    <h2 class="section-title">Configurações</h2>
+    <p class="text-sm text-[#8892b0]">Ajustes principais do sistema e conexão com o banco de dados.</p>
+  </div>
+
+  <section class="card p-5">
+    <h3 class="mb-2 text-lg font-semibold">Usuário ativo</h3>
+    <p class="mb-4 text-sm text-[#8892b0]">Troque o usuário quando outra pessoa for fechar pedidos neste computador.</p>
+    <div class="flex flex-wrap gap-3">
+      <select id="configUsuarioSelect" class="max-w-[280px]">
+        {% for operador in operadores %}
+          <option value="{{ operador.nome }}">{{ operador.nome }}</option>
+        {% endfor %}
+      </select>
+      <button id="btnTrocarUsuario" class="btn-primary" type="button">Usar este usuário</button>
+    </div>
+    <form method="post" class="mt-4 flex flex-wrap items-end gap-3 border-t border-[#2d3154] pt-4">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="criar_operador">
+      <div class="min-w-[220px] flex-1">
+        <label class="field-label">Novo usuário</label>
+        <input name="nome_operador" placeholder="Nome do operador" maxlength="80">
+      </div>
+      <button class="btn-secondary" type="submit">Criar usuário</button>
+    </form>
+  </section>
+
+  <section class="card p-5">
+    <h3 class="mb-2 text-lg font-semibold">Aparência</h3>
+    <p class="mb-4 text-sm text-[#8892b0]">Escolha entre o tema escuro padrão e o tema claro do sistema.</p>
+    <div class="flex flex-wrap gap-3">
+      <select id="configTema" class="max-w-[280px]">
+        <option value="dark">Escuro</option>
+        <option value="light">Claro</option>
+      </select>
+      <button id="btnAplicarTema" class="btn-secondary" type="button">Aplicar tema</button>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <h3 class="mb-2 text-lg font-semibold">Zoom da interface</h3>
+    <p class="mb-4 text-sm text-[#8892b0]">Ajuste o tamanho dos textos e botões sem depender do zoom do navegador.</p>
+    <div class="flex flex-wrap gap-3">
+      <select id="configZoom" class="max-w-[280px]">
+        {% for zoom in zoom_opcoes %}
+          <option value="{{ zoom }}">{{ zoom }}%</option>
+        {% endfor %}
+      </select>
+      <button id="btnAplicarZoom" class="btn-secondary" type="button">Aplicar zoom</button>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <h3 class="mb-2 text-lg font-semibold">Widgets e notificações</h3>
+    <p class="mb-4 text-sm text-[#8892b0]">Configure o widget de prazos e a notificação da assistência de envio.</p>
+
+    <div class="space-y-6">
+      <div class="rounded-xl border border-[#2d3154] bg-[#171a29] p-4">
+        <h4 class="mb-3 text-base font-semibold">Widget de prazos</h4>
+        <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal">
+          <input id="widgetPrazosAtivo" type="checkbox" checked> Ativar widget de prazos
+        </label>
+        <div class="mb-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div>
+            <label class="field-label">Comportamento</label>
+            <select id="widgetPrazosModo">
+              <option value="periodico">Voltar de tempos em tempos</option>
+              <option value="sempre">Ficar ativo o tempo todo</option>
+            </select>
+          </div>
+          <div id="widgetPrazosIntervaloWrap">
+            <label class="field-label">Voltar a cada</label>
+            <select id="widgetPrazosIntervalo">
+              {% for minutos in intervalo_opcoes %}
+                <option value="{{ minutos }}">{{ minutos }} minutos</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div id="widgetPrazosVisivelWrap">
+            <label class="field-label">Ficar visível por</label>
+            <select id="widgetPrazosVisivel">
+              {% for segundos in visivel_opcoes %}
+                <option value="{{ segundos }}">{{ segundos }}s</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <p class="mb-2 text-xs text-[#8892b0]">Categorias exibidas no widget:</p>
+        <div class="flex flex-wrap gap-3">
+          {% for categoria in categorias %}
+            <label class="flex items-center gap-2 rounded-lg bg-[#22253a] px-3 py-2 text-sm normal-case tracking-normal">
+              <input class="widget-categoria" type="checkbox" value="{{ categoria.id }}" checked> {{ categoria.nome }}
+            </label>
+          {% empty %}
+            <span class="text-sm text-[#8892b0]">Cadastre categorias em Produtos.</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-[#2d3154] bg-[#171a29] p-4">
+        <h4 class="mb-3 text-base font-semibold">Notificação — Assistência de envio</h4>
+        <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal">
+          <input id="notifAssistenciaAtivo" type="checkbox" checked> Ativar notificação de assistência de envio
+        </label>
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div>
+            <label class="field-label">Comportamento</label>
+            <select id="notifAssistenciaModo">
+              <option value="periodico">Voltar de tempos em tempos</option>
+              <option value="sempre">Ficar ativa o tempo todo</option>
+            </select>
+          </div>
+          <div id="notifAssistenciaIntervaloWrap">
+            <label class="field-label">Voltar a cada</label>
+            <select id="notifAssistenciaIntervalo">
+              {% for minutos in intervalo_opcoes %}
+                <option value="{{ minutos }}">{{ minutos }} minutos</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div id="notifAssistenciaVisivelWrap">
+            <label class="field-label">Ficar visível por</label>
+            <select id="notifAssistenciaVisivel">
+              {% for segundos in visivel_opcoes %}
+                <option value="{{ segundos }}">{{ segundos }}s</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button id="btnSalvarWidgets" class="btn-primary" type="button">Salvar widgets e notificações</button>
+        <button id="btnTestarWidgets" class="btn-secondary" type="button">Verificar agora</button>
+      </div>
+      <p id="configFeedback" class="hidden text-sm font-semibold text-[#00c896]"></p>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <h3 class="mb-2 text-lg font-semibold">Widget na área de trabalho (Windows)</h3>
+    <p class="mb-4 text-sm text-[#8892b0]">
+      O widget dentro do navegador aparece só na página do Gestor. Para sobrepor qualquer programa do Windows
+      (como no Gestor antigo), execute o overlay desktop após salvar as configurações acima.
+    </p>
+    <div class="flex flex-wrap gap-3">
+      <button id="btnIniciarWidgetWindows" class="btn-primary" type="button">Iniciar widget no Windows</button>
+      <span class="self-center text-xs text-[#8892b0]">Arquivo: iniciar_widget_windows.bat</span>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <h3 class="mb-2 text-lg font-semibold">Banco de dados</h3>
+    <p class="mb-4 text-sm text-[#8892b0]">Conexão compartilhada entre Gestor, Dashboard, relatórios e integrações. O sistema usa PostgreSQL.</p>
+    <div class="grid gap-3 md:grid-cols-[160px_1fr]">
+      <label>Tipo de banco:</label><input value="PostgreSQL (rede)" readonly>
+      <label>Nome do banco:</label><input value="{{ db.NAME }}" readonly>
+      <label>Host / IP:</label><input value="{{ db.HOST }}" readonly>
+      <label>Porta:</label><input value="{{ db.PORT }}" readonly>
+      <label>Usuário:</label><input value="{{ db.USER }}" readonly>
+      <label>Senha:</label><input value="••••" readonly>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <h3 class="mb-2 text-lg font-semibold">Janelas carregadas</h3>
+    <p class="text-sm text-[#8892b0]">Gestor de pedidos, Dashboard, Produtos, Assistência de envio e Configurações.</p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  function labelSegundos(valor) {
+    const n = Number(valor);
+    if (n === 60) return "1 minuto";
+    if (n === 120) return "2 minutos";
+    if (n === 300) return "5 minutos";
+    return `${n} segundos`;
+  }
+
+  function atualizarLabelsVisivel() {
+    document.querySelectorAll("#widgetPrazosVisivel option, #notifAssistenciaVisivel option").forEach((option) => {
+      option.textContent = labelSegundos(option.value);
+    });
+  }
+
+  function alternarCamposPeriodicos(modoId, intervaloWrapId, visivelWrapId) {
+    const modo = document.getElementById(modoId).value;
+    const mostrar = modo === "periodico";
+    document.getElementById(intervaloWrapId).classList.toggle("hidden", !mostrar);
+    document.getElementById(visivelWrapId).classList.toggle("hidden", !mostrar);
+  }
+
+  function categoriasSelecionadas() {
+    return [...document.querySelectorAll(".widget-categoria:checked")].map((item) => Number(item.value));
+  }
+
+  function preencherFormulario(prefs) {
+    document.getElementById("configTema").value = prefs.tema;
+    document.getElementById("configZoom").value = String(prefs.zoom);
+    const select = document.getElementById("configUsuarioSelect");
+    if (select) select.value = prefs.usuario;
+
+    const prazos = prefs.widgets.prazos;
+    document.getElementById("widgetPrazosAtivo").checked = prazos.ativo;
+    document.getElementById("widgetPrazosModo").value = prazos.modo;
+    document.getElementById("widgetPrazosIntervalo").value = String(prazos.intervalo_minutos);
+    document.getElementById("widgetPrazosVisivel").value = String(prazos.visivel_segundos);
+
+    const assistencia = prefs.widgets.assistencia;
+    document.getElementById("notifAssistenciaAtivo").checked = assistencia.ativo;
+    document.getElementById("notifAssistenciaModo").value = assistencia.modo;
+    document.getElementById("notifAssistenciaIntervalo").value = String(assistencia.intervalo_minutos);
+    document.getElementById("notifAssistenciaVisivel").value = String(assistencia.visivel_segundos);
+
+    const selecionadas = new Set((prazos.categorias || []).map(Number));
+    document.querySelectorAll(".widget-categoria").forEach((item) => {
+      item.checked = selecionadas.size ? selecionadas.has(Number(item.value)) : true;
+    });
+
+    alternarCamposPeriodicos("widgetPrazosModo", "widgetPrazosIntervaloWrap", "widgetPrazosVisivelWrap");
+    alternarCamposPeriodicos("notifAssistenciaModo", "notifAssistenciaIntervaloWrap", "notifAssistenciaVisivelWrap");
+  }
+
+  function coletarWidgets() {
+    return {
+      prazos: {
+        ativo: document.getElementById("widgetPrazosAtivo").checked,
+        modo: document.getElementById("widgetPrazosModo").value,
+        intervalo_minutos: Number(document.getElementById("widgetPrazosIntervalo").value),
+        visivel_segundos: Number(document.getElementById("widgetPrazosVisivel").value),
+        categorias: categoriasSelecionadas(),
+      },
+      assistencia: {
+        ativo: document.getElementById("notifAssistenciaAtivo").checked,
+        modo: document.getElementById("notifAssistenciaModo").value,
+        intervalo_minutos: Number(document.getElementById("notifAssistenciaIntervalo").value),
+        visivel_segundos: Number(document.getElementById("notifAssistenciaVisivel").value),
+      },
+    };
+  }
+
+  function feedback(texto) {
+    const alvo = document.getElementById("configFeedback");
+    alvo.textContent = texto;
+    alvo.classList.remove("hidden");
+    setTimeout(() => alvo.classList.add("hidden"), 2600);
+  }
+
+  atualizarLabelsVisivel();
+  preencherFormulario(GestorPrefs.load());
+
+  async function salvarComFeedback(patch, mensagem) {
+    try {
+      const prefs = await GestorPrefs.save(patch);
+      preencherFormulario(prefs);
+      feedback(mensagem);
+    } catch (_) {
+      feedback("Salvo localmente, mas falhou no servidor. Tente de novo.");
+    }
+  }
+
+  document.getElementById("btnAplicarTema").addEventListener("click", async () => {
+    await salvarComFeedback({ tema: document.getElementById("configTema").value }, "Tema aplicado e salvo.");
+  });
+
+  document.getElementById("btnAplicarZoom").addEventListener("click", async () => {
+    await salvarComFeedback({ zoom: Number(document.getElementById("configZoom").value) }, "Zoom aplicado e salvo.");
+  });
+
+  document.getElementById("btnTrocarUsuario").addEventListener("click", async () => {
+    const select = document.getElementById("configUsuarioSelect");
+    if (!select?.value) return;
+    await salvarComFeedback({ usuario: select.value }, `Usuário ativo: ${select.value}`);
+  });
+
+  ["widgetPrazosModo", "notifAssistenciaModo"].forEach((id) => {
+    document.getElementById(id).addEventListener("change", () => {
+      if (id === "widgetPrazosModo") {
+        alternarCamposPeriodicos("widgetPrazosModo", "widgetPrazosIntervaloWrap", "widgetPrazosVisivelWrap");
+      } else {
+        alternarCamposPeriodicos("notifAssistenciaModo", "notifAssistenciaIntervaloWrap", "notifAssistenciaVisivelWrap");
+      }
+    });
+  });
+
+  document.getElementById("btnSalvarWidgets").addEventListener("click", async () => {
+    const widgets = coletarWidgets();
+    if (!widgets.prazos.categorias.length) {
+      document.querySelectorAll(".widget-categoria").forEach((item) => { item.checked = true; });
+      widgets.prazos.categorias = categoriasSelecionadas();
+    }
+    await salvarComFeedback({ widgets }, "Widgets e notificações salvos.");
+  });
+
+  document.getElementById("btnTestarWidgets").addEventListener("click", async () => {
+    await salvarComFeedback({ widgets: coletarWidgets() }, "Verificação iniciada.");
+    window.dispatchEvent(new CustomEvent("gestor:widgets-verificar"));
+  });
+
+  document.getElementById("btnIniciarWidgetWindows")?.addEventListener("click", async () => {
+    await salvarComFeedback({ widgets: coletarWidgets() }, "Configurações salvas. Execute iniciar_widget_windows.bat na pasta do projeto.");
+  });
+</script>
+{% endblock %}
