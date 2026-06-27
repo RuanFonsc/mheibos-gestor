@@ -1,0 +1,18 @@
+appId: br.com.mheibos.producao
+productName: Mheibos Producao
+directories:
+  output: release/producao
+files:
+  - electron/**
+  - package.json
+asar: true
+win:
+  target:
+    - nsis
+  artifactName: Mheibos-Producao-${version}-Setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

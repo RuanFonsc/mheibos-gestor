@@ -1,0 +1,17 @@
+{
+  "name": "mheibos-gestor",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Launchers desktop do Mheibos Gestor e Mheibos Producao.",
+  "main": "electron/main.js",
+  "scripts": {
+    "electron:gestor": "electron . --gestor",
+    "electron:producao": "electron . --producao",
+    "dist:gestor": "electron-builder --config electron-builder.gestor.yml",
+    "dist:producao": "electron-builder --config electron-builder.producao.yml"
+  },
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "latest"
+  }
+}

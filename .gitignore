@@ -9,3 +9,7 @@ staticfiles/
 .mypy_cache/
 *.log
 *.err.log
+node_modules/
+dist/
+release/
+out/
