@@ -22,6 +22,7 @@ from apps.pedidos.models import (
     PrioridadePedido,
     STATUS_ENTREGA,
     STATUS_ASSISTENCIA,
+    STATUS_FUNIL_GESTOR,
     STATUS_PRE_PRODUCAO,
     StatusPagamento,
     StatusPedido,
@@ -52,7 +53,7 @@ def pedido_list(request):
             filtros_busca |= Q(pk=int(busca)) | Q(legado_id=int(busca))
         pedidos = pedidos.filter(filtros_busca).distinct()
     if status == StatusPedido.EM_PRODUCAO:
-        pedidos = pedidos.filter(status__in=STATUS_ASSISTENCIA)
+        pedidos = pedidos.filter(status__in=STATUS_FUNIL_GESTOR)
     elif status:
         pedidos = pedidos.filter(status=status)
     if categoria:
@@ -76,7 +77,7 @@ def pedido_list(request):
         "prioridade_choices": PrioridadePedido.choices,
         "total": Pedido.objects.count(),
         "pre_producao": Pedido.objects.filter(status__in=STATUS_PRE_PRODUCAO).count(),
-        "em_producao": Pedido.objects.filter(status__in=STATUS_ASSISTENCIA).count(),
+        "em_producao": Pedido.objects.filter(status__in=STATUS_FUNIL_GESTOR).count(),
         "prontos": Pedido.objects.filter(status=StatusPedido.PRONTO).count(),
         "cancelados": Pedido.objects.filter(status=StatusPedido.CANCELADO).count(),
         "pode_acoes_admin": operador.is_admin,
