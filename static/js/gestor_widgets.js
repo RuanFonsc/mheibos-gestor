@@ -74,6 +74,7 @@
       const link = document.createElement("a");
       link.href = pedido.url;
       link.className = "widget-prazo-item";
+      if (pedido.alerta) link.classList.add("is-alert");
       link.title = `#${pedido.legado_id || pedido.id} — ${pedido.cliente}`;
       if (pedido.arte_url) {
         const img = document.createElement("img");
@@ -104,6 +105,7 @@
     const partes = resumo.por_categoria.map((item) => `${item.nome}: ${item.count}`);
     toastText.textContent = `${resumo.total} pedido(s) na assistência de envio${partes.length ? ` (${partes.join(" · ")})` : ""}`;
     toastLink.href = resumo.url || "/assistencia-envio/";
+    toast?.classList.toggle("is-alert", Boolean(resumo.alerta));
     mostrarToast();
   }
 

@@ -45,7 +45,8 @@
     const node = document.getElementById("gestor-prefs-server");
     if (!node) return null;
     try {
-      return JSON.parse(node.textContent || "{}");
+      const parsed = JSON.parse(node.textContent || "{}");
+      return typeof parsed === "string" ? JSON.parse(parsed) : parsed;
     } catch (_) {
       return null;
     }
@@ -53,7 +54,13 @@
 
   function loadPrefs() {
     const boot = serverBoot();
-    if (boot) return mergePrefs(DEFAULTS, boot);
+    if (boot) {
+      const prefs = mergePrefs(DEFAULTS, boot);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+      } catch (_) {}
+      return prefs;
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return clone(DEFAULTS);
@@ -116,7 +123,7 @@
 
   function applyUsuario(usuario) {
     const alvo = document.getElementById("topbarUsuario");
-    if (alvo) alvo.textContent = `Usuário: ${usuario}`;
+    if (alvo) alvo.textContent = usuario;
     const campo = document.getElementById("configUsuario");
     if (campo) campo.value = usuario;
     const select = document.getElementById("configUsuarioSelect");

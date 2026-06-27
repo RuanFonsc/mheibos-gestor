@@ -1,4 +1,5 @@
 from copy import deepcopy
+from decouple import config
 
 from apps.catalogo.models import PreferenciaUI
 
@@ -83,7 +84,23 @@ def salvar_preferencias(patch):
 
 
 def garantir_operadores_padrao():
-    from apps.catalogo.models import OperadorGestor
+    from apps.catalogo.models import OperadorGestor, PapelOperador
+
+    if config("GESTOR_FIRST_ADMIN_SETUP", default=False, cast=bool) and not OperadorGestor.objects.exists():
+        return
 
     for nome in ("Ruan", "Diogo", "Alexandre"):
-        OperadorGestor.objects.get_or_create(nome=nome, defaults={"ativo": True})
+        operador, criado = OperadorGestor.objects.update_or_create(
+            nome=nome,
+            defaults={"ativo": True, "papel": PapelOperador.ADMIN_GERAL},
+        )
+        if criado or not operador.senha:
+            operador.senha = "1234"
+            operador.save(update_fields=["senha"])
+    temporario, criado = OperadorGestor.objects.get_or_create(
+        nome="Usuario Temporario",
+        defaults={"ativo": True, "papel": PapelOperador.TEMPORARIO},
+    )
+    if criado or not temporario.senha:
+        temporario.senha = "1234"
+        temporario.save(update_fields=["senha"])

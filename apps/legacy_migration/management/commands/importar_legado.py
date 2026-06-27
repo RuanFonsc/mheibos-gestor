@@ -76,8 +76,8 @@ class Command(BaseCommand):
             nome=nome_cliente,
             defaults={
                 "email": texto_limpo(row.get("email_do_cliente")),
-                "telefone_principal": texto_limpo(row.get("numero_1")),
-                "telefone_secundario": texto_limpo(row.get("numero_2")),
+                "telefone_principal": self._normalizar_telefone(row.get("numero_1")),
+                "telefone_secundario": self._normalizar_telefone(row.get("numero_2")),
             },
         )
 
@@ -162,3 +162,15 @@ class Command(BaseCommand):
                 legado_base64_hash=digest,
             )
             arte.arquivo.save(Path(nome).name, ContentFile(dados), save=True)
+
+    def _limitar_texto(self, valor, limite):
+        return texto_limpo(valor)[:limite]
+
+    def _normalizar_telefone(self, valor):
+        texto = texto_limpo(valor)
+        if not texto:
+            return ""
+        texto_lower = texto.lower()
+        if "imagem anexada" in texto_lower or texto_lower.startswith("[imagem"):
+            return ""
+        return texto[:32]

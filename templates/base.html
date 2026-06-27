@@ -52,16 +52,16 @@
       color: var(--text-primary);
       font-family: "Segoe UI", system-ui, sans-serif;
       font-size: calc(13px * var(--ui-scale));
-      overflow: auto;
+      overflow: hidden;
       min-height: 100vh;
     }
     .app-shell {
       display: grid;
       grid-template-columns: minmax(220px, 272px) minmax(0, 1fr);
-      width: min(100%, calc(100vw - 32px));
-      height: calc(100vh - 32px);
+      width: min(100%, calc(100vw - 24px));
+      height: calc(100vh - 24px);
       min-height: 0;
-      margin: 16px auto;
+      margin: 12px auto;
       overflow: hidden;
       border: 1px solid var(--border);
       border-radius: 24px;
@@ -89,17 +89,26 @@
       pointer-events: none;
     }
     .brand {
-      height: 54px;
+      min-height: 72px;
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 0 4px;
+      justify-content: center;
+      padding: 4px 6px 8px;
       position: relative;
       z-index: 1;
     }
-    .brand-mark { width: 66px; height: 50px; position: relative; }
-    .brand-mark::before,
-    .brand-mark::after {
+    .brand-mark {
+      width: 100%;
+      height: 64px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .brand-mark img { width: 100%; height: 64px; object-fit: contain; object-position: center; display: block; }
+    .brand-mark-fallback { max-width: 88px; margin: 0 auto; }
+    .brand-mark-fallback::before,
+    .brand-mark-fallback::after {
       content: "";
       position: absolute;
       top: 0;
@@ -108,10 +117,8 @@
       border-radius: 999px;
       background: white;
     }
-    .brand-mark::before { left: 0; }
-    .brand-mark::after { left: 18px; background: #f8fafc; border-left: 2px solid var(--bg-sidebar); }
-    .brand-title { line-height: .9; font-weight: 900; letter-spacing: -1px; font-size: 34px; }
-    .brand-subtitle { margin-top: 4px; font-weight: 800; font-size: 14px; }
+    .brand-mark-fallback::before { left: 0; }
+    .brand-mark-fallback::after { left: 18px; background: #f8fafc; border-left: 2px solid var(--bg-sidebar); }
     .side-nav { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
     .side-link {
       display: flex;
@@ -143,7 +150,7 @@
     .title-row { display: flex; align-items: center; gap: 14px; min-width: 0; }
     .title-row h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: .2px; text-transform: uppercase; color: var(--text-primary); }
     .top-meta { display: flex; align-items: center; gap: 16px; color: #b9c5f0; font-size: 13px; font-weight: 800; font-family: Consolas, "Segoe UI", monospace; }
-    .user-pill { border: 1px solid var(--border-light); background: var(--bg-card); border-radius: 12px; color: white; padding: 12px 16px; font-family: "Segoe UI", system-ui, sans-serif; font-weight: 900; }
+    .user-pill { border: 1px solid var(--border-light); background: var(--bg-card); border-radius: 12px; color: var(--text-primary); padding: 10px 14px; font-family: "Segoe UI", system-ui, sans-serif; font-weight: 900; display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
     .tabbar { min-height: 66px; display: flex; align-items: center; border-bottom: 1px solid var(--border); background: var(--workspace-bg); padding: 10px 28px; gap: 12px; overflow-x: auto; }
     .tabbar:empty { display: none; }
     .top-tab {
@@ -163,7 +170,7 @@
       letter-spacing: .2px;
     }
     .top-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
-    .workspace { min-height: 0; overflow: auto; padding: 24px 28px 32px; background: var(--workspace-bg); color: var(--text-primary); scrollbar-gutter: stable; width: 100%; }
+    .workspace { min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 24px 28px 32px; background: var(--workspace-bg); color: var(--text-primary); scrollbar-gutter: stable; width: 100%; }
     .page-content { width: 100%; max-width: none; }
     .panel { background: transparent; border: 0; }
     .card, .glass { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; color: var(--text-primary); box-shadow: 0 12px 40px rgba(0, 0, 0, .12); }
@@ -206,6 +213,12 @@
       width: 52px;
       text-decoration: none;
       color: var(--text-secondary);
+    }
+    .widget-prazo-item.is-alert img,
+    .widget-prazo-item.is-alert .widget-prazo-placeholder {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 2px rgba(255, 75, 75, .25);
+      background: #3a1820;
     }
     .widget-prazo-item img,
     .widget-prazo-placeholder {
@@ -254,6 +267,8 @@
       gap: 10px;
     }
     html[data-theme="light"] .notif-assistencia { background: rgba(255, 255, 255, .96); }
+    .notif-assistencia.is-alert { border-color: var(--danger); background: rgba(58, 24, 32, .98); }
+    html[data-theme="light"] .notif-assistencia.is-alert { background: #fff1f2; }
     .notif-assistencia p { margin: 0; color: var(--text-primary); font-weight: 700; line-height: 1.35; }
     .notif-assistencia a { color: var(--accent-2); font-weight: 800; text-decoration: none; }
     .hidden { display: none !important; }
@@ -276,15 +291,15 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"></div>
-        <div>
-          <div class="brand-title">Gestor</div>
-          <div class="brand-subtitle">A Fantasia</div>
+        <div class="brand-mark{% if not perfil_empresa.logo %} brand-mark-fallback{% endif %}">
+          {% if perfil_empresa.logo %}
+            <img src="{{ perfil_empresa.logo.url }}" alt="{{ perfil_empresa.nome_fantasia|default:'Gestor' }}">
+          {% endif %}
         </div>
       </div>
       <nav class="side-nav">
         <a href="{% url 'pedido_create' %}" class="side-link {% if active == 'novo_pedido' or active == 'pedidos' %}active{% endif %}">
-          <i data-lucide="home" class="h-5 w-5"></i> Gestor de pedidos
+          <i data-lucide="messages-square" class="h-5 w-5"></i> Vendas e arte
         </a>
         <a href="{% url 'dashboard' %}" class="side-link {% if active == 'dashboard' %}active{% endif %}">
           <i data-lucide="layout-dashboard" class="h-5 w-5"></i> Dashboard
@@ -295,8 +310,14 @@
         <a href="{% url 'assistencia_envio' %}" class="side-link {% if active == 'assistencia' %}active{% endif %}">
           <i data-lucide="send" class="h-5 w-5"></i> Assist&ecirc;ncia de envio
         </a>
+        <a href="{% url 'producao_list' %}" class="side-link {% if active == 'producao' %}active{% endif %}">
+          <i data-lucide="printer" class="h-5 w-5"></i> Produção
+        </a>
+        <a href="{% url 'entrega_list' %}" class="side-link {% if active == 'entrega' %}active{% endif %}">
+          <i data-lucide="package-check" class="h-5 w-5"></i> Entrega/Loja
+        </a>
         <a href="{% url 'configuracoes' %}" class="side-link {% if active == 'configuracoes' %}active{% endif %}">
-          <i data-lucide="settings" class="h-5 w-5"></i> Configurações
+          <i data-lucide="settings" class="h-5 w-5"></i> Alertas
         </a>
       </nav>
       <div class="side-footer">Cache global 30s</div>
@@ -310,7 +331,10 @@
         <div class="top-meta">
           <span>{% now "d/m/Y" %}</span>
           <span>{% now "H:i" %}</span>
-          <span class="user-pill" id="topbarUsuario">Usuário: Ruan</span>
+          <a class="user-pill" id="topbarUsuarioLink" href="{% url 'configuracoes' %}?aba=usuarios#perfil-usuario" title="Perfil do usuário">
+            <i data-lucide="circle-user-round" class="h-5 w-5"></i>
+            <span id="topbarUsuario">{{ preferencias_ui_json.usuario|default:"Usuario" }}</span>
+          </a>
         </div>
       </header>
       <nav class="tabbar">{% block top_tabs %}{% endblock %}</nav>

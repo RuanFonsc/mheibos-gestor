@@ -1,0 +1,92 @@
+<section class="os-copy">
+  <header class="os-header">
+    <div class="logo-wrap">
+      {% if perfil_empresa.logo %}
+        <img src="{{ perfil_empresa.logo.url }}" alt="{{ perfil_empresa.nome_fantasia }}">
+      {% else %}
+        <span class="logo-text">{{ perfil_empresa.nome_fantasia|default:"A Fantasia" }}</span>
+      {% endif %}
+    </div>
+    <h1>ORDEM DE SERVICO</h1>
+    <div class="company-contact">
+      {% if perfil_empresa.instagram %}
+        <div class="contact-line">
+          <svg class="contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.5A4.25 4.25 0 0 0 3.5 7.75v8.5A4.25 4.25 0 0 0 7.75 20.5h8.5a4.25 4.25 0 0 0 4.25-4.25v-8.5A4.25 4.25 0 0 0 16.25 3.5h-8.5zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 1.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm5.75-2.25a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
+          <span>{{ perfil_empresa.instagram }}</span>
+        </div>
+      {% endif %}
+      {% if perfil_empresa.telefone %}
+        <div class="contact-line">
+          <svg class="contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+          <span>{{ perfil_empresa.telefone }}</span>
+        </div>
+      {% endif %}
+      {% if perfil_empresa.telefone_secundario %}
+        <div class="contact-line">
+          <svg class="contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+          <span>{{ perfil_empresa.telefone_secundario }}</span>
+        </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="info-grid">
+    <div class="cell"><span class="label {% if campos.cliente.obrigatorio %}required{% endif %}">{{ campos.cliente.rotulo }}</span><span class="value">{{ pedido.cliente.nome }}</span></div>
+    <div class="cell"><span class="label {% if campos.data_pedido.obrigatorio %}required{% endif %}">{{ campos.data_pedido.rotulo }}</span><span class="value">{{ pedido.data_pedido|date:"d/m/Y"|default:"-" }}</span></div>
+  </div>
+  <div class="info-grid three">
+    <div class="cell"><span class="label {% if campos.tema.obrigatorio %}required{% endif %}">{{ campos.tema.rotulo }}</span><span class="value">{{ pedido.tema|default:"-" }}</span></div>
+    <div class="cell"><span class="label {% if campos.telefone_1.obrigatorio %}required{% endif %}">{{ campos.telefone_1.rotulo }}</span><span class="value">{{ pedido.cliente.telefone_principal|default:"-" }}</span></div>
+    <div class="cell"><span class="label {% if campos.telefone_2.obrigatorio %}required{% endif %}">{{ campos.telefone_2.rotulo }}</span><span class="value">{{ pedido.cliente.telefone_secundario|default:"-" }}</span></div>
+  </div>
+  <div class="description">
+    <span class="label {% if campos.descricao.obrigatorio %}required{% endif %}">{{ campos.descricao.rotulo }}</span>
+    <span class="value">{{ descricao_os|default:"-" }}</span>
+  </div>
+
+  <div class="art-space">
+    {% if arte %}
+      <img src="{{ arte.arquivo.url }}" alt="{{ arte.nome_original }}">
+    {% else %}
+      <div class="art-placeholder">Espaco reservado para a arte</div>
+    {% endif %}
+  </div>
+
+  <div class="footer-grid">
+    <div class="cell"><span class="label {% if campos.data_entrega.obrigatorio %}required{% endif %}">{{ campos.data_entrega.rotulo }}</span><span class="value">{{ pedido.data_entrega|date:"d/m/Y"|default:"-" }}</span></div>
+    <div class="cell"><span class="label {% if campos.hora_entrega.obrigatorio %}required{% endif %}">{{ campos.hora_entrega.rotulo }}</span><span class="value">{{ pedido.hora_entrega|time:"H:i"|default:"-" }}</span></div>
+    <div class="cell"><span class="label {% if campos.pagamento.obrigatorio %}required{% endif %}">{{ campos.pagamento.rotulo }}</span><span class="value">{{ pedido.get_forma_pagamento_legada_display }}</span></div>
+    <div class="cell"><span class="label {% if campos.valor_total.obrigatorio %}required{% endif %}">{{ campos.valor_total.rotulo }}</span><span class="value">R$ {{ pedido.valor_total|floatformat:2 }}</span></div>
+  </div>
+  <div class="payment-grid">
+    <div class="cell"><span class="label {% if campos.observacoes.obrigatorio %}required{% endif %}">{{ campos.observacoes.rotulo }}</span><span class="value">{{ pedido.observacoes|default:"-" }}</span></div>
+    <div>
+      <div class="cell"><span class="label {% if campos.pago.obrigatorio %}required{% endif %}">{{ campos.pago.rotulo }}</span><span class="value green">R$ {{ pedido.total_pago|floatformat:2 }}</span></div>
+      <div class="cell"><span class="label {% if campos.resta.obrigatorio %}required{% endif %}">{{ campos.resta.rotulo }}</span><span class="value red">R$ {{ pedido.saldo_aberto|floatformat:2 }}</span></div>
+    </div>
+  </div>
+  <div class="terms">
+    QUANTO A PROPRIEDADE INTELECTUAL, USO E APROVACAO DE ARTE: toda arte criada pela empresa e de propriedade exclusiva da loja. Apos aprovacao formal, a loja nao se responsabiliza por alteracoes.
+  </div>
+  <div class="designer">
+    <div class="cell designer-cell">
+      <span class="label {% if campos.designer.obrigatorio %}required{% endif %}">{{ campos.designer.rotulo }}</span>
+      <div class="designer-row">
+        <span class="value">{{ pedido.designer|default:pedido.usuario_cadastro|default:"-" }}</span>
+        {% if designer_foto %}
+          <img class="designer-avatar" src="{{ designer_foto.url }}" alt="{{ pedido.designer|default:pedido.usuario_cadastro }}">
+        {% endif %}
+      </div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-area"></div>
+      <div class="signature-line"></div>
+      <span class="label">ASSINATURA DO CLIENTE</span>
+    </div>
+  </div>
+  <footer class="company-footer">
+    {{ perfil_empresa.razao_social|default:perfil_empresa.nome_fantasia|default:"A Fantasia Festas Infantis" }}
+    {% if perfil_empresa.cnpj %} - CNPJ: {{ perfil_empresa.cnpj }}{% endif %}
+    {% if perfil_empresa.endereco %} | {{ perfil_empresa.endereco|linebreaksbr }}{% endif %}
+  </footer>
+</section>

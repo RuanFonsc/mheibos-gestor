@@ -9,7 +9,7 @@
   <a href="{% url 'pedido_list' %}?status=CANCELADO" class="top-tab"><i data-lucide="x" class="h-5 w-5"></i> Cancelados</a>
 {% endblock %}
 {% block content %}
-<form method="post" enctype="multipart/form-data" class="panel page-content w-full">
+<form method="post" enctype="multipart/form-data" class="panel page-content w-full" id="formEditarPedido">
   {% csrf_token %}
   {% if form.errors %}
     <div class="mb-3 rounded-lg border border-[#ff4b4b]/40 bg-[#ff4b4b]/10 p-3 text-sm text-[#ffd1d1]">{{ form.errors }}</div>
@@ -37,7 +37,7 @@
   <div class="space-y-3" id="items">
     {% for item in itens_rows %}
       <div class="{% if not item and not forloop.first %}hidden{% endif %} item-row">
-        <div class="grid items-end gap-2 md:grid-cols-[118px_1fr_238px_46px]">
+        <div class="grid items-end gap-2 md:grid-cols-[118px_1fr_220px_200px_46px]">
           <div>
             <label>Quantidade</label>
             <input name="item_qtd_{{ forloop.counter }}" type="number" min="0.01" step="0.01" value="{% if item %}{{ item.quantidade|unlocalize }}{% elif forloop.first %}1{% endif %}">
@@ -49,6 +49,15 @@
           <div>
             <label>Preço unitário</label>
             <input class="price-input" name="item_preco_{{ forloop.counter }}" type="number" min="0" step="0.01" value="{% if item %}{{ item.preco_unitario|unlocalize }}{% elif forloop.first %}0.00{% endif %}">
+          </div>
+          <div>
+            <label>Categoria</label>
+            <select name="item_categoria_{{ forloop.counter }}">
+              <option value="">Automática</option>
+              {% for categoria in categorias_servico %}
+                <option value="{{ categoria.id }}" {% if item.categoria_servico_id == categoria.id %}selected{% endif %}>{{ categoria.nome }}</option>
+              {% endfor %}
+            </select>
           </div>
           <button type="button" class="btn-primary add-inline h-[39px] min-h-0 rounded-md px-0" title="Adicionar item">+</button>
         </div>
@@ -73,13 +82,6 @@
       <p class="text-sm text-[#8892b0]">Nenhuma arte anexada.</p>
     {% endfor %}
   </div>
-  {% for arte in pedido.artes.all %}
-    <form id="formRemoverArte{{ arte.pk }}" method="post" class="hidden">
-      {% csrf_token %}
-      <input type="hidden" name="acao" value="remover_arte">
-      <input type="hidden" name="arte_id" value="{{ arte.pk }}">
-    </form>
-  {% endfor %}
   <div class="mb-3">
     <label>{{ form.artes.label }}</label>
     <span class="block">{{ form.artes }}</span>
@@ -87,9 +89,10 @@
   </div>
 
   <div class="section-line"></div>
-  <div class="grid gap-3 md:grid-cols-2">
+  <div class="grid gap-3 md:grid-cols-3">
     <div><label>{{ form.data_entrega.label }}</label>{{ form.data_entrega }}</div>
     <div><label>{{ form.hora_entrega.label }}</label>{{ form.hora_entrega }}</div>
+    <div><label>{{ form.prioridade.label }}</label>{{ form.prioridade }}</div>
   </div>
   <div class="mt-3"><label>{{ form.observacoes.label }}</label>{{ form.observacoes }}</div>
 
@@ -106,9 +109,23 @@
     <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary">Cancelar</a>
   </div>
 </form>
+
+{% for arte in pedido.artes.all %}
+  <form id="formRemoverArte{{ arte.pk }}" method="post" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="remover_arte">
+    <input type="hidden" name="arte_id" value="{{ arte.pk }}">
+  </form>
+{% endfor %}
+
 <datalist id="produtos-list">
   {% for produto in produtos %}
-    <option value="{{ produto.nome }}" data-preco="{{ produto.preco_venda_padrao|unlocalize }}"></option>
+    <option value="{{ produto.nome }}" data-preco="{{ produto.preco_venda_padrao|unlocalize }}" data-categoria-id="{{ produto.categoria_servico_id|default:'' }}"></option>
+  {% endfor %}
+</datalist>
+<datalist id="usuarios-list">
+  {% for operador in operadores %}
+    <option value="{{ operador.nome }}"></option>
   {% endfor %}
 </datalist>
 {% endblock %}
@@ -119,5 +136,19 @@
     const next = rows.find(row => row.classList.contains("hidden"));
     if (next) next.classList.remove("hidden");
   }));
+  function applyProductData(input) {
+    const option = [...document.querySelectorAll("#produtos-list option")].find(item => item.value.toLowerCase() === input.value.trim().toLowerCase());
+    if (!option) return;
+    const match = input.name.match(/_(\d+)$/);
+    if (!match) return;
+    const price = document.querySelector(`[name=item_preco_${match[1]}]`);
+    if (price && option.dataset.preco) price.value = Number(option.dataset.preco).toFixed(2);
+    const categoria = document.querySelector(`[name=item_categoria_${match[1]}]`);
+    if (categoria && option.dataset.categoriaId) categoria.value = option.dataset.categoriaId;
+  }
+  document.querySelectorAll("[name^=item_nome_]").forEach(input => {
+    input.addEventListener("input", () => applyProductData(input));
+    input.addEventListener("change", () => applyProductData(input));
+  });
 </script>
 {% endblock %}

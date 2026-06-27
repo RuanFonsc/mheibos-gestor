@@ -2,8 +2,8 @@
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 {% block top_tabs %}
-  <a href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}" class="top-tab {% if aba == 'dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard" class="h-5 w-5"></i> Dashboard</a>
-  <a href="{% url 'dashboard' %}?aba=crm&ano={{ ano }}" class="top-tab {% if aba == 'crm' %}active{% endif %}"><i data-lucide="table" class="h-5 w-5"></i> CRM</a>
+  <a href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}&escopo={{ escopo }}" class="top-tab {% if aba == 'dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard" class="h-5 w-5"></i> Dashboard</a>
+  <a href="{% url 'dashboard' %}?aba=crm&ano={{ ano }}&escopo={{ escopo }}" class="top-tab {% if aba == 'crm' %}active{% endif %}"><i data-lucide="table" class="h-5 w-5"></i> CRM</a>
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
@@ -20,6 +20,7 @@
     </div>
     <form method="get" class="flex items-center gap-2">
       <input type="hidden" name="aba" value="{{ aba }}">
+      <input type="hidden" name="escopo" value="{{ escopo }}">
       <label class="field-label mb-0">Ano</label>
       <select name="ano" class="max-w-[120px]" onchange="this.form.submit()">
         {% for item in anos_disponiveis %}
@@ -30,6 +31,73 @@
   </div>
 
   {% if aba == 'dashboard' %}
+  <section class="card p-5">
+    <div class="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+      <div class="flex min-w-0 items-center gap-4">
+        <div class="grid h-20 w-20 place-items-center overflow-hidden rounded-full border border-[#3d4275] bg-[#171a29] text-[#00e5ff]">
+          {% if operador_atual.foto %}
+            <img src="{{ operador_atual.foto.url }}" alt="{{ operador_atual.nome }}" class="h-full w-full object-cover">
+          {% else %}
+            <i data-lucide="circle-user-round" class="h-10 w-10"></i>
+          {% endif %}
+        </div>
+        <div class="min-w-0">
+          <p class="text-sm text-[var(--text-secondary)]">{% if escopo == 'geral' %}Dashboard geral{% else %}Dashboard pessoal{% endif %}</p>
+          <h2 class="truncate text-2xl font-black">{{ operador_atual.nome }}</h2>
+          <p class="mt-1 text-sm text-[var(--text-secondary)]">{{ operador_atual.get_papel_display }}</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 lg:justify-end">
+        {% if pode_ver_geral %}
+          {% if escopo == 'geral' %}
+            <a class="btn-secondary" href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}&escopo=pessoal"><i data-lucide="user" class="h-4 w-4"></i> Ver meu dashboard</a>
+          {% else %}
+            <a class="btn-primary" href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}&escopo=geral"><i data-lucide="building-2" class="h-4 w-4"></i> Ver geral</a>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    <div class="mt-5 grid gap-3 md:grid-cols-3">
+      <div class="rounded-lg bg-[#171a29] p-4"><p class="text-xs uppercase text-[#8892b0]">Vendas hoje</p><strong class="mt-2 block text-xl text-[#00c896]">R$ {{ vendas_dia_total|floatformat:2 }}</strong><span class="text-xs text-[#8892b0]">{{ vendas_dia_count }} pedido(s)</span></div>
+      <div class="rounded-lg bg-[#171a29] p-4"><p class="text-xs uppercase text-[#8892b0]">Vendas no mês</p><strong class="mt-2 block text-xl text-[#00c896]">R$ {{ vendas_mes_total|floatformat:2 }}</strong><span class="text-xs text-[#8892b0]">{{ vendas_mes_count }} pedido(s)</span></div>
+      <div class="rounded-lg bg-[#171a29] p-4"><p class="text-xs uppercase text-[#8892b0]">Ticket médio</p><strong class="mt-2 block text-xl">R$ {{ ticket_medio|floatformat:2 }}</strong><span class="text-xs text-[#8892b0]">{{ total_pedidos }} pedido(s) no escopo</span></div>
+    </div>
+  </section>
+
+  <section class="card p-5">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="font-semibold">Relatorios de vendas</h2>
+        <p class="text-sm text-[#8892b0]">Use os atalhos ou escolha um periodo especifico.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a class="btn-secondary" href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}&escopo={{ escopo }}&inicio={% now 'Y-m-d' %}&fim={% now 'Y-m-d' %}">Hoje</a>
+        <a class="btn-secondary" href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}&escopo={{ escopo }}">Mes atual</a>
+      </div>
+    </div>
+    <form method="get" class="mb-4 grid gap-3 md:grid-cols-[180px_180px_auto_1fr]">
+      <input type="hidden" name="aba" value="dashboard">
+      <input type="hidden" name="ano" value="{{ ano }}">
+      <input type="hidden" name="escopo" value="{{ escopo }}">
+      <input type="date" name="inicio" value="{{ periodo_inicio|date:'Y-m-d' }}">
+      <input type="date" name="fim" value="{{ periodo_fim|date:'Y-m-d' }}">
+      <button class="btn-primary" type="submit">Gerar relatorio</button>
+      <div class="flex items-center justify-end text-sm text-[#8892b0]">Total do periodo: <strong class="ml-2 text-[#00c896]">R$ {{ vendas_periodo_total|floatformat:2 }}</strong></div>
+    </form>
+    <div class="overflow-auto">
+      <table class="w-full min-w-[720px] text-left text-sm">
+        <thead class="bg-[#171a29] text-[#8892b0]"><tr><th class="p-3">Data</th><th class="p-3">Cliente</th><th class="p-3">Tema</th><th class="p-3 text-right">Valor</th></tr></thead>
+        <tbody class="divide-y divide-[#2d3154]">
+          {% for pedido in vendas_periodo %}
+            <tr><td class="p-3">{{ pedido.data_pedido|date:"d/m/Y" }}</td><td class="p-3">{{ pedido.cliente.nome }}</td><td class="p-3">{{ pedido.tema|default:"-" }}</td><td class="p-3 text-right text-[#00c896]">R$ {{ pedido.valor_total|floatformat:2 }}</td></tr>
+          {% empty %}
+            <tr><td colspan="4" class="p-4 text-[#8892b0]">Nenhuma venda no periodo.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <div class="card p-5">
       <p class="text-sm text-[var(--text-secondary)]">Receita total</p>

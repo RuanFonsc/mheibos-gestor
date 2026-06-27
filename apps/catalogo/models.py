@@ -21,6 +21,9 @@ class CategoriaServico(models.Model):
     nome = models.CharField(max_length=80, unique=True)
     ativa = models.BooleanField(default=True)
     ordem = models.PositiveIntegerField(default=0)
+    alerta_prazo_ativo = models.BooleanField(default=True)
+    alerta_dias_uteis = models.PositiveIntegerField(default=2)
+    alerta_mesmo_dia_apos_14h = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["ordem", "nome"]
@@ -79,13 +82,124 @@ class PreferenciaUI(models.Model):
         return self.chave
 
 
+class PapelOperador(models.TextChoices):
+    ADMIN_GERAL = "ADMIN_GERAL", "Administrador geral"
+    ADMIN = "ADMIN", "Administrador"
+    USUARIO = "USUARIO", "Usuario"
+    TEMPORARIO = "TEMPORARIO", "Usuario temporario"
+
+
 class OperadorGestor(models.Model):
     nome = models.CharField(max_length=80, unique=True)
+    foto = models.ImageField(upload_to="usuarios/fotos/", blank=True)
+    senha = models.CharField(max_length=128, default="1234")
+    email = models.EmailField(blank=True)
+    telefone = models.CharField(max_length=32, blank=True)
+    cargo = models.CharField(max_length=120, blank=True)
+    papel = models.CharField(
+        max_length=24,
+        choices=PapelOperador.choices,
+        default=PapelOperador.USUARIO,
+    )
+    observacoes = models.TextField(blank=True)
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["nome"]
 
     def __str__(self):
         return self.nome
+
+    @property
+    def is_admin_geral(self):
+        return self.papel == PapelOperador.ADMIN_GERAL
+
+    @property
+    def is_admin(self):
+        return self.papel in {PapelOperador.ADMIN_GERAL, PapelOperador.ADMIN}
+
+    @property
+    def pode_cancelar_pedido(self):
+        return self.is_admin
+
+    @property
+    def pode_gerenciar_usuarios(self):
+        return self.is_admin
+
+    @property
+    def pode_excluir_categoria_servico(self):
+        return self.is_admin
+
+    @property
+    def pode_criar_categoria_servico(self):
+        return self.is_admin
+
+    @property
+    def pode_acessar_crm(self):
+        return self.is_admin
+
+    @property
+    def pode_ver_financeiro_geral(self):
+        return self.is_admin
+
+    @property
+    def pode_excluir_produto(self):
+        return self.papel != PapelOperador.TEMPORARIO
+
+
+class ChaveRecuperacaoSenha(models.Model):
+    chave_hash = models.CharField(max_length=64, unique=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    usada_em = models.DateTimeField(null=True, blank=True)
+    criada_por = models.CharField(max_length=80, blank=True)
+    observacoes = models.CharField(max_length=180, blank=True)
+
+    class Meta:
+        ordering = ["-criada_em"]
+        verbose_name = "Chave de recuperacao de senha"
+        verbose_name_plural = "Chaves de recuperacao de senha"
+
+    def __str__(self):
+        return f"Chave criada em {self.criada_em:%d/%m/%Y %H:%M}"
+
+    @property
+    def usada(self):
+        return self.usada_em is not None
+
+
+class PerfilEmpresa(models.Model):
+    class LayoutOrdemServico(models.TextChoices):
+        A5_DUPLICADO = "A5_DUPLICADO", "A5 duplicada na A4"
+        A4_INTEIRA = "A4_INTEIRA", "A4 inteira"
+
+    chave = models.CharField(max_length=64, unique=True, default="global")
+    nome_fantasia = models.CharField(max_length=180, blank=True)
+    razao_social = models.CharField(max_length=180, blank=True)
+    cnpj = models.CharField(max_length=32, blank=True)
+    telefone = models.CharField(max_length=32, blank=True)
+    telefone_secundario = models.CharField(max_length=32, blank=True)
+    instagram = models.CharField(max_length=120, blank=True)
+    email = models.EmailField(blank=True)
+    endereco = models.TextField(blank=True)
+    logo = models.ImageField(upload_to="empresa/", blank=True)
+    observacoes = models.TextField(blank=True)
+    os_layout = models.CharField(
+        max_length=24,
+        choices=LayoutOrdemServico.choices,
+        default=LayoutOrdemServico.A5_DUPLICADO,
+    )
+    os_cor_linhas = models.CharField(max_length=7, default="#a9bcff")
+    os_cor_textos = models.CharField(max_length=7, default="#06143d")
+    os_cor_legendas = models.CharField(max_length=7, default="#06143d")
+    os_linha_cabecalho = models.JSONField(default=dict, blank=True)
+    os_campos = models.JSONField(default=dict, blank=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Perfil da empresa"
+        verbose_name_plural = "Perfil da empresa"
+
+    def __str__(self):
+        return self.nome_fantasia or "Perfil da empresa"

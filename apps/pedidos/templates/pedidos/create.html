@@ -21,7 +21,11 @@
 
   <div class="grid gap-3 md:grid-cols-[1fr_125px]">
     <div><label>{{ form.nome_cliente.label }}</label>{{ form.nome_cliente }}</div>
-    <div><label>{{ form.data_pedido.label }}</label>{{ form.data_pedido }}</div>
+    <div>
+      <label>Data do Pedido</label>
+      <div class="flex min-h-[53px] items-center rounded-lg border border-[#2d3154] bg-[#22253a] px-4 font-semibold text-[var(--text-primary)]">{% now "d/m/Y" %}</div>
+      {{ form.data_pedido }}
+    </div>
   </div>
 
   <div class="mt-3 grid gap-3 md:grid-cols-[1.5fr_1fr_1fr]">
@@ -36,7 +40,7 @@
   <div class="space-y-3" id="items">
     {% for index in "12345" %}
       <div class="{% if not forloop.first %}hidden{% endif %} item-row">
-        <div class="grid items-end gap-2 md:grid-cols-[118px_1fr_238px_46px]">
+        <div class="grid items-end gap-2 md:grid-cols-[118px_1fr_220px_200px_46px]">
           <div>
             <label>Quantidade</label>
             <input name="item_qtd_{{ index }}" type="number" min="0.01" step="0.01" value="{% if forloop.first %}1{% endif %}">
@@ -48,6 +52,15 @@
           <div>
             <label>Preço unitário</label>
             <input class="price-input" name="item_preco_{{ index }}" type="number" min="0" step="0.01" value="{% if forloop.first %}0.00{% endif %}">
+          </div>
+          <div>
+            <label>Categoria</label>
+            <select name="item_categoria_{{ index }}">
+              <option value="">Automática</option>
+              {% for categoria in categorias_servico %}
+                <option value="{{ categoria.id }}">{{ categoria.nome }}</option>
+              {% endfor %}
+            </select>
           </div>
           <button type="button" class="btn-primary add-inline h-[39px] min-h-0 rounded-md px-0" title="Adicionar item">+</button>
         </div>
@@ -64,7 +77,14 @@
   <div class="mb-3 flex flex-wrap gap-2">
     <label class="btn-secondary cursor-pointer">
       <i data-lucide="folder-open" class="h-4 w-4"></i> Carregar imagem
-      <span class="hidden">{{ form.artes }}</span>
+      <input
+        id="arteInput"
+        type="file"
+        name="artes"
+        class="hidden"
+        multiple
+        accept="image/png,image/jpeg,image/webp,image/jfif,.jfif,.bmp"
+      >
     </label>
     <button type="button" id="btnArtePaste" class="btn-secondary"><i data-lucide="clipboard" class="h-4 w-4"></i> Colar (Ctrl+V)</button>
     <button type="button" id="btnArteClear" class="btn-danger"><i data-lucide="trash-2" class="h-4 w-4"></i> Limpar tudo</button>
@@ -75,9 +95,10 @@
   </div>
 
   <div class="section-line"></div>
-  <div class="grid gap-3 md:grid-cols-2">
-    <div><label>{{ form.data_entrega.label }}</label>{{ form.data_entrega }}</div>
+  <div class="grid gap-3 md:grid-cols-3">
+    <div><label>{{ form.data_entrega.label }} *</label>{{ form.data_entrega }}</div>
     <div><label>{{ form.hora_entrega.label }}</label>{{ form.hora_entrega }}</div>
+    <div><label>{{ form.prioridade.label }}</label>{{ form.prioridade }}</div>
   </div>
   <div class="mt-3"><label>{{ form.observacoes.label }}</label>{{ form.observacoes }}</div>
 
@@ -104,7 +125,7 @@
 </form>
 <datalist id="produtos-list">
   {% for produto in produtos %}
-    <option value="{{ produto.nome }}" data-preco="{{ produto.preco_venda_padrao|unlocalize }}" data-custo="{{ produto.custo_estimado|unlocalize }}" data-categoria="{{ produto.categoria_servico.nome|default:'' }}"></option>
+    <option value="{{ produto.nome }}" data-preco="{{ produto.preco_venda_padrao|unlocalize }}" data-custo="{{ produto.custo_estimado|unlocalize }}" data-categoria-id="{{ produto.categoria_servico_id|default:'' }}" data-categoria="{{ produto.categoria_servico.nome|default:'' }}"></option>
   {% endfor %}
 </datalist>
 {% endblock %}
@@ -138,6 +159,8 @@
     if (!match) return;
     const price = document.querySelector(`[name=item_preco_${match[1]}]`);
     if (price && option.dataset.preco) price.value = Number(option.dataset.preco).toFixed(2);
+    const categoria = document.querySelector(`[name=item_categoria_${match[1]}]`);
+    if (categoria && option.dataset.categoriaId) categoria.value = option.dataset.categoriaId;
     recalc();
   }
   document.querySelectorAll("[name^=item_nome_]").forEach(input => {
@@ -149,7 +172,8 @@
   const usuarioInput = document.getElementById("usuarioCadastroInput");
   if (usuarioInput && window.GestorPrefs) usuarioInput.value = GestorPrefs.load().usuario || "Ruan";
 
-  const arteInput = document.querySelector("[name=artes]");
+  const arteInput = document.getElementById("arteInput");
+  const arteForm = arteInput?.closest("form");
   const arteDropZone = document.getElementById("arteDropZone");
   const artePreview = document.getElementById("artePreview");
   const arteHint = document.getElementById("arteHint");
@@ -214,8 +238,12 @@
   }
 
   arteInput.addEventListener("change", () => {
+    if (!arteInput.files?.length) return;
     adicionarArteFiles(arteInput.files);
-    arteInput.value = "";
+  });
+
+  arteForm?.addEventListener("submit", () => {
+    syncArteInput();
   });
 
   ["dragenter", "dragover"].forEach(eventName => {

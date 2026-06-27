@@ -52,6 +52,7 @@ def _serializar_pedido(pedido, categoria, tipo):
         "categoria_curta": _categoria_curta(tipo),
         "arte_url": arte.arquivo.url if arte else "",
         "data_entrega": pedido.data_entrega.isoformat() if pedido.data_entrega else "",
+        "alerta": True,
     }
 
 
@@ -104,4 +105,4 @@ def resumo_assistencia_envio(categorias_ids=None):
                 "count": quantidade,
             }
         )
-    return {"total": total, "por_categoria": por_categoria}
+    return {"total": total, "por_categoria": por_categoria, "alerta": total > 0}

@@ -1,0 +1,118 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ordem de Servico #{{ pedido.legado_id|default:pedido.pk }}</title>
+  <style>
+    {% if perfil_empresa.os_layout == "A4_INTEIRA" %}
+      @page { size: A4 portrait; margin: 10mm; }
+    {% else %}
+      @page { size: A4 landscape; margin: 0; }
+    {% endif %}
+    * { box-sizing: border-box; }
+    :root {
+      --os-line: {{ perfil_empresa.os_cor_linhas|default:"#a9bcff" }};
+      --os-text: {{ perfil_empresa.os_cor_textos|default:"#06143d" }};
+      --os-label: {{ perfil_empresa.os_cor_legendas|default:"#06143d" }};
+    }
+    body { margin: 0; background: #e9edf7; color: var(--os-text); font-family: Arial, Helvetica, sans-serif; font-size: 11px; }
+    .print-actions { display: flex; justify-content: center; gap: 10px; padding: 14px; }
+    .print-actions button { border: 0; border-radius: 10px; background: #1746d2; color: #fff; padding: 10px 16px; font-weight: 800; cursor: pointer; }
+    .sheet { margin: 0 auto 24px; background: #fff; box-shadow: 0 18px 50px rgba(0,0,0,.18); }
+    .sheet.a5-duplex { width: 297mm; height: 210mm; display: grid; grid-template-columns: 148.5mm 148.5mm; gap: 0; padding: 0; overflow: hidden; }
+    .sheet.a4-single { width: 210mm; min-height: 297mm; padding: 10mm; }
+    .os-copy {
+      display: grid;
+      grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto auto auto auto;
+      min-width: 0;
+      border: 1px solid var(--os-line);
+      overflow: hidden;
+    }
+    .sheet.a5-duplex .os-copy { width: 148.5mm; height: 210mm; padding: 6mm; border: 0; }
+    .sheet.a5-duplex .os-copy + .os-copy { border-left: 1px dashed var(--os-line); }
+    .os-header { display: grid; grid-template-columns: 34% 1fr 30%; align-items: center; gap: 8px; padding: 8px 10px 10px; border-bottom: 0; position: relative; }
+    .os-header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: {{ os_header_line_css }}; }
+    .logo-wrap { display: flex; align-items: center; min-height: 38px; }
+    .logo-wrap img { max-width: 100%; max-height: 44px; object-fit: contain; }
+    .logo-text { color: #00a9ef; font-size: 18px; font-weight: 950; letter-spacing: .4px; }
+    h1 { margin: 0; color: var(--os-text); font-size: 18px; text-align: center; }
+    .company-contact { text-align: right; color: var(--os-text); font-size: 10px; line-height: 1.45; font-weight: 800; }
+    .contact-line { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+    .contact-icon { width: 11px; height: 11px; flex-shrink: 0; fill: currentColor; }
+    .info-grid { display: grid; grid-template-columns: 2fr 1fr; border-bottom: 1px solid var(--os-line); }
+    .info-grid.three { grid-template-columns: 1.3fr .85fr .85fr; }
+    .cell { min-height: 32px; padding: 5px 8px; border-right: 1px solid var(--os-line); }
+    .cell:last-child { border-right: 0; }
+    .label { display: block; color: var(--os-label); font-size: 8px; font-weight: 950; text-transform: uppercase; }
+    .required::after { content: " *"; color: #e01919; }
+    .value { display: block; margin-top: 2px; color: var(--os-text); font-size: 12px; font-weight: 900; overflow-wrap: anywhere; }
+    .description { padding: 5px 8px; border-bottom: 1px solid var(--os-line); text-align: center; min-height: 30px; }
+    .description .value { font-size: 11px; }
+    .art-space {
+      position: relative;
+      min-height: 0;
+      height: 100%;
+      padding: 0;
+      border-bottom: 1px solid var(--os-line);
+      overflow: hidden;
+    }
+    .sheet.a4-single .art-space { min-height: 150mm; }
+    .art-space img {
+      display: block;
+      position: absolute;
+      inset: 6mm;
+      width: calc(100% - 12mm);
+      height: calc(100% - 12mm);
+      object-fit: contain;
+      object-position: center;
+    }
+    .art-placeholder { width: 100%; height: 100%; min-height: 70mm; display: grid; place-items: center; border: 1px dashed #c4cffd; color: #6471a8; font-weight: 800; }
+    .footer-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--os-line); }
+    .payment-grid { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--os-line); }
+    .payment-grid .cell:nth-child(2n), .footer-grid .cell:nth-child(4n) { border-right: 0; }
+    .green { color: #008d20; }
+    .red { color: #d00000; }
+    .terms { padding: 6px 8px; color: var(--os-text); font-size: 10px; line-height: 1.25; font-weight: 800; border-bottom: 1px solid var(--os-line); }
+    .designer { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; border-bottom: 1px solid var(--os-line); }
+    .designer-cell .designer-row { display: inline-flex; align-items: center; justify-content: flex-start; gap: 6px; margin-top: 2px; min-height: 0; }
+    .designer-cell .designer-row .value { margin-top: 0; display: inline; }
+    .designer-avatar { width: 26px; height: 26px; max-height: 100%; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .signature-cell {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 100%;
+      padding: 5px 8px;
+      border-right: 0;
+    }
+    .signature-area { flex: 1 1 auto; min-height: 30px; }
+    .signature-cell .signature-line { height: 1px; background: var(--os-line); margin: 0 10px 4px; }
+    .signature-cell .label { text-align: center; }
+    .company-footer { padding: 5px 8px; text-align: center; color: var(--os-text); font-size: 8px; font-weight: 900; }
+    @media print {
+      body { background: #fff; }
+      .print-actions { display: none; }
+      .sheet { margin: 0; box-shadow: none; }
+      .sheet.a5-duplex { width: 297mm; height: 210mm; }
+      .sheet.a4-single { width: auto; min-height: auto; }
+      .os-copy { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-actions">
+    <button type="button" onclick="window.print()">Imprimir / salvar PDF</button>
+  </div>
+
+  <main class="sheet {% if perfil_empresa.os_layout == 'A4_INTEIRA' %}a4-single{% else %}a5-duplex{% endif %}">
+    {% if perfil_empresa.os_layout == "A4_INTEIRA" %}
+      {% include "pedidos/partials/_ordem_servico_copy.html" %}
+    {% else %}
+      {% include "pedidos/partials/_ordem_servico_copy.html" %}
+      {% include "pedidos/partials/_ordem_servico_copy.html" %}
+    {% endif %}
+  </main>
+</body>
+</html>

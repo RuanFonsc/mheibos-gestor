@@ -11,7 +11,12 @@
 <div class="page-content w-full">
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <h2 class="section-title">Pedido #{{ pedido.legado_id|default:pedido.pk }}</h2>
-    <a href="{% url 'pedido_edit' pedido.pk %}" class="btn-primary"><i data-lucide="pencil" class="h-4 w-4"></i> Editar pedido</a>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'pedido_ordem_servico' pedido.pk %}" target="_blank" class="btn-secondary"><i data-lucide="printer" class="h-4 w-4"></i> Ordem de servico</a>
+      {% if pode_editar %}
+        <a href="{% url 'pedido_edit' pedido.pk %}" class="btn-primary"><i data-lucide="pencil" class="h-4 w-4"></i> Editar pedido</a>
+      {% endif %}
+    </div>
   </div>
   <div class="section-line"></div>
 
@@ -47,7 +52,19 @@
               {% for item in pedido.itens.all %}
                 <tr>
                   <td class="p-3">{{ item.quantidade|floatformat:2 }}</td>
-                  <td class="p-3"><strong>{{ item.nome }}</strong><p class="text-[var(--text-secondary)]">{{ item.descricao }}</p></td>
+                  <td class="p-3">
+                    <strong>{{ item.nome }}</strong>
+                    <p class="text-[var(--text-secondary)]">
+                      {% if item.categoria_servico %}
+                        {{ item.categoria_servico.nome }}
+                      {% elif item.produto and item.produto.categoria_servico %}
+                        {{ item.produto.categoria_servico.nome }}
+                      {% else %}
+                        Sem categoria
+                      {% endif %}
+                    </p>
+                    <p class="text-[var(--text-secondary)]">{{ item.descricao }}</p>
+                  </td>
                   <td class="p-3">R$ {{ item.preco_unitario|floatformat:2 }}</td>
                   <td class="p-3 text-[#00c896]">R$ {{ item.subtotal|floatformat:2 }}</td>
                 </tr>
@@ -90,11 +107,13 @@
             <p class="mt-1 font-semibold">{{ assistencia.mensagem }}</p>
           </div>
         {% endwith %}
-        <form method="post" action="{% url 'pedido_update_status' pedido.pk %}" class="space-y-3">
-          {% csrf_token %}
-          {{ status_form.status }}
-          <button class="btn-primary w-full" type="submit">Atualizar status</button>
-        </form>
+        {% if pode_editar or pode_cancelar %}
+          <form method="post" action="{% url 'pedido_update_status' pedido.pk %}" class="space-y-3">
+            {% csrf_token %}
+            {{ status_form.status }}
+            <button class="btn-primary w-full" type="submit">Atualizar status</button>
+          </form>
+        {% endif %}
       </div>
       <div class="card p-5">
         <h2 class="mb-4 font-semibold">Pagamentos</h2>

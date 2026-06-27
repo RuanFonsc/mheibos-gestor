@@ -6,7 +6,7 @@ from django.db.models import Prefetch
 from django.utils import timezone
 
 from apps.catalogo.models import CategoriaServico, ProdutoServico
-from apps.pedidos.models import Pedido, PedidoItem, StatusPedido
+from apps.pedidos.models import Pedido, PedidoItem, STATUS_PRE_PRODUCAO, STATUS_PRODUCAO, StatusPedido
 
 
 def normalizar(texto):
@@ -17,13 +17,21 @@ def normalizar(texto):
 
 def regra_categoria(categoria):
     nome = normalizar(categoria.nome)
-    if "painel" in nome or "paine" in nome:
-        return {"tipo": "paineis", "limite_dias_uteis": None}
-    if "bolsa" in nome:
-        return {"tipo": "bolsas", "limite_dias_uteis": 7}
+    if getattr(categoria, "alerta_mesmo_dia_apos_14h", False):
+        return {"tipo": "mesmo_dia", "limite_dias_uteis": None, "ativo": categoria.alerta_prazo_ativo}
     if "grafica" in nome or "rapida" in nome:
-        return {"tipo": "grafica", "limite_dias_uteis": 2}
-    return {"tipo": "padrao", "limite_dias_uteis": 2}
+        tipo = "grafica"
+    elif "bolsa" in nome:
+        tipo = "bolsas"
+    elif "painel" in nome or "paine" in nome:
+        tipo = "paineis"
+    else:
+        tipo = "padrao"
+    return {
+        "tipo": tipo,
+        "limite_dias_uteis": getattr(categoria, "alerta_dias_uteis", 2),
+        "ativo": getattr(categoria, "alerta_prazo_ativo", True),
+    }
 
 
 def _pascoa(ano):
@@ -90,7 +98,9 @@ def _painel_entrou_na_regra(pedido, agora=None):
 
 def pedido_entrou_na_regra(pedido, categoria, agora=None):
     regra = regra_categoria(categoria)
-    if regra["tipo"] == "paineis":
+    if not regra.get("ativo", True):
+        return False
+    if regra["tipo"] == "mesmo_dia":
         return _painel_entrou_na_regra(pedido, agora)
     limite = regra["limite_dias_uteis"]
     if limite is None:
@@ -98,24 +108,35 @@ def pedido_entrou_na_regra(pedido, categoria, agora=None):
     return dias_uteis_restantes(pedido.data_entrega, (agora or timezone.localtime()).date()) < limite
 
 
+def pedido_em_alerta(pedido, agora=None):
+    agora = agora or timezone.localtime()
+    return any(pedido_entrou_na_regra(pedido, categoria, agora) for categoria in categorias_do_pedido(pedido))
+
+
 def categorias_do_pedido(pedido):
     categorias = set()
     itens_atualizar = []
     for item in pedido.itens.all():
         categoria = None
-        if item.produto and item.produto.categoria_servico:
+        if item.categoria_servico:
+            categoria = item.categoria_servico
+        elif item.produto and item.produto.categoria_servico:
             categoria = item.produto.categoria_servico
+            item.categoria_servico = categoria
+            itens_atualizar.append(item)
         else:
             produto = ProdutoServico.objects.filter(nome__iexact=item.nome).select_related("categoria_servico").first()
             if produto:
                 if not item.produto_id:
                     item.produto = produto
-                    itens_atualizar.append(item)
                 categoria = produto.categoria_servico
+                if categoria:
+                    item.categoria_servico = categoria
+                itens_atualizar.append(item)
         if categoria:
             categorias.add(categoria)
     for item in itens_atualizar:
-        item.save(update_fields=["produto"])
+        item.save(update_fields=["produto", "categoria_servico"])
     return categorias
 
 
@@ -123,11 +144,11 @@ def pedidos_assistencia():
     categorias = list(CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"))
     itens_prefetch = Prefetch(
         "itens",
-        queryset=PedidoItem.objects.select_related("produto__categoria_servico"),
+        queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
     )
     pedidos = (
         Pedido.objects.filter(
-            status__in=[StatusPedido.EM_PRODUCAO, StatusPedido.AGUARDANDO_ARTE],
+            status__in=[*STATUS_PRE_PRODUCAO, *STATUS_PRODUCAO, StatusPedido.PRONTO],
         )
         .select_related("cliente")
         .prefetch_related(itens_prefetch, "artes")

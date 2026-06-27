@@ -5,11 +5,39 @@ from django.db import models
 
 
 class StatusPedido(models.TextChoices):
-    EM_PRODUCAO = "EM_PRODUCAO", "Em producao"
+    EM_ATENDIMENTO = "EM_ATENDIMENTO", "Em atendimento"
     AGUARDANDO_ARTE = "AGUARDANDO_ARTE", "Aguardando arte"
-    PRONTO = "PRONTO", "Pedido pronto"
+    ARTE_EM_PREPARO = "ARTE_EM_PREPARO", "Arte em preparo"
+    AGUARDANDO_APROVACAO = "AGUARDANDO_APROVACAO", "Aguardando aprovacao"
+    LIBERADO_PRODUCAO = "LIBERADO_PRODUCAO", "Liberado para producao"
+    EM_PRODUCAO = "EM_PRODUCAO", "Em producao"
+    PRONTO = "PRONTO", "Pronto para entrega"
     ENTREGUE = "ENTREGUE", "Entregue"
     CANCELADO = "CANCELADO", "Cancelado"
+
+
+class PrioridadePedido(models.TextChoices):
+    BAIXA = "BAIXA", "Baixa"
+    NORMAL = "NORMAL", "Normal"
+    ALTA = "ALTA", "Alta"
+    URGENTE = "URGENTE", "Urgente"
+
+
+STATUS_PRE_PRODUCAO = [
+    StatusPedido.EM_ATENDIMENTO,
+    StatusPedido.AGUARDANDO_ARTE,
+    StatusPedido.ARTE_EM_PREPARO,
+    StatusPedido.AGUARDANDO_APROVACAO,
+]
+
+STATUS_PRODUCAO = [
+    StatusPedido.LIBERADO_PRODUCAO,
+    StatusPedido.EM_PRODUCAO,
+]
+
+STATUS_ENTREGA = [
+    StatusPedido.PRONTO,
+]
 
 
 class FormaPagamento(models.TextChoices):
@@ -53,10 +81,15 @@ class Pedido(models.Model):
         choices=FormaPagamento.choices,
         default=FormaPagamento.NAO_INFORMADO,
     )
+    prioridade = models.CharField(
+        max_length=16,
+        choices=PrioridadePedido.choices,
+        default=PrioridadePedido.NORMAL,
+    )
     status = models.CharField(
         max_length=32,
         choices=StatusPedido.choices,
-        default=StatusPedido.EM_PRODUCAO,
+        default=StatusPedido.AGUARDANDO_ARTE,
     )
     origem = models.CharField(
         max_length=24,
@@ -72,6 +105,7 @@ class Pedido(models.Model):
         ordering = ["-id"]
         indexes = [
             models.Index(fields=["status", "data_entrega"]),
+            models.Index(fields=["prioridade", "data_entrega"]),
             models.Index(fields=["data_pedido"]),
             models.Index(fields=["designer"]),
             models.Index(fields=["origem"]),
@@ -130,6 +164,13 @@ class PedidoItem(models.Model):
     pedido = models.ForeignKey(Pedido, related_name="itens", on_delete=models.CASCADE)
     produto = models.ForeignKey(
         "catalogo.ProdutoServico",
+        related_name="itens_pedido",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    categoria_servico = models.ForeignKey(
+        "catalogo.CategoriaServico",
         related_name="itens_pedido",
         null=True,
         blank=True,

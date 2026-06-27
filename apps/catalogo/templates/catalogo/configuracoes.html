@@ -1,180 +1,382 @@
 {% extends "base.html" %}
-{% block title %}Configurações{% endblock %}
-{% block page_title %}Configurações{% endblock %}
+{% block title %}Configuracoes de Notificacoes e Alertas{% endblock %}
+{% block page_title %}Configuracoes de Notificacoes e Alertas{% endblock %}
+{% block head %}
+<style>
+  .config-tabs { display: flex; flex-wrap: wrap; gap: 10px; }
+  .profile-shell { min-height: 620px; overflow: hidden; border: 1px solid var(--border); border-radius: 22px; background: var(--bg-card); box-shadow: 0 18px 54px rgba(0,0,0,.18); }
+  .profile-main { min-width: 0; padding: 28px 32px 32px; }
+  .profile-top { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+  .profile-search { display: flex; align-items: center; gap: 10px; min-width: min(420px, 100%); min-height: 50px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 0 14px; color: var(--text-secondary); }
+  .profile-search input { min-height: 42px; border: 0; background: transparent; padding: 0; }
+  .profile-card { overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: color-mix(in srgb, var(--bg-card) 96%, white 4%); }
+  .profile-cover { height: 96px; background: linear-gradient(115deg, rgba(75,102,255,.30), rgba(0,229,255,.12) 48%, rgba(255,179,71,.16)), var(--bg-input); }
+  .profile-body { padding: 0 30px 30px; }
+  .profile-identity { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-top: -42px; margin-bottom: 28px; }
+  .profile-person { display: flex; align-items: flex-end; gap: 18px; min-width: 0; }
+  .profile-photo-wrap { position: relative; width: 96px; height: 96px; flex: 0 0 auto; }
+  .profile-avatar { display: grid; place-items: center; width: 96px; height: 96px; border: 5px solid var(--bg-card); border-radius: 999px; background: var(--bg-input); color: var(--accent-2); overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,.24); }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-photo-wrap input[type="file"] { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+  .camera-button { position: absolute; right: -2px; bottom: 0; z-index: 1; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 999px; background: var(--accent); color: #fff; pointer-events: none; box-shadow: 0 10px 24px rgba(0,0,0,.24); }
+  .profile-name h3 { margin: 0; font-size: 24px; font-weight: 950; }
+  .profile-name p { margin: 4px 0 0; color: var(--text-secondary); }
+  .profile-fields { display: grid; gap: 18px 28px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-field label { margin-bottom: 8px; }
+  .profile-field .readonly { display: flex; align-items: center; min-height: 52px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 0 16px; color: var(--text-primary); font-weight: 750; }
+  .user-admin-layout { display: grid; gap: 20px; grid-template-columns: minmax(280px, 420px) minmax(0, 1fr); margin-top: 20px; }
+  .soft-panel { border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); padding: 22px; }
+  .user-list { display: grid; gap: 10px; }
+  .user-row { display: grid; grid-template-columns: minmax(0, 1fr) 180px 110px; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
+  .user-mini { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .user-mini-avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--bg-card); color: var(--accent-2); overflow: hidden; }
+  .user-mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .permission-chip { justify-self: start; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-2); padding: 7px 10px; font-size: 11px; font-weight: 900; }
+  .os-fields { display: grid; gap: 12px; }
+  .os-field-row { display: grid; grid-template-columns: minmax(180px, 1fr) 150px; align-items: end; gap: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 12px; }
+  .header-line-preview { height: 10px; border-radius: 999px; margin-top: 8px; }
+  .password-panel { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+  @media (max-width: 1100px) {
+    .profile-main { padding: 22px 18px; }
+    .profile-top, .profile-identity { align-items: stretch; flex-direction: column; }
+    .profile-fields, .user-admin-layout, .os-field-row { grid-template-columns: 1fr; }
+    .user-row { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-content space-y-5">
-  <div>
-    <h2 class="section-title">Configurações</h2>
-    <p class="text-sm text-[#8892b0]">Ajustes principais do sistema e conexão com o banco de dados.</p>
+  <div class="config-tabs">
+    <button class="top-tab active" type="button" data-config-tab="usuarios"><i data-lucide="circle-user-round" class="h-5 w-5"></i> Meu perfil</button>
+    {% if pode_gerenciar_usuarios %}
+      <button class="top-tab" type="button" data-config-tab="empresa"><i data-lucide="building-2" class="h-5 w-5"></i> Empresa</button>
+      <button class="top-tab" type="button" data-config-tab="aparencia"><i data-lucide="monitor-cog" class="h-5 w-5"></i> Aparencia</button>
+      <button class="top-tab" type="button" data-config-tab="widgets"><i data-lucide="bell" class="h-5 w-5"></i> Alertas</button>
+      <button class="top-tab" type="button" data-config-tab="banco"><i data-lucide="database" class="h-5 w-5"></i> Banco</button>
+    {% endif %}
   </div>
 
-  <section class="card p-5">
-    <h3 class="mb-2 text-lg font-semibold">Usuário ativo</h3>
-    <p class="mb-4 text-sm text-[#8892b0]">Troque o usuário quando outra pessoa for fechar pedidos neste computador.</p>
-    <div class="flex flex-wrap gap-3">
-      <select id="configUsuarioSelect" class="max-w-[280px]">
-        {% for operador in operadores %}
-          <option value="{{ operador.nome }}">{{ operador.nome }}</option>
-        {% endfor %}
-      </select>
-      <button id="btnTrocarUsuario" class="btn-primary" type="button">Usar este usuário</button>
-    </div>
-    <form method="post" class="mt-4 flex flex-wrap items-end gap-3 border-t border-[#2d3154] pt-4">
-      {% csrf_token %}
-      <input type="hidden" name="acao" value="criar_operador">
-      <div class="min-w-[220px] flex-1">
-        <label class="field-label">Novo usuário</label>
-        <input name="nome_operador" placeholder="Nome do operador" maxlength="80">
-      </div>
-      <button class="btn-secondary" type="submit">Criar usuário</button>
-    </form>
-  </section>
-
-  <section class="card p-5">
-    <h3 class="mb-2 text-lg font-semibold">Aparência</h3>
-    <p class="mb-4 text-sm text-[#8892b0]">Escolha entre o tema escuro padrão e o tema claro do sistema.</p>
-    <div class="flex flex-wrap gap-3">
-      <select id="configTema" class="max-w-[280px]">
-        <option value="dark">Escuro</option>
-        <option value="light">Claro</option>
-      </select>
-      <button id="btnAplicarTema" class="btn-secondary" type="button">Aplicar tema</button>
-    </div>
-  </section>
-
-  <section class="card p-5">
-    <h3 class="mb-2 text-lg font-semibold">Zoom da interface</h3>
-    <p class="mb-4 text-sm text-[#8892b0]">Ajuste o tamanho dos textos e botões sem depender do zoom do navegador.</p>
-    <div class="flex flex-wrap gap-3">
-      <select id="configZoom" class="max-w-[280px]">
-        {% for zoom in zoom_opcoes %}
-          <option value="{{ zoom }}">{{ zoom }}%</option>
-        {% endfor %}
-      </select>
-      <button id="btnAplicarZoom" class="btn-secondary" type="button">Aplicar zoom</button>
-    </div>
-  </section>
-
-  <section class="card p-5">
-    <h3 class="mb-2 text-lg font-semibold">Widgets e notificações</h3>
-    <p class="mb-4 text-sm text-[#8892b0]">Configure o widget de prazos e a notificação da assistência de envio.</p>
-
-    <div class="space-y-6">
-      <div class="rounded-xl border border-[#2d3154] bg-[#171a29] p-4">
-        <h4 class="mb-3 text-base font-semibold">Widget de prazos</h4>
-        <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal">
-          <input id="widgetPrazosAtivo" type="checkbox" checked> Ativar widget de prazos
-        </label>
-        <div class="mb-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+  <section id="tab-usuarios" class="config-panel">
+    <div class="profile-shell" id="perfil-usuario">
+      <div class="profile-main">
+        <div class="profile-top">
           <div>
-            <label class="field-label">Comportamento</label>
-            <select id="widgetPrazosModo">
-              <option value="periodico">Voltar de tempos em tempos</option>
-              <option value="sempre">Ficar ativo o tempo todo</option>
-            </select>
+            <h2 class="section-title">Meu perfil</h2>
+            <p class="text-sm text-[var(--text-secondary)]">{% now "l, d/m/Y" %}</p>
           </div>
-          <div id="widgetPrazosIntervaloWrap">
-            <label class="field-label">Voltar a cada</label>
-            <select id="widgetPrazosIntervalo">
-              {% for minutos in intervalo_opcoes %}
-                <option value="{{ minutos }}">{{ minutos }} minutos</option>
-              {% endfor %}
-            </select>
+          {% if pode_gerenciar_usuarios %}
+            <div class="profile-search">
+              <i data-lucide="search" class="h-5 w-5"></i>
+              <input id="usuarioBusca" type="search" placeholder="Buscar usuario">
+            </div>
+          {% endif %}
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="profile-card">
+          {% csrf_token %}
+          <div class="profile-cover"></div>
+          <div class="profile-body">
+            <div class="profile-identity">
+              <div class="profile-person">
+                <div class="profile-photo-wrap">
+                  <div class="profile-avatar" id="profileAvatarPreview">
+                    {% if operador_atual.foto %}
+                      <img src="{{ operador_atual.foto.url }}" alt="{{ operador_atual.nome }}">
+                    {% else %}
+                      <i data-lucide="circle-user-round" class="h-12 w-12"></i>
+                    {% endif %}
+                  </div>
+                  {{ perfil_form.foto }}
+                  <span class="camera-button" title="Alterar foto">
+                    <i data-lucide="camera" class="h-4 w-4"></i>
+                  </span>
+                </div>
+                <div class="profile-name">
+                  <h3>{{ operador_atual.nome }}</h3>
+                  <p>{{ operador_atual.get_papel_display }}</p>
+                </div>
+              </div>
+              {% if pode_gerenciar_usuarios %}
+                <div class="flex min-w-[260px] gap-2">
+                  <select id="configUsuarioSelect" name="usuario_ativo">
+                    {% for operador in operadores %}
+                      <option value="{{ operador.nome }}">{{ operador.nome }}</option>
+                    {% endfor %}
+                  </select>
+                  <button id="btnTrocarUsuario" class="btn-primary" type="button">Usar</button>
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="profile-fields">
+              <div class="profile-field"><label>Nome completo</label>{{ perfil_form.nome }}{% if perfil_form.nome.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ perfil_form.nome.errors|join:", " }}</p>{% endif %}</div>
+              <div class="profile-field"><label>Confirme sua senha para salvar</label><input type="password" name="senha_atual" autocomplete="current-password" placeholder="Digite sua senha atual"></div>
+              <div class="profile-field md:col-span-2"><label>Permissao</label><div class="readonly">{{ operador_atual.get_papel_display }}</div>{% if perfil_form.foto.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ perfil_form.foto.errors|join:", " }}</p>{% endif %}</div>
+            </div>
+
+            <div class="password-panel">
+              <h4 class="mb-3 text-sm font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Alterar senha</h4>
+              <div class="profile-fields">
+                <div class="profile-field"><label>{{ senha_form.senha_atual.label }}</label>{{ senha_form.senha_atual }}{% if senha_form.senha_atual.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_atual.errors|join:", " }}</p>{% endif %}</div>
+                <div class="profile-field"><label>{{ senha_form.senha_nova.label }}</label>{{ senha_form.senha_nova }}{% if senha_form.senha_nova.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_nova.errors|join:", " }}</p>{% endif %}</div>
+                <div class="profile-field md:col-span-2"><label>{{ senha_form.senha_confirmacao.label }}</label>{{ senha_form.senha_confirmacao }}{% if senha_form.senha_confirmacao.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_confirmacao.errors|join:", " }}</p>{% endif %}</div>
+              </div>
+            </div>
+
+            <div class="mt-5 flex flex-wrap justify-end gap-3">
+              <button class="btn-secondary" type="submit" name="acao" value="trocar_senha"><i data-lucide="key-round" class="h-4 w-4"></i> Trocar a senha</button>
+              <button class="btn-primary" type="submit" name="acao" value="salvar_perfil"><i data-lucide="save" class="h-4 w-4"></i> Salvar perfil</button>
+            </div>
           </div>
-          <div id="widgetPrazosVisivelWrap">
-            <label class="field-label">Ficar visível por</label>
-            <select id="widgetPrazosVisivel">
-              {% for segundos in visivel_opcoes %}
-                <option value="{{ segundos }}">{{ segundos }}s</option>
-              {% endfor %}
-            </select>
+        </form>
+
+        {% if pode_gerenciar_usuarios %}
+          <div class="user-admin-layout">
+            <form method="post" enctype="multipart/form-data" class="soft-panel grid gap-3">
+              {% csrf_token %}
+              <input type="hidden" name="acao" value="salvar_operador">
+              <h3 class="text-lg font-semibold">Novo usuario</h3>
+              <div><label>Nome</label>{{ operador_form.nome }}</div>
+              <div><label>Senha</label>{{ operador_form.senha }}</div>
+              <div><label>Permissao</label>{{ operador_form.papel }}</div>
+              <div><label>Foto</label>{{ operador_form.foto }}</div>
+              <div><label>Observacoes</label>{{ operador_form.observacoes }}</div>
+              <label class="flex items-center gap-2">{{ operador_form.ativo }} Ativo</label>
+              <button class="btn-primary" type="submit">Salvar usuario</button>
+            </form>
+            <div class="soft-panel">
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold">Usuarios cadastrados</h3>
+                <span class="text-sm text-[#8892b0]">{{ todos_operadores|length }}</span>
+              </div>
+              <div class="user-list" id="usuariosLista">
+                {% for usuario in todos_operadores %}
+                  <div class="user-row" data-user-row data-user-name="{{ usuario.nome|lower }}">
+                    <div class="user-mini">
+                      <span class="user-mini-avatar">
+                        {% if usuario.foto %}<img src="{{ usuario.foto.url }}" alt="{{ usuario.nome }}">{% else %}<i data-lucide="circle-user-round" class="h-6 w-6"></i>{% endif %}
+                      </span>
+                      <div class="min-w-0">
+                        <strong class="block truncate">{{ usuario.nome }}</strong>
+                        <span class="block truncate text-xs text-[#8892b0]">Senha configurada</span>
+                      </div>
+                    </div>
+                    <span class="permission-chip">{{ usuario.get_papel_display }}</span>
+                    <span class="text-sm {% if usuario.ativo %}text-[#00c896]{% else %}text-[#ff4b4b]{% endif %}">{% if usuario.ativo %}Ativo{% else %}Inativo{% endif %}</span>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% if pode_gerenciar_usuarios %}
+    <section id="tab-empresa" class="config-panel hidden space-y-5">
+      <div class="card p-5">
+        <h3 class="mb-4 text-lg font-semibold">Perfil da empresa</h3>
+        <form method="post" enctype="multipart/form-data" class="grid gap-3 md:grid-cols-2">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="salvar_empresa">
+          <div><label>Nome fantasia</label>{{ perfil_empresa_form.nome_fantasia }}</div>
+          <div><label>Razao social</label>{{ perfil_empresa_form.razao_social }}</div>
+          <div><label>CNPJ</label>{{ perfil_empresa_form.cnpj }}</div>
+          <div><label>Instagram</label>{{ perfil_empresa_form.instagram }}</div>
+          <div><label>Telefone principal</label>{{ perfil_empresa_form.telefone }}</div>
+          <div><label>Telefone secundario</label>{{ perfil_empresa_form.telefone_secundario }}</div>
+          <div><label>Email</label>{{ perfil_empresa_form.email }}</div>
+          <div class="md:col-span-2">
+            <label>Logo da empresa</label>
+            <div class="mt-2 flex flex-wrap items-center gap-4">
+              <div id="empresaLogoPreview" class="flex h-16 w-28 items-center justify-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-input)]">
+                {% if perfil_empresa.logo %}
+                  <img src="{{ perfil_empresa.logo.url }}" alt="Logo da empresa" class="max-h-full max-w-full object-contain">
+                {% else %}
+                  <span class="text-xs text-[var(--text-secondary)]">Sem logo</span>
+                {% endif %}
+              </div>
+              {{ perfil_empresa_form.logo }}
+            </div>
+            {% if perfil_empresa_form.logo.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ perfil_empresa_form.logo.errors|join:", " }}</p>{% endif %}
+          </div>
+          <div class="md:col-span-2"><label>Endereco</label>{{ perfil_empresa_form.endereco }}</div>
+          <div class="md:col-span-2"><label>Observacoes</label>{{ perfil_empresa_form.observacoes }}</div>
+          <button class="btn-primary md:col-span-2" type="submit">Salvar perfil da empresa</button>
+        </form>
+      </div>
+
+      <div class="card p-5">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold">Ordem de Servicos</h3>
+            <p class="text-sm text-[var(--text-secondary)]">Configure os nomes dos campos, obrigatoriedade e formato de impressao.</p>
           </div>
         </div>
-        <p class="mb-2 text-xs text-[#8892b0]">Categorias exibidas no widget:</p>
+        <form method="post" class="grid gap-5">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="salvar_ordem_servico">
+          <div class="max-w-[360px]">
+            <label>Formato de impressao</label>
+            <select name="os_layout">
+              {% for value, label in layouts_ordem_servico %}
+                <option value="{{ value }}" {% if perfil_empresa.os_layout == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="grid gap-3 md:grid-cols-3">
+            <div>
+              <label>Cor das linhas</label>
+              <input type="color" name="os_cor_linhas" value="{{ perfil_empresa.os_cor_linhas|default:'#a9bcff' }}">
+            </div>
+            <div>
+              <label>Cor dos textos</label>
+              <input type="color" name="os_cor_textos" value="{{ perfil_empresa.os_cor_textos|default:'#06143d' }}">
+            </div>
+            <div>
+              <label>Cor das legendas</label>
+              <input type="color" name="os_cor_legendas" value="{{ perfil_empresa.os_cor_legendas|default:'#06143d' }}">
+            </div>
+          </div>
+          <div>
+            <label>Linha do cabecalho (ate 3 cores para gradiente)</label>
+            <div class="mt-2 grid gap-3 md:grid-cols-3">
+              <input type="color" name="os_header_cor_1" value="{{ linha_cabecalho_cores.0|default:'#00a8e0' }}">
+              <input type="color" name="os_header_cor_2" value="{{ linha_cabecalho_cores.1|default:'#d966b3' }}">
+              <input type="color" name="os_header_cor_3" value="{{ linha_cabecalho_cores.2|default:'#f5d547' }}">
+            </div>
+            <p class="mt-2 text-xs text-[var(--text-secondary)]">Use 1 cor para linha solida ou ate 3 cores para gradiente horizontal.</p>
+            <div id="headerLinePreview" class="header-line-preview"></div>
+          </div>
+          <div class="os-fields">
+            {% for campo in ordem_servico_campos %}
+              <div class="os-field-row">
+                <div>
+                  <input id="os_rotulo_{{ campo.chave }}" name="os_rotulo_{{ campo.chave }}" value="{{ campo.rotulo }}" aria-label="Rotulo do campo {{ campo.chave }}">
+                </div>
+                <label class="flex items-center gap-2 text-sm normal-case tracking-normal">
+                  <input type="checkbox" name="os_obrigatorio_{{ campo.chave }}" {% if campo.obrigatorio %}checked{% endif %}>
+                  Obrigatorio
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+          <button class="btn-primary justify-self-start" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Salvar ordem de servico</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="tab-aparencia" class="config-panel hidden space-y-5">
+      <div class="card p-5">
+        <h3 class="mb-4 text-lg font-semibold">Aparencia</h3>
         <div class="flex flex-wrap gap-3">
-          {% for categoria in categorias %}
-            <label class="flex items-center gap-2 rounded-lg bg-[#22253a] px-3 py-2 text-sm normal-case tracking-normal">
-              <input class="widget-categoria" type="checkbox" value="{{ categoria.id }}" checked> {{ categoria.nome }}
-            </label>
-          {% empty %}
-            <span class="text-sm text-[#8892b0]">Cadastre categorias em Produtos.</span>
-          {% endfor %}
+          <select id="configTema" class="max-w-[280px]"><option value="dark">Escuro</option><option value="light">Claro</option></select>
+          <button id="btnAplicarTema" class="btn-secondary" type="button">Aplicar tema</button>
         </div>
       </div>
-
-      <div class="rounded-xl border border-[#2d3154] bg-[#171a29] p-4">
-        <h4 class="mb-3 text-base font-semibold">Notificação — Assistência de envio</h4>
-        <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal">
-          <input id="notifAssistenciaAtivo" type="checkbox" checked> Ativar notificação de assistência de envio
-        </label>
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <div>
-            <label class="field-label">Comportamento</label>
-            <select id="notifAssistenciaModo">
-              <option value="periodico">Voltar de tempos em tempos</option>
-              <option value="sempre">Ficar ativa o tempo todo</option>
-            </select>
-          </div>
-          <div id="notifAssistenciaIntervaloWrap">
-            <label class="field-label">Voltar a cada</label>
-            <select id="notifAssistenciaIntervalo">
-              {% for minutos in intervalo_opcoes %}
-                <option value="{{ minutos }}">{{ minutos }} minutos</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div id="notifAssistenciaVisivelWrap">
-            <label class="field-label">Ficar visível por</label>
-            <select id="notifAssistenciaVisivel">
-              {% for segundos in visivel_opcoes %}
-                <option value="{{ segundos }}">{{ segundos }}s</option>
-              {% endfor %}
-            </select>
-          </div>
+      <div class="card p-5">
+        <h3 class="mb-4 text-lg font-semibold">Zoom da interface</h3>
+        <div class="flex flex-wrap gap-3">
+          <select id="configZoom" class="max-w-[280px]">{% for zoom in zoom_opcoes %}<option value="{{ zoom }}">{{ zoom }}%</option>{% endfor %}</select>
+          <button id="btnAplicarZoom" class="btn-secondary" type="button">Aplicar zoom</button>
         </div>
       </div>
+    </section>
 
-      <div class="flex flex-wrap gap-3">
-        <button id="btnSalvarWidgets" class="btn-primary" type="button">Salvar widgets e notificações</button>
-        <button id="btnTestarWidgets" class="btn-secondary" type="button">Verificar agora</button>
+    <section id="tab-widgets" class="config-panel hidden">
+      <div class="card p-5 space-y-6">
+        <h3 class="text-lg font-semibold">Configuracoes de Notificacoes e Alertas</h3>
+        <form method="post" class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="salvar_alertas">
+          <div class="mb-4">
+            <h4 class="font-semibold">Regras de alerta por categoria</h4>
+            <p class="mt-1 text-sm text-[#8892b0]">Quando o pedido entra na regra da categoria, ele fica vermelho nas filas e notificacoes.</p>
+          </div>
+          <div class="grid gap-3">
+            {% for categoria in categorias %}
+              <div class="grid gap-3 rounded-lg bg-[#22253a] p-3 md:grid-cols-[1fr_140px_160px_160px] md:items-center">
+                <div>
+                  <strong>{{ categoria.nome }}</strong>
+                  <p class="text-xs text-[#8892b0]">Ordem {{ categoria.ordem }}</p>
+                </div>
+                <label class="flex items-center gap-2 text-sm normal-case tracking-normal"><input type="checkbox" name="categoria_{{ categoria.pk }}_ativo" {% if categoria.alerta_prazo_ativo %}checked{% endif %}> Ativo</label>
+                <div>
+                  <label>Dias uteis</label>
+                  <input type="number" min="0" name="categoria_{{ categoria.pk }}_dias" value="{{ categoria.alerta_dias_uteis }}">
+                </div>
+                <label class="flex items-center gap-2 text-sm normal-case tracking-normal"><input type="checkbox" name="categoria_{{ categoria.pk }}_mesmo_dia" {% if categoria.alerta_mesmo_dia_apos_14h %}checked{% endif %}> Apos 14h</label>
+              </div>
+            {% empty %}
+              <p class="text-sm text-[#8892b0]">Nenhuma categoria cadastrada.</p>
+            {% endfor %}
+          </div>
+          <button class="btn-primary mt-4" type="submit">Salvar regras de alerta</button>
+        </form>
+        <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
+          <h4 class="mb-3 font-semibold">Widget de prazos</h4>
+          <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="widgetPrazosAtivo" type="checkbox" checked> Ativar widget</label>
+          <div class="grid gap-3 md:grid-cols-3">
+            <div><label>Comportamento</label><select id="widgetPrazosModo"><option value="periodico">Voltar de tempos em tempos</option><option value="sempre">Ficar ativo o tempo todo</option></select></div>
+            <div id="widgetPrazosIntervaloWrap"><label>Voltar a cada</label><select id="widgetPrazosIntervalo">{% for minutos in intervalo_opcoes %}<option value="{{ minutos }}">{{ minutos }} minutos</option>{% endfor %}</select></div>
+            <div id="widgetPrazosVisivelWrap"><label>Ficar visivel por</label><select id="widgetPrazosVisivel">{% for segundos in visivel_opcoes %}<option value="{{ segundos }}">{{ segundos }}s</option>{% endfor %}</select></div>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-3">
+            {% for categoria in categorias %}
+              <label class="flex items-center gap-2 rounded-lg bg-[#22253a] px-3 py-2 text-sm normal-case tracking-normal"><input class="widget-categoria" type="checkbox" value="{{ categoria.id }}" checked> {{ categoria.nome }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
+          <h4 class="mb-3 font-semibold">Notificacao de assistencia de envio</h4>
+          <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="notifAssistenciaAtivo" type="checkbox" checked> Ativar notificacao</label>
+          <div class="grid gap-3 md:grid-cols-3">
+            <div><label>Comportamento</label><select id="notifAssistenciaModo"><option value="periodico">Voltar de tempos em tempos</option><option value="sempre">Ficar ativa o tempo todo</option></select></div>
+            <div id="notifAssistenciaIntervaloWrap"><label>Voltar a cada</label><select id="notifAssistenciaIntervalo">{% for minutos in intervalo_opcoes %}<option value="{{ minutos }}">{{ minutos }} minutos</option>{% endfor %}</select></div>
+            <div id="notifAssistenciaVisivelWrap"><label>Ficar visivel por</label><select id="notifAssistenciaVisivel">{% for segundos in visivel_opcoes %}<option value="{{ segundos }}">{{ segundos }}s</option>{% endfor %}</select></div>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <button id="btnSalvarWidgets" class="btn-primary" type="button">Salvar widgets</button>
+          <button id="btnTestarWidgets" class="btn-secondary" type="button">Verificar agora</button>
+        </div>
+        <p id="configFeedback" class="hidden text-sm font-semibold text-[#00c896]"></p>
       </div>
-      <p id="configFeedback" class="hidden text-sm font-semibold text-[#00c896]"></p>
-    </div>
-  </section>
+    </section>
 
-  <section class="card p-5">
-    <h3 class="mb-2 text-lg font-semibold">Widget na área de trabalho (Windows)</h3>
-    <p class="mb-4 text-sm text-[#8892b0]">
-      O widget dentro do navegador aparece só na página do Gestor. Para sobrepor qualquer programa do Windows
-      (como no Gestor antigo), execute o overlay desktop após salvar as configurações acima.
-    </p>
-    <div class="flex flex-wrap gap-3">
-      <button id="btnIniciarWidgetWindows" class="btn-primary" type="button">Iniciar widget no Windows</button>
-      <span class="self-center text-xs text-[#8892b0]">Arquivo: iniciar_widget_windows.bat</span>
-    </div>
-  </section>
-
-  <section class="card p-5">
-    <h3 class="mb-2 text-lg font-semibold">Banco de dados</h3>
-    <p class="mb-4 text-sm text-[#8892b0]">Conexão compartilhada entre Gestor, Dashboard, relatórios e integrações. O sistema usa PostgreSQL.</p>
-    <div class="grid gap-3 md:grid-cols-[160px_1fr]">
-      <label>Tipo de banco:</label><input value="PostgreSQL (rede)" readonly>
-      <label>Nome do banco:</label><input value="{{ db.NAME }}" readonly>
-      <label>Host / IP:</label><input value="{{ db.HOST }}" readonly>
-      <label>Porta:</label><input value="{{ db.PORT }}" readonly>
-      <label>Usuário:</label><input value="{{ db.USER }}" readonly>
-      <label>Senha:</label><input value="••••" readonly>
-    </div>
-  </section>
-
-  <section class="card p-5">
-    <h3 class="mb-2 text-lg font-semibold">Janelas carregadas</h3>
-    <p class="text-sm text-[#8892b0]">Gestor de pedidos, Dashboard, Produtos, Assistência de envio e Configurações.</p>
-  </section>
+    <section id="tab-banco" class="config-panel hidden">
+      <div class="card p-5">
+        <h3 class="mb-4 text-lg font-semibold">Banco de dados</h3>
+        <div class="grid gap-3 md:grid-cols-[160px_1fr]">
+          <label>Tipo de banco</label><input value="PostgreSQL (rede)" readonly>
+          <label>Nome do banco</label><input value="{{ db.NAME }}" readonly>
+          <label>Host / IP</label><input value="{{ db.HOST }}" readonly>
+          <label>Porta</label><input value="{{ db.PORT }}" readonly>
+          <label>Usuario</label><input value="{{ db.USER }}" readonly>
+          <label>Senha</label><input value="****" readonly>
+        </div>
+      </div>
+    </section>
+  {% endif %}
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
+  const allowedConfigTabs = ["usuarios"{% if pode_gerenciar_usuarios %}, "empresa", "aparencia", "widgets", "banco"{% endif %}];
+  function openTab(tab) {
+    const alvo = allowedConfigTabs.includes(tab) ? tab : "usuarios";
+    document.querySelectorAll("[data-config-tab]").forEach((btn) => btn.classList.toggle("active", btn.dataset.configTab === alvo));
+    document.querySelectorAll(".config-panel").forEach((panel) => panel.classList.toggle("hidden", panel.id !== `tab-${alvo}`));
+  }
+  document.querySelectorAll("[data-config-tab]").forEach((btn) => btn.addEventListener("click", () => openTab(btn.dataset.configTab)));
+  openTab(new URLSearchParams(location.search).get("aba") || "usuarios");
+
+  document.getElementById("usuarioBusca")?.addEventListener("input", (event) => {
+    const termo = event.target.value.trim().toLowerCase();
+    document.querySelectorAll("[data-user-row]").forEach((row) => row.classList.toggle("hidden", termo && !row.dataset.userName.includes(termo)));
+  });
+
   function labelSegundos(valor) {
     const n = Number(valor);
     if (n === 60) return "1 minuto";
@@ -182,51 +384,42 @@
     if (n === 300) return "5 minutos";
     return `${n} segundos`;
   }
-
   function atualizarLabelsVisivel() {
-    document.querySelectorAll("#widgetPrazosVisivel option, #notifAssistenciaVisivel option").forEach((option) => {
-      option.textContent = labelSegundos(option.value);
-    });
+    document.querySelectorAll("#widgetPrazosVisivel option, #notifAssistenciaVisivel option").forEach((option) => { option.textContent = labelSegundos(option.value); });
   }
-
   function alternarCamposPeriodicos(modoId, intervaloWrapId, visivelWrapId) {
-    const modo = document.getElementById(modoId).value;
-    const mostrar = modo === "periodico";
-    document.getElementById(intervaloWrapId).classList.toggle("hidden", !mostrar);
-    document.getElementById(visivelWrapId).classList.toggle("hidden", !mostrar);
+    const modo = document.getElementById(modoId);
+    if (!modo) return;
+    const mostrar = modo.value === "periodico";
+    document.getElementById(intervaloWrapId)?.classList.toggle("hidden", !mostrar);
+    document.getElementById(visivelWrapId)?.classList.toggle("hidden", !mostrar);
   }
-
   function categoriasSelecionadas() {
     return [...document.querySelectorAll(".widget-categoria:checked")].map((item) => Number(item.value));
   }
-
   function preencherFormulario(prefs) {
-    document.getElementById("configTema").value = prefs.tema;
-    document.getElementById("configZoom").value = String(prefs.zoom);
+    const tema = document.getElementById("configTema");
+    const zoom = document.getElementById("configZoom");
     const select = document.getElementById("configUsuarioSelect");
+    if (tema) tema.value = prefs.tema;
+    if (zoom) zoom.value = String(prefs.zoom);
     if (select) select.value = prefs.usuario;
-
+    if (!document.getElementById("widgetPrazosAtivo")) return;
     const prazos = prefs.widgets.prazos;
     document.getElementById("widgetPrazosAtivo").checked = prazos.ativo;
     document.getElementById("widgetPrazosModo").value = prazos.modo;
     document.getElementById("widgetPrazosIntervalo").value = String(prazos.intervalo_minutos);
     document.getElementById("widgetPrazosVisivel").value = String(prazos.visivel_segundos);
-
     const assistencia = prefs.widgets.assistencia;
     document.getElementById("notifAssistenciaAtivo").checked = assistencia.ativo;
     document.getElementById("notifAssistenciaModo").value = assistencia.modo;
     document.getElementById("notifAssistenciaIntervalo").value = String(assistencia.intervalo_minutos);
     document.getElementById("notifAssistenciaVisivel").value = String(assistencia.visivel_segundos);
-
     const selecionadas = new Set((prazos.categorias || []).map(Number));
-    document.querySelectorAll(".widget-categoria").forEach((item) => {
-      item.checked = selecionadas.size ? selecionadas.has(Number(item.value)) : true;
-    });
-
+    document.querySelectorAll(".widget-categoria").forEach((item) => { item.checked = selecionadas.size ? selecionadas.has(Number(item.value)) : true; });
     alternarCamposPeriodicos("widgetPrazosModo", "widgetPrazosIntervaloWrap", "widgetPrazosVisivelWrap");
     alternarCamposPeriodicos("notifAssistenciaModo", "notifAssistenciaIntervaloWrap", "notifAssistenciaVisivelWrap");
   }
-
   function coletarWidgets() {
     return {
       prazos: {
@@ -244,17 +437,13 @@
       },
     };
   }
-
   function feedback(texto) {
     const alvo = document.getElementById("configFeedback");
+    if (!alvo) return;
     alvo.textContent = texto;
     alvo.classList.remove("hidden");
     setTimeout(() => alvo.classList.add("hidden"), 2600);
   }
-
-  atualizarLabelsVisivel();
-  preencherFormulario(GestorPrefs.load());
-
   async function salvarComFeedback(patch, mensagem) {
     try {
       const prefs = await GestorPrefs.save(patch);
@@ -264,47 +453,69 @@
       feedback("Salvo localmente, mas falhou no servidor. Tente de novo.");
     }
   }
-
-  document.getElementById("btnAplicarTema").addEventListener("click", async () => {
-    await salvarComFeedback({ tema: document.getElementById("configTema").value }, "Tema aplicado e salvo.");
-  });
-
-  document.getElementById("btnAplicarZoom").addEventListener("click", async () => {
-    await salvarComFeedback({ zoom: Number(document.getElementById("configZoom").value) }, "Zoom aplicado e salvo.");
-  });
-
-  document.getElementById("btnTrocarUsuario").addEventListener("click", async () => {
+  atualizarLabelsVisivel();
+  preencherFormulario(GestorPrefs.load());
+  document.getElementById("btnAplicarTema")?.addEventListener("click", async () => salvarComFeedback({ tema: document.getElementById("configTema").value }, "Tema aplicado."));
+  document.getElementById("btnAplicarZoom")?.addEventListener("click", async () => salvarComFeedback({ zoom: Number(document.getElementById("configZoom").value) }, "Zoom aplicado."));
+  document.getElementById("btnTrocarUsuario")?.addEventListener("click", async () => {
     const select = document.getElementById("configUsuarioSelect");
     if (!select?.value) return;
-    await salvarComFeedback({ usuario: select.value }, `Usuário ativo: ${select.value}`);
+    await salvarComFeedback({ usuario: select.value }, `Usuario ativo: ${select.value}`);
+    window.location.reload();
   });
-
   ["widgetPrazosModo", "notifAssistenciaModo"].forEach((id) => {
-    document.getElementById(id).addEventListener("change", () => {
-      if (id === "widgetPrazosModo") {
-        alternarCamposPeriodicos("widgetPrazosModo", "widgetPrazosIntervaloWrap", "widgetPrazosVisivelWrap");
-      } else {
-        alternarCamposPeriodicos("notifAssistenciaModo", "notifAssistenciaIntervaloWrap", "notifAssistenciaVisivelWrap");
-      }
+    document.getElementById(id)?.addEventListener("change", () => {
+      if (id === "widgetPrazosModo") alternarCamposPeriodicos("widgetPrazosModo", "widgetPrazosIntervaloWrap", "widgetPrazosVisivelWrap");
+      else alternarCamposPeriodicos("notifAssistenciaModo", "notifAssistenciaIntervaloWrap", "notifAssistenciaVisivelWrap");
     });
   });
-
-  document.getElementById("btnSalvarWidgets").addEventListener("click", async () => {
-    const widgets = coletarWidgets();
-    if (!widgets.prazos.categorias.length) {
-      document.querySelectorAll(".widget-categoria").forEach((item) => { item.checked = true; });
-      widgets.prazos.categorias = categoriasSelecionadas();
-    }
-    await salvarComFeedback({ widgets }, "Widgets e notificações salvos.");
-  });
-
-  document.getElementById("btnTestarWidgets").addEventListener("click", async () => {
-    await salvarComFeedback({ widgets: coletarWidgets() }, "Verificação iniciada.");
+  document.getElementById("btnSalvarWidgets")?.addEventListener("click", async () => salvarComFeedback({ widgets: coletarWidgets() }, "Widgets salvos."));
+  document.getElementById("btnTestarWidgets")?.addEventListener("click", async () => {
+    await salvarComFeedback({ widgets: coletarWidgets() }, "Verificacao iniciada.");
     window.dispatchEvent(new CustomEvent("gestor:widgets-verificar"));
   });
 
-  document.getElementById("btnIniciarWidgetWindows")?.addEventListener("click", async () => {
-    await salvarComFeedback({ widgets: coletarWidgets() }, "Configurações salvas. Execute iniciar_widget_windows.bat na pasta do projeto.");
+  const fotoPerfilInput = document.getElementById("{{ perfil_form.foto.id_for_label }}");
+  const avatarPreview = document.getElementById("profileAvatarPreview");
+  fotoPerfilInput?.addEventListener("change", () => {
+    const arquivo = fotoPerfilInput.files?.[0];
+    if (!arquivo) return;
+    if (!arquivo.type.startsWith("image/")) {
+      window.alert("Selecione um arquivo de imagem valido.");
+      fotoPerfilInput.value = "";
+      return;
+    }
+    const leitor = new FileReader();
+    leitor.onload = (evento) => {
+      avatarPreview.innerHTML = `<img src="${evento.target.result}" alt="Preview da foto">`;
+    };
+    leitor.readAsDataURL(arquivo);
+  });
+
+  function atualizarPreviewLinhaCabecalho() {
+    const preview = document.getElementById("headerLinePreview");
+    if (!preview) return;
+    const cores = ["os_header_cor_1", "os_header_cor_2", "os_header_cor_3"]
+      .map((nome) => document.querySelector(`[name="${nome}"]`)?.value)
+      .filter(Boolean);
+    if (!cores.length) return;
+    preview.style.background = cores.length === 1 ? cores[0] : `linear-gradient(90deg, ${cores.join(", ")})`;
+  }
+  ["os_header_cor_1", "os_header_cor_2", "os_header_cor_3"].forEach((nome) => {
+    document.querySelector(`[name="${nome}"]`)?.addEventListener("input", atualizarPreviewLinhaCabecalho);
+  });
+  atualizarPreviewLinhaCabecalho();
+
+  const empresaLogoInput = document.getElementById("{{ perfil_empresa_form.logo.id_for_label }}");
+  const empresaLogoPreview = document.getElementById("empresaLogoPreview");
+  empresaLogoInput?.addEventListener("change", () => {
+    const arquivo = empresaLogoInput.files?.[0];
+    if (!arquivo || !arquivo.type.startsWith("image/")) return;
+    const leitor = new FileReader();
+    leitor.onload = (evento) => {
+      empresaLogoPreview.innerHTML = `<img src="${evento.target.result}" alt="Preview da logo" class="max-h-full max-w-full object-contain">`;
+    };
+    leitor.readAsDataURL(arquivo);
   });
 </script>
 {% endblock %}
