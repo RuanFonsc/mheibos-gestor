@@ -465,14 +465,7 @@ def _criar_pedido(form, arquivos):
             descricao=descricao,
         )
 
-    if dados["valor_pago"] > 0:
-        PagamentoPedido.objects.create(
-            pedido=pedido,
-            valor=dados["valor_pago"],
-            forma=dados["forma_pagamento"],
-            data_pagamento=dados["data_pedido"],
-            status=StatusPagamento.CONFIRMADO,
-        )
+    _sincronizar_pagamento_informado(pedido, dados["valor_pago"], dados["forma_pagamento"], dados["data_pedido"])
 
     for ordem, arquivo in enumerate(arquivos):
         ArtePedido.objects.create(
@@ -485,6 +478,33 @@ def _criar_pedido(form, arquivos):
 
     sincronizar_financeiro_pedido(pedido)
     return pedido
+
+
+def _sincronizar_pagamento_informado(pedido, valor_pago, forma_pagamento, data_pagamento):
+    valor_pago = valor_pago or Decimal("0.00")
+    pagamentos = pedido.pagamentos.all()
+    pagamento = pagamentos.filter(observacoes="Valor pago informado no pedido").first()
+    if not pagamento and pagamentos.count() <= 1:
+        pagamento = pagamentos.first()
+
+    if valor_pago <= 0:
+        if pagamento and pagamentos.count() <= 1:
+            pagamento.delete()
+        return
+
+    dados = {
+        "valor": valor_pago,
+        "forma": forma_pagamento,
+        "data_pagamento": data_pagamento,
+        "status": StatusPagamento.CONFIRMADO,
+        "observacoes": "Valor pago informado no pedido",
+    }
+    if pagamento:
+        for campo, valor in dados.items():
+            setattr(pagamento, campo, valor)
+        pagamento.save(update_fields=list(dados.keys()))
+    else:
+        PagamentoPedido.objects.create(pedido=pedido, **dados)
 
 
 def _atualizar_pedido(pedido, form, arquivos):
@@ -533,6 +553,7 @@ def _atualizar_pedido(pedido, form, arquivos):
     pedido.status = dados["status"]
     pedido.usuario_cadastro = dados.get("usuario_cadastro", "").strip()
     pedido.save()
+    _sincronizar_pagamento_informado(pedido, dados["valor_pago"], dados["forma_pagamento"], dados["data_pedido"])
 
     ordem_base = pedido.artes.count()
     for offset, arquivo in enumerate(arquivos):

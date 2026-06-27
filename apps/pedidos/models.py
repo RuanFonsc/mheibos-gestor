@@ -123,7 +123,8 @@ class Pedido(models.Model):
         total = self.pagamentos.filter(status=StatusPagamento.CONFIRMADO).aggregate(
             soma=models.Sum("valor")
         )["soma"]
-        return total or Decimal("0.00")
+        total = total or Decimal("0.00")
+        return max(total, self.valor_pago_legado or Decimal("0.00"))
 
     def status_assistencia(self):
         from apps.catalogo.assistencia import categorias_do_pedido, pedido_entrou_na_regra, regra_categoria, dias_uteis_restantes
