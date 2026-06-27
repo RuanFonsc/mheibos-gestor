@@ -1,7 +1,7 @@
-appId: br.com.mheibos.producao
-productName: Mheibos Producao
+appId: br.com.mheibos.suite
+productName: Mheibos Suite
 directories:
-  output: release/producao
+  output: release/suite
 files:
   - electron/**
   - package.json
@@ -12,7 +12,7 @@ asar: true
 win:
   target:
     - nsis
-  artifactName: Mheibos-Producao-${version}-Setup.${ext}
+  artifactName: Mheibos-Suite-${version}-Setup.${ext}
 nsis:
   oneClick: false
   perMachine: false

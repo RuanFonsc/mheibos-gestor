@@ -35,7 +35,7 @@ def parse_data(valor):
         return None
     for formato in ("%Y-%m-%d", "%d/%m/%Y", "%d/%m/%Y %H:%M", "%d/%m/%Y %H:%M:%S"):
         try:
-            parsed = datetime.strptime(texto[: len(formato)], formato)
+            parsed = datetime.strptime(texto, formato)
             return parsed.date()
         except ValueError:
             continue
@@ -48,7 +48,7 @@ def parse_datetime(valor):
         return None
     for formato in ("%d/%m/%Y %H:%M", "%d/%m/%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.strptime(texto[: len(formato)], formato)
+            return datetime.strptime(texto, formato)
         except ValueError:
             continue
     parsed_date = parse_data(texto)

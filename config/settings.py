@@ -1,9 +1,12 @@
+import sys
 from pathlib import Path
 
 from decouple import Csv, config
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
+DATA_DIR = Path(config("MHEIBOS_DATA_DIR", default=str(BASE_DIR))).resolve()
 
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-only-change-me")
 DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
@@ -40,7 +43,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [RESOURCE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -55,24 +58,39 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME", default="gestor_web"),
-        "USER": config("DB_USER", default="postgres"),
-        "PASSWORD": config("DB_PASSWORD", default="123456"),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
-    },
-    "legacy": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("LEGACY_DB_NAME", default="gestor_db"),
-        "USER": config("LEGACY_DB_USER", default="postgres"),
-        "PASSWORD": config("LEGACY_DB_PASSWORD", default="123456"),
-        "HOST": config("LEGACY_DB_HOST", default="localhost"),
-        "PORT": config("LEGACY_DB_PORT", default="5432"),
-    },
-}
+if config("MHEIBOS_DB_MODE", default="postgres").lower() == "sqlite":
+    sqlite_name = config("SQLITE_DB_NAME", default="mheibos_gestor.sqlite3")
+    if not sqlite_name.lower().endswith((".sqlite", ".sqlite3", ".db")):
+        sqlite_name = f"{sqlite_name}.sqlite3"
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(DATA_DIR / sqlite_name),
+        },
+        "legacy": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(DATA_DIR / sqlite_name),
+        },
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("DB_NAME", default="gestor_web"),
+            "USER": config("DB_USER", default="postgres"),
+            "PASSWORD": config("DB_PASSWORD", default="123456"),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+        },
+        "legacy": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("LEGACY_DB_NAME", default=config("DB_NAME", default="gestor_web")),
+            "USER": config("LEGACY_DB_USER", default=config("DB_USER", default="postgres")),
+            "PASSWORD": config("LEGACY_DB_PASSWORD", default=config("DB_PASSWORD", default="123456")),
+            "HOST": config("LEGACY_DB_HOST", default=config("DB_HOST", default="localhost")),
+            "PORT": config("LEGACY_DB_PORT", default=config("DB_PORT", default="5432")),
+        },
+    }
 
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
@@ -80,9 +98,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = DATA_DIR / "staticfiles"
+STATICFILES_DIRS = [RESOURCE_DIR / "static"]
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = DATA_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -35,6 +35,8 @@ STATUS_PRODUCAO = [
     StatusPedido.EM_PRODUCAO,
 ]
 
+STATUS_ASSISTENCIA = STATUS_PRE_PRODUCAO + STATUS_PRODUCAO
+
 STATUS_ENTREGA = [
     StatusPedido.PRONTO,
 ]
@@ -127,7 +129,7 @@ class Pedido(models.Model):
         from apps.catalogo.assistencia import categorias_do_pedido, pedido_entrou_na_regra, regra_categoria, dias_uteis_restantes
         from django.utils import timezone
 
-        if self.status not in STATUS_PRE_PRODUCAO:
+        if self.status not in STATUS_ASSISTENCIA:
             return {"na_assistencia": False, "mensagem": "Fora da assistência de envio"}
         
         agora = timezone.localtime()

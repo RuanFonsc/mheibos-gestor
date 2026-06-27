@@ -12,10 +12,25 @@
     <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Entregues no histórico</p><strong class="mt-2 block text-2xl">{{ entregues }}</strong></div>
   </section>
 
-  <section class="grid gap-3">
+  <form class="bulk-toolbar" method="post" action="{% url 'pedido_bulk_action' %}" data-bulk-form data-bulk-scope="#entregaPedidos">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <span data-bulk-ids></span>
+    <label class="bulk-select" title="Selecionar todos"><input type="checkbox" data-bulk-all></label>
+    <span class="bulk-counter" data-bulk-counter>0 selecionado(s)</span>
+    <button class="btn-primary min-h-[40px]" type="submit" name="acao" value="marcar_entregue" data-bulk-action disabled>
+      <i data-lucide="check" class="h-4 w-4"></i> Marcar como entregue
+    </button>
+  </form>
+
+  <section id="entregaPedidos" class="grid gap-3">
     {% for pedido in pedidos %}
-      <article class="grid gap-4 rounded-xl border p-4 lg:grid-cols-[1fr_220px_auto] lg:items-center {% if pedido.alerta_prazo %}border-[#ff4b4b] bg-[#3a1820] shadow-[0_0_0_1px_rgba(255,75,75,.18)]{% else %}card{% endif %}">
-        <div class="min-w-0">
+      <article data-bulk-card class="grid gap-4 rounded-xl border p-4 lg:grid-cols-[1fr_220px_auto] lg:items-center {% if pedido.alerta_prazo %}border-[#ff4b4b] bg-[#3a1820] shadow-[0_0_0_1px_rgba(255,75,75,.18)]{% else %}card{% endif %}">
+        <div class="flex min-w-0 gap-3">
+          <label class="bulk-select mt-0.5" title="Selecionar pedido #{{ pedido.legado_id|default:pedido.pk }}">
+            <input type="checkbox" value="{{ pedido.pk }}" data-bulk-checkbox>
+          </label>
+          <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-2">
             <span class="rounded-md bg-[#171a29] px-2 py-1 text-xs text-[#8892b0]">#{{ pedido.legado_id|default:pedido.pk }}</span>
             <span class="rounded-md bg-[#00c896]/15 px-2 py-1 text-xs text-[#00c896]">{{ pedido.get_status_display }}</span>
@@ -28,6 +43,7 @@
             {% if pedido.cliente.telefone_secundario %} / {{ pedido.cliente.telefone_secundario }}{% endif %}
           </p>
           {% if pedido.alerta_prazo %}<p class="mt-2 text-xs font-semibold uppercase tracking-wide text-[#ffd1d1]">Alerta de prazo da categoria</p>{% endif %}
+          </div>
         </div>
 
         <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-3 text-sm">

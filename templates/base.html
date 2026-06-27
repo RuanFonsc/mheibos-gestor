@@ -150,6 +150,22 @@
     .title-row { display: flex; align-items: center; gap: 14px; min-width: 0; }
     .title-row h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: .2px; text-transform: uppercase; color: var(--text-primary); }
     .top-meta { display: flex; align-items: center; gap: 16px; color: #b9c5f0; font-size: 13px; font-weight: 800; font-family: Consolas, "Segoe UI", monospace; }
+    .topbar-action {
+      min-height: 42px;
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      background: var(--accent);
+      color: white;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-weight: 900;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
     .user-pill { border: 1px solid var(--border-light); background: var(--bg-card); border-radius: 12px; color: var(--text-primary); padding: 10px 14px; font-family: "Segoe UI", system-ui, sans-serif; font-weight: 900; display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
     .tabbar { min-height: 66px; display: flex; align-items: center; border-bottom: 1px solid var(--border); background: var(--workspace-bg); padding: 10px 28px; gap: 12px; overflow-x: auto; }
     .tabbar:empty { display: none; }
@@ -185,6 +201,31 @@
     .btn-primary { background: var(--accent); color: white; }
     .btn-secondary { background: var(--bg-input); border-color: var(--border-light); color: var(--text-primary); }
     .btn-danger { background: var(--danger); color: white; }
+    .bulk-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-card);
+      padding: 10px;
+    }
+    .bulk-toolbar button:disabled { opacity: .45; cursor: not-allowed; }
+    .bulk-counter { color: var(--text-secondary); font-size: 12px; font-weight: 850; text-transform: uppercase; }
+    .bulk-select {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      background: rgba(16, 19, 31, .86);
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .bulk-select input { width: 16px; min-height: 16px; padding: 0; cursor: pointer; }
+    .bulk-card-selected { outline: 2px solid var(--accent); outline-offset: 2px; }
     .messages { margin-bottom: 12px; }
     .message { border: 1px solid var(--border-light); background: var(--bg-card); padding: 10px 12px; border-radius: 10px; font-weight: 700; }
     .widget-prazos {
@@ -314,11 +355,11 @@
           <i data-lucide="package-check" class="h-5 w-5"></i> Entrega/Loja
         </a>
         <a href="{% url 'configuracoes' %}" class="side-link {% if active == 'configuracoes' %}active{% endif %}">
-          <i data-lucide="settings" class="h-5 w-5"></i> Alertas
+          <i data-lucide="settings" class="h-5 w-5"></i> Configurações
         </a>{% endif %}
         {% if modo_producao %}
           <a href="{% url 'producao_home' %}" class="side-link {% if active == 'producao' %}active{% endif %}">
-            <i data-lucide="printer" class="h-5 w-5"></i> Producao
+            <i data-lucide="factory" class="h-5 w-5"></i> Producao
           </a>
           <a href="{% url 'producao_configuracoes' %}" class="side-link {% if active == 'producao_configuracoes' %}active{% endif %}">
             <i data-lucide="settings" class="h-5 w-5"></i> Configurações
@@ -341,6 +382,12 @@
           <h1>{% block page_title %}Gestor de Pedidos{% endblock %}</h1>
         </div>
         <div class="top-meta">
+          {% if not modo_producao %}
+            <a class="topbar-action" href="{% url 'producao_home' %}" title="Abrir a Produção">
+              <i data-lucide="factory" class="h-5 w-5"></i>
+              <span>Abrir a Produção</span>
+            </a>
+          {% endif %}
           <span>{% now "d/m/Y" %}</span>
           <span>{% now "H:i" %}</span>
           <a class="user-pill" id="topbarUsuarioLink" href="{% if modo_producao %}{% url 'producao_configuracoes' %}{% else %}{% url 'configuracoes' %}?aba=usuarios#perfil-usuario{% endif %}" title="Perfil do usuário">
@@ -381,6 +428,50 @@
 
   <script>lucide.createIcons();</script>
   <script src="{% static 'js/gestor_widgets.js' %}"></script>
+  <script>
+    document.querySelectorAll("[data-bulk-form]").forEach((form) => {
+      const scope = form.dataset.bulkScope || "body";
+      const boxes = [...document.querySelectorAll(`${scope} input[data-bulk-checkbox]`)];
+      const counter = form.querySelector("[data-bulk-counter]");
+      const actions = [...form.querySelectorAll("[data-bulk-action]")];
+      const all = form.querySelector("[data-bulk-all]");
+      const idsContainer = form.querySelector("[data-bulk-ids]");
+
+      function selectedBoxes() {
+        return boxes.filter((box) => box.checked);
+      }
+
+      function sync() {
+        const selected = selectedBoxes();
+        if (counter) counter.textContent = `${selected.length} selecionado(s)`;
+        actions.forEach((button) => { button.disabled = selected.length === 0; });
+        boxes.forEach((box) => box.closest("[data-bulk-card]")?.classList.toggle("bulk-card-selected", box.checked));
+        if (all) all.checked = boxes.length > 0 && selected.length === boxes.length;
+      }
+
+      boxes.forEach((box) => box.addEventListener("change", sync));
+      all?.addEventListener("change", () => {
+        boxes.forEach((box) => { box.checked = all.checked; });
+        sync();
+      });
+      form.addEventListener("submit", (event) => {
+        const selected = selectedBoxes();
+        if (!selected.length) {
+          event.preventDefault();
+          return;
+        }
+        idsContainer.innerHTML = "";
+        selected.forEach((box) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "pedido_ids";
+          input.value = box.value;
+          idsContainer.appendChild(input);
+        });
+      });
+      sync();
+    });
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

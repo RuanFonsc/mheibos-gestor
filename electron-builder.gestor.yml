@@ -5,6 +5,9 @@ directories:
 files:
   - electron/**
   - package.json
+extraResources:
+  - from: dist/backend
+    to: backend
 asar: true
 win:
   target:

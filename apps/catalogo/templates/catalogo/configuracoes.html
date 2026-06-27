@@ -27,11 +27,13 @@
   .user-admin-layout { display: grid; gap: 20px; grid-template-columns: minmax(280px, 420px) minmax(0, 1fr); margin-top: 20px; }
   .soft-panel { border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); padding: 22px; }
   .user-list { display: grid; gap: 10px; }
-  .user-row { display: grid; grid-template-columns: minmax(0, 1fr) 180px 110px; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
+  .user-row { display: grid; grid-template-columns: minmax(0, 1fr) 170px 90px auto; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
+  .user-row.is-editing { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
   .user-mini { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .user-mini-avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--bg-card); color: var(--accent-2); overflow: hidden; }
   .user-mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .permission-chip { justify-self: start; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-2); padding: 7px 10px; font-size: 11px; font-weight: 900; }
+  .user-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
   .os-fields { display: grid; gap: 12px; }
   .os-field-row { display: grid; grid-template-columns: minmax(180px, 1fr) 150px; align-items: end; gap: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 12px; }
   .header-line-preview { height: 10px; border-radius: 999px; margin-top: 8px; }
@@ -64,7 +66,7 @@
             <h2 class="section-title">Meu perfil</h2>
             <p class="text-sm text-[var(--text-secondary)]">{% now "l, d/m/Y" %}</p>
           </div>
-          {% if pode_gerenciar_usuarios %}
+          {% if pode_gerenciar_usuarios_geral %}
             <div class="profile-search">
               <i data-lucide="search" class="h-5 w-5"></i>
               <input id="usuarioBusca" type="search" placeholder="Buscar usuario">
@@ -96,7 +98,7 @@
                   <p>{{ operador_atual.get_papel_display }}</p>
                 </div>
               </div>
-              {% if pode_gerenciar_usuarios %}
+              {% if pode_gerenciar_usuarios_geral %}
                 <div class="flex min-w-[260px] gap-2">
                   <select id="configUsuarioSelect" name="usuario_ativo">
                     {% for operador in operadores %}
@@ -130,12 +132,16 @@
           </div>
         </form>
 
-        {% if pode_gerenciar_usuarios %}
+        {% if pode_gerenciar_usuarios_geral %}
           <div class="user-admin-layout">
             <form method="post" enctype="multipart/form-data" class="soft-panel grid gap-3">
               {% csrf_token %}
               <input type="hidden" name="acao" value="salvar_operador">
-              <h3 class="text-lg font-semibold">Novo usuario</h3>
+              <input type="hidden" name="operador_id" value="{{ operador_editando.pk|default:'' }}">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-lg font-semibold">{% if operador_editando %}Editar usuario{% else %}Novo usuario{% endif %}</h3>
+                {% if operador_editando %}<a class="btn-secondary min-h-[36px] text-xs" href="{% url 'configuracoes' %}?aba=usuarios">Novo</a>{% endif %}
+              </div>
               <div><label>Nome</label>{{ operador_form.nome }}</div>
               <div><label>Senha</label>{{ operador_form.senha }}</div>
               <div><label>Permissao</label>{{ operador_form.papel }}</div>
@@ -151,7 +157,7 @@
               </div>
               <div class="user-list" id="usuariosLista">
                 {% for usuario in todos_operadores %}
-                  <div class="user-row" data-user-row data-user-name="{{ usuario.nome|lower }}">
+                  <div class="user-row {% if operador_editando and operador_editando.pk == usuario.pk %}is-editing{% endif %}" data-user-row data-user-name="{{ usuario.nome|lower }}">
                     <div class="user-mini">
                       <span class="user-mini-avatar">
                         {% if usuario.foto %}<img src="{{ usuario.foto.url }}" alt="{{ usuario.nome }}">{% else %}<i data-lucide="circle-user-round" class="h-6 w-6"></i>{% endif %}
@@ -163,6 +169,17 @@
                     </div>
                     <span class="permission-chip">{{ usuario.get_papel_display }}</span>
                     <span class="text-sm {% if usuario.ativo %}text-[#00c896]{% else %}text-[#ff4b4b]{% endif %}">{% if usuario.ativo %}Ativo{% else %}Inativo{% endif %}</span>
+                    <div class="user-actions">
+                      <a class="btn-secondary min-h-[34px] px-3 text-xs" href="{% url 'configuracoes' %}?aba=usuarios&operador_id={{ usuario.pk }}"><i data-lucide="pencil" class="h-4 w-4"></i> Editar</a>
+                      {% if usuario.pk != operador_atual.pk %}
+                        <form method="post" onsubmit="return confirm('Excluir este usuario?')">
+                          {% csrf_token %}
+                          <input type="hidden" name="acao" value="excluir_operador">
+                          <input type="hidden" name="operador_id" value="{{ usuario.pk }}">
+                          <button class="btn-danger min-h-[34px] px-3 text-xs" type="submit"><i data-lucide="trash-2" class="h-4 w-4"></i> Excluir</button>
+                        </form>
+                      {% endif %}
+                    </div>
                   </div>
                 {% endfor %}
               </div>

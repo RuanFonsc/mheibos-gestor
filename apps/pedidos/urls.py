@@ -6,6 +6,7 @@ from apps.pedidos import views
 urlpatterns = [
     path("", views.pedido_list, name="pedido_list"),
     path("novo/", views.pedido_create, name="pedido_create"),
+    path("acao-massa/", views.pedido_bulk_action, name="pedido_bulk_action"),
     path("entrega/", views.entrega_list, name="entrega_list"),
     path("<int:pk>/", views.pedido_detail, name="pedido_detail"),
     path("<int:pk>/ordem-servico/", views.pedido_ordem_servico, name="pedido_ordem_servico"),

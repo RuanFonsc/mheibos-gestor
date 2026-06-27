@@ -1,14 +1,14 @@
-const { app, BrowserWindow, Menu, dialog, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const { fileURLToPath } = require("url");
 
-const PROJECT_ROOT = path.resolve(process.env.MHEIBOS_PROJECT_ROOT || path.join(__dirname, ".."));
-const PORT = Number(process.env.MHEIBOS_PORT || 8765);
 const HOST = "127.0.0.1";
+const PORT = Number(process.env.MHEIBOS_PORT || 8765);
 const BASE_URL = (process.env.MHEIBOS_BASE_URL || `http://${HOST}:${PORT}`).replace(/\/$/, "");
+const DEV_PROJECT_ROOT = path.resolve(process.env.MHEIBOS_PROJECT_ROOT || path.join(__dirname, ".."));
 let djangoProcess = null;
 
 function modoAtual() {
@@ -27,12 +27,69 @@ function tituloJanela() {
   return modoAtual() === "producao" ? "Mheibos Producao" : "Mheibos Gestor";
 }
 
+function configPath() {
+  return path.join(app.getPath("userData"), "mheibos-config.json");
+}
+
+function dataDir() {
+  return path.join(app.getPath("userData"), "data");
+}
+
+function readConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(configPath(), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function writeConfig(config) {
+  fs.mkdirSync(app.getPath("userData"), { recursive: true });
+  fs.mkdirSync(dataDir(), { recursive: true });
+  fs.writeFileSync(configPath(), JSON.stringify(config, null, 2), "utf8");
+}
+
+function backendExePath() {
+  const candidates = [
+    path.join(process.resourcesPath || "", "backend", "mheibos-backend", "mheibos-backend.exe"),
+    path.join(DEV_PROJECT_ROOT, "dist", "backend", "mheibos-backend", "mheibos-backend.exe"),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate));
+}
+
 function pythonCommand() {
-  const venvPython = path.join(PROJECT_ROOT, ".venv", "Scripts", "python.exe");
+  const venvPython = path.join(DEV_PROJECT_ROOT, ".venv", "Scripts", "python.exe");
   if (fs.existsSync(venvPython)) return { command: venvPython, argsPrefix: [] };
   return process.platform === "win32"
     ? { command: "py", argsPrefix: ["-3"] }
     : { command: "python3", argsPrefix: [] };
+}
+
+function envFromConfig(config) {
+  const env = {
+    ...process.env,
+    DJANGO_ALLOWED_HOSTS: process.env.DJANGO_ALLOWED_HOSTS || "localhost,127.0.0.1",
+    PYTHONUNBUFFERED: "1",
+    MHEIBOS_DATA_DIR: dataDir(),
+  };
+  if (!config || config.mode === "postgres") {
+    const db = config?.postgres || {};
+    env.MHEIBOS_DB_MODE = "postgres";
+    env.DB_HOST = db.host || process.env.DB_HOST || "localhost";
+    env.DB_PORT = db.port || process.env.DB_PORT || "5432";
+    env.DB_NAME = db.name || process.env.DB_NAME || "gestor_db";
+    env.DB_USER = db.user || process.env.DB_USER || "postgres";
+    env.DB_PASSWORD = db.password ?? process.env.DB_PASSWORD ?? "123456";
+    env.LEGACY_DB_HOST = env.DB_HOST;
+    env.LEGACY_DB_PORT = env.DB_PORT;
+    env.LEGACY_DB_NAME = env.DB_NAME;
+    env.LEGACY_DB_USER = env.DB_USER;
+    env.LEGACY_DB_PASSWORD = env.DB_PASSWORD;
+  } else {
+    env.MHEIBOS_DB_MODE = "sqlite";
+    env.SQLITE_DB_NAME = config.sqlite?.name || "mheibos_gestor";
+  }
+  return env;
 }
 
 function serverOnline() {
@@ -49,7 +106,7 @@ function serverOnline() {
   });
 }
 
-async function waitForServer(timeoutMs = 25000) {
+async function waitForServer(timeoutMs = 35000) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     if (await serverOnline()) return true;
@@ -58,42 +115,83 @@ async function waitForServer(timeoutMs = 25000) {
   return false;
 }
 
-async function ensureDjango() {
-  if (await serverOnline()) return;
-  if (process.env.MHEIBOS_BASE_URL) {
-    dialog.showErrorBox(
-      "Mheibos",
-      `Nao foi possivel acessar ${BASE_URL}. Verifique se o servidor local do Mheibos esta aberto.`
-    );
-    return;
-  }
-  if (!fs.existsSync(path.join(PROJECT_ROOT, "manage.py"))) {
-    dialog.showErrorBox(
-      "Mheibos",
-      "Nao encontrei o projeto Django do Mheibos. Defina MHEIBOS_PROJECT_ROOT apontando para a pasta do projeto ou abra o launcher dentro do repositorio."
-    );
-    return;
-  }
+function openSetupWindow() {
+  return new Promise((resolve) => {
+    const win = new BrowserWindow({
+      width: 720,
+      height: 640,
+      resizable: false,
+      title: "Configurar Mheibos Suite",
+      backgroundColor: "#171a29",
+      webPreferences: {
+        preload: path.join(__dirname, "preload.js"),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
 
-  const py = pythonCommand();
-  const args = [
-    ...py.argsPrefix,
-    "manage.py",
-    "runserver",
-    `${HOST}:${PORT}`,
-    "--noreload",
-  ];
+    const cleanup = () => {
+      ipcMain.removeHandler("setup:save");
+      ipcMain.removeHandler("setup:cancel");
+    };
 
-  djangoProcess = spawn(py.command, args, {
-    cwd: PROJECT_ROOT,
-    windowsHide: true,
-    env: {
-      ...process.env,
-      DJANGO_ALLOWED_HOSTS: process.env.DJANGO_ALLOWED_HOSTS || "localhost,127.0.0.1",
-      PYTHONUNBUFFERED: "1",
-    },
+    ipcMain.handle("setup:save", (_event, config) => {
+      writeConfig(config);
+      cleanup();
+      win.close();
+      resolve(config);
+    });
+    ipcMain.handle("setup:cancel", () => {
+      cleanup();
+      win.close();
+      resolve(null);
+    });
+    win.on("closed", () => {
+      cleanup();
+      resolve(null);
+    });
+    win.loadFile(path.join(__dirname, "setup.html"));
   });
+}
 
+async function ensureConfig() {
+  if (process.env.MHEIBOS_BASE_URL) return readConfig() || { mode: "postgres" };
+  const existing = readConfig();
+  if (existing) return existing;
+  return await openSetupWindow();
+}
+
+async function ensureDjango(config) {
+  if (await serverOnline()) return true;
+  if (process.env.MHEIBOS_BASE_URL) {
+    dialog.showErrorBox("Mheibos", `Nao foi possivel acessar ${BASE_URL}. Verifique se o servidor esta aberto.`);
+    return false;
+  }
+
+  const packagedBackend = backendExePath();
+  let command;
+  let args;
+  let cwd;
+  if (packagedBackend) {
+    command = packagedBackend;
+    args = ["runserver", `${HOST}:${PORT}`, "--noreload"];
+    cwd = path.dirname(packagedBackend);
+  } else {
+    if (!fs.existsSync(path.join(DEV_PROJECT_ROOT, "manage.py"))) {
+      dialog.showErrorBox("Mheibos", "Nao encontrei o backend do Mheibos Gestor.");
+      return false;
+    }
+    const py = pythonCommand();
+    command = py.command;
+    args = [...py.argsPrefix, "manage.py", "runserver", `${HOST}:${PORT}`, "--noreload"];
+    cwd = DEV_PROJECT_ROOT;
+  }
+
+  djangoProcess = spawn(command, args, {
+    cwd,
+    windowsHide: true,
+    env: envFromConfig(config),
+  });
   djangoProcess.on("exit", () => {
     djangoProcess = null;
   });
@@ -102,9 +200,10 @@ async function ensureDjango() {
   if (!ok) {
     dialog.showErrorBox(
       "Mheibos",
-      "Nao foi possivel iniciar o servidor local do Mheibos. Verifique o ambiente Python, o banco de dados e a porta 8765."
+      "Nao foi possivel iniciar o servidor local. Verifique a configuracao do banco de dados."
     );
   }
+  return ok;
 }
 
 function abrirCaminhoLocal(url) {
@@ -134,34 +233,34 @@ function createWindow() {
 
   win.once("ready-to-show", () => win.show());
   win.setMenuBarVisibility(false);
-
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("file://")) abrirCaminhoLocal(url);
-    else if (!url.startsWith(BASE_URL)) shell.openExternal(url);
+    else shell.openExternal(url);
     return { action: "deny" };
   });
-
   win.webContents.on("will-navigate", (event, url) => {
     if (url.startsWith(BASE_URL)) return;
     if (url.startsWith("file://")) abrirCaminhoLocal(url);
     else shell.openExternal(url);
     event.preventDefault();
   });
-
-  win.webContents.on("before-input-event", (event, input) => {
+  win.webContents.on("before-input-event", (_event, input) => {
     if (input.key === "F5" || ((input.control || input.meta) && input.key.toLowerCase() === "r")) {
       win.reload();
     }
   });
-
   win.loadURL(`${BASE_URL}${destinoInicial()}`);
 }
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
-  await ensureDjango();
+  const config = await ensureConfig();
+  if (!config) {
+    app.quit();
+    return;
+  }
+  if (!(await ensureDjango(config))) return;
   createWindow();
-
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

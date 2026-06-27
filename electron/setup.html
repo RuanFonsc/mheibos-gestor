@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configurar Mheibos Suite</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", system-ui, sans-serif; }
+    body { margin: 0; background: #171a29; color: #fff; }
+    main { padding: 28px; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { margin: 0 0 20px; color: #aeb8df; line-height: 1.45; }
+    .mode { display: grid; gap: 10px; margin-bottom: 18px; }
+    label.option { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #3d4275; border-radius: 12px; padding: 14px; background: #22253a; cursor: pointer; }
+    label.option strong { display: block; }
+    label.option span { display: block; color: #aeb8df; font-size: 13px; margin-top: 3px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .panel { border: 1px solid #2d3154; border-radius: 12px; background: #1d2032; padding: 14px; margin-top: 12px; }
+    .hidden { display: none; }
+    label.field { display: grid; gap: 6px; color: #aeb8df; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    input { min-height: 42px; border: 1px solid #3d4275; border-radius: 10px; background: #22253a; color: #fff; padding: 0 12px; outline: none; }
+    input:focus { border-color: #4b66ff; }
+    footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+    button { min-height: 42px; border-radius: 10px; border: 1px solid #3d4275; padding: 0 16px; color: #fff; font-weight: 850; text-transform: uppercase; cursor: pointer; }
+    .secondary { background: #22253a; }
+    .primary { background: #4b66ff; border-color: #4b66ff; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Configurar Mheibos Suite</h1>
+    <p>Escolha como este computador vai se conectar aos dados. A logo da empresa continua vindo do banco configurado dentro do sistema.</p>
+
+    <div class="mode">
+      <label class="option">
+        <input type="radio" name="mode" value="postgres" checked>
+        <span><strong>Conectar a um banco PostgreSQL existente</strong><span>Use quando este computador vai acessar o banco da gráfica ou um servidor já configurado.</span></span>
+      </label>
+      <label class="option">
+        <input type="radio" name="mode" value="sqlite">
+        <span><strong>Criar banco interno SQLite</strong><span>Use para uma instalação local independente neste computador.</span></span>
+      </label>
+    </div>
+
+    <section id="postgresPanel" class="panel">
+      <div class="grid">
+        <label class="field">Host<input id="dbHost" value="localhost"></label>
+        <label class="field">Porta<input id="dbPort" value="5432"></label>
+        <label class="field">Banco<input id="dbName" value="gestor_db"></label>
+        <label class="field">Usuario<input id="dbUser" value="postgres"></label>
+        <label class="field">Senha<input id="dbPassword" type="password" value="123456"></label>
+      </div>
+    </section>
+
+    <section id="sqlitePanel" class="panel hidden">
+      <label class="field">Nome do banco interno<input id="sqliteName" value="mheibos_gestor"></label>
+    </section>
+
+    <footer>
+      <button class="secondary" type="button" id="cancelar">Cancelar</button>
+      <button class="primary" type="button" id="salvar">Salvar e abrir</button>
+    </footer>
+  </main>
+  <script>
+    const modes = [...document.querySelectorAll("[name=mode]")];
+    const postgresPanel = document.getElementById("postgresPanel");
+    const sqlitePanel = document.getElementById("sqlitePanel");
+    function syncMode() {
+      const mode = modes.find((item) => item.checked)?.value || "postgres";
+      postgresPanel.classList.toggle("hidden", mode !== "postgres");
+      sqlitePanel.classList.toggle("hidden", mode !== "sqlite");
+    }
+    modes.forEach((item) => item.addEventListener("change", syncMode));
+    syncMode();
+
+    document.getElementById("cancelar").addEventListener("click", () => window.mheibosSetup.cancelar());
+    document.getElementById("salvar").addEventListener("click", async () => {
+      const mode = modes.find((item) => item.checked)?.value || "postgres";
+      const config = {
+        mode,
+        postgres: {
+          host: document.getElementById("dbHost").value.trim() || "localhost",
+          port: document.getElementById("dbPort").value.trim() || "5432",
+          name: document.getElementById("dbName").value.trim() || "gestor_db",
+          user: document.getElementById("dbUser").value.trim() || "postgres",
+          password: document.getElementById("dbPassword").value,
+        },
+        sqlite: {
+          name: document.getElementById("sqliteName").value.trim() || "mheibos_gestor",
+        },
+      };
+      await window.mheibosSetup.salvar(config);
+    });
+  </script>
+</body>
+</html>

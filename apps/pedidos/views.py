@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.db.models.deletion import ProtectedError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -20,14 +21,15 @@ from apps.pedidos.models import (
     HistoricoStatusPedido,
     PrioridadePedido,
     STATUS_ENTREGA,
+    STATUS_ASSISTENCIA,
     STATUS_PRE_PRODUCAO,
-    STATUS_PRODUCAO,
     StatusPagamento,
     StatusPedido,
 )
 
 
 def pedido_list(request):
+    operador = operador_atual(request)
     busca = request.GET.get("q", "").strip()
     status = request.GET.get("status", "").strip()
     categoria = request.GET.get("categoria", "").strip()
@@ -37,13 +39,21 @@ def pedido_list(request):
     pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "artes")
 
     if busca:
-        pedidos = pedidos.filter(
+        filtros_busca = (
             Q(cliente__nome__icontains=busca)
             | Q(tema__icontains=busca)
             | Q(descricao_legada__icontains=busca)
             | Q(legado_id__icontains=busca)
+            | Q(itens__nome__icontains=busca)
+            | Q(itens__descricao__icontains=busca)
+            | Q(itens__produto__nome__icontains=busca)
         )
-    if status:
+        if busca.isdigit():
+            filtros_busca |= Q(pk=int(busca)) | Q(legado_id=int(busca))
+        pedidos = pedidos.filter(filtros_busca).distinct()
+    if status == StatusPedido.EM_PRODUCAO:
+        pedidos = pedidos.filter(status__in=STATUS_ASSISTENCIA)
+    elif status:
         pedidos = pedidos.filter(status=status)
     if categoria:
         pedidos = pedidos.filter(
@@ -66,14 +76,16 @@ def pedido_list(request):
         "prioridade_choices": PrioridadePedido.choices,
         "total": Pedido.objects.count(),
         "pre_producao": Pedido.objects.filter(status__in=STATUS_PRE_PRODUCAO).count(),
-        "em_producao": Pedido.objects.filter(status__in=STATUS_PRODUCAO).count(),
+        "em_producao": Pedido.objects.filter(status__in=STATUS_ASSISTENCIA).count(),
         "prontos": Pedido.objects.filter(status=StatusPedido.PRONTO).count(),
         "cancelados": Pedido.objects.filter(status=StatusPedido.CANCELADO).count(),
+        "pode_acoes_admin": operador.is_admin,
     }
     return render(request, "pedidos/list.html", contexto)
 
 
 def entrega_list(request):
+    operador = operador_atual(request)
     pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "pagamentos").filter(
         status__in=STATUS_ENTREGA
     )
@@ -85,6 +97,7 @@ def entrega_list(request):
         "pedidos": pedidos_lista,
         "prontos": pedidos.count(),
         "entregues": Pedido.objects.filter(status=StatusPedido.ENTREGUE).count(),
+        "pode_acoes_admin": operador.is_admin,
     }
     return render(request, "pedidos/entrega.html", contexto)
 
@@ -234,6 +247,93 @@ def pedido_update_status(request, pk):
     if retorno:
         return redirect(retorno)
     return redirect("pedido_detail", pk=pedido.pk)
+
+
+def pedido_bulk_action(request):
+    if request.method != "POST":
+        return redirect("pedido_list")
+
+    operador = operador_atual(request)
+    retorno = request.POST.get("next")
+    if not (retorno and retorno.startswith("/") and not retorno.startswith("//")):
+        retorno = None
+    acao = request.POST.get("acao", "").strip()
+    ids = [valor for valor in request.POST.getlist("pedido_ids") if valor.isdigit()]
+    pedidos = list(Pedido.objects.select_related("cliente").filter(pk__in=ids))
+
+    if not pedidos:
+        messages.warning(request, "Selecione pelo menos um pedido.")
+        return redirect(retorno or "pedido_list")
+
+    status_por_acao = {
+        "marcar_pronto": StatusPedido.PRONTO,
+        "enviar_producao": StatusPedido.EM_PRODUCAO,
+        "marcar_entregue": StatusPedido.ENTREGUE,
+        "cancelar": StatusPedido.CANCELADO,
+    }
+
+    if acao == "excluir":
+        if not operador.is_admin:
+            messages.error(request, "Somente administradores podem excluir pedidos.")
+            return redirect(retorno or "pedido_list")
+        excluidos = 0
+        protegidos = 0
+        for pedido in pedidos:
+            arquivos_arte = [arte.arquivo for arte in pedido.artes.all()]
+            try:
+                pedido.delete()
+                for arquivo in arquivos_arte:
+                    arquivo.delete(save=False)
+                excluidos += 1
+            except ProtectedError:
+                protegidos += 1
+        if excluidos:
+            messages.success(request, f"{excluidos} pedido(s) excluido(s).")
+        if protegidos:
+            messages.warning(request, f"{protegidos} pedido(s) possuem vinculos protegidos e nao foram excluidos.")
+        return redirect(retorno or "pedido_list")
+
+    novo_status = status_por_acao.get(acao)
+    if not novo_status:
+        messages.error(request, "Acao em massa invalida.")
+        return redirect(retorno or "pedido_list")
+
+    if novo_status == StatusPedido.CANCELADO and not operador.pode_cancelar_pedido:
+        messages.error(request, "Somente administradores podem cancelar pedidos.")
+        return redirect(retorno or "pedido_list")
+
+    origem_operacional = bool(
+        retorno
+        and (
+            retorno.startswith("/producao/")
+            or retorno.startswith("/assistencia-envio/")
+            or retorno.startswith("/pedidos/entrega/")
+        )
+    )
+    atualizados = 0
+    bloqueados = 0
+    for pedido in pedidos:
+        if (
+            novo_status != StatusPedido.CANCELADO
+            and not origem_operacional
+            and not pode_editar_pedido(pedido, operador)
+        ):
+            bloqueados += 1
+            continue
+        if pedido.status == novo_status:
+            continue
+        pedido.status = novo_status
+        pedido.save(update_fields=["status", "atualizado_em"])
+        sincronizar_financeiro_pedido(pedido)
+        atualizados += 1
+
+    if atualizados:
+        messages.success(request, f"{atualizados} pedido(s) atualizado(s).")
+    if bloqueados:
+        messages.warning(request, f"{bloqueados} pedido(s) ignorado(s) por permissao.")
+    if not atualizados and not bloqueados:
+        messages.info(request, "Nenhum pedido precisou ser alterado.")
+    return redirect(retorno or "pedido_list")
 
 
 def pedido_rejeitar_producao(request, pk):

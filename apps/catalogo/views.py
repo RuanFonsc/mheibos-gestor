@@ -229,13 +229,17 @@ def categoria_excluir(request, pk):
 
 
 def assistencia_envio(request):
+    operador = operador_atual(request)
+    busca = request.GET.get("q", "").strip()
     return render(
         request,
         "catalogo/assistencia_envio.html",
         {
             "active": "assistencia",
-            "grupos": pedidos_assistencia(),
+            "grupos": pedidos_assistencia(busca),
+            "busca": busca,
             "dias_uteis_restantes": dias_uteis_restantes,
+            "pode_acoes_admin": operador.is_admin,
         },
     )
 
@@ -250,9 +254,13 @@ def assistencia_marcar_enviado(request, pk):
 
 def configuracoes(request):
     garantir_operadores_padrao()
-    operador = operador_atual()
+    operador = operador_atual(request)
     perfil_empresa, _ = PerfilEmpresa.objects.get_or_create(chave="global")
-    operador_form = OperadorGestorForm(prefix="operador")
+    operador_editando = None
+    operador_id_edicao = request.GET.get("operador_id")
+    if operador.is_admin_geral and operador_id_edicao:
+        operador_editando = OperadorGestor.objects.filter(pk=operador_id_edicao).first()
+    operador_form = OperadorGestorForm(prefix="operador", instance=operador_editando)
     perfil_form = OperadorPerfilForm(prefix="perfil", instance=operador)
     senha_form = OperadorSenhaForm(prefix="senha")
     perfil_empresa_form = PerfilEmpresaForm(prefix="empresa", instance=perfil_empresa)
@@ -288,7 +296,9 @@ def configuracoes(request):
             if not senha_form.errors:
                 messages.error(request, "Nao foi possivel alterar a senha. Confira os campos.")
         if acao == "salvar_operador":
-            if not operador.pode_gerenciar_usuarios:
+            if not operador.is_admin_geral:
+                messages.error(request, "Somente administradores gerais gerenciam usuarios.")
+                return redirect("configuracoes")
                 messages.error(request, "Somente administradores cadastram novos usuários.")
                 return redirect("configuracoes")
             operador_id = request.POST.get("operador_id")
@@ -299,6 +309,27 @@ def configuracoes(request):
                 messages.success(request, f"Usuário {usuario.nome} salvo.")
             else:
                 messages.error(request, "Não foi possível salvar o usuário. Confira os campos.")
+            return redirect("configuracoes")
+        if acao == "excluir_operador":
+            if not operador.is_admin_geral:
+                messages.error(request, "Somente administradores gerais excluem usuarios.")
+                return redirect("configuracoes")
+            alvo = OperadorGestor.objects.filter(pk=request.POST.get("operador_id")).first()
+            if not alvo:
+                messages.error(request, "Usuario nao encontrado.")
+                return redirect("configuracoes")
+            if alvo.pk == operador.pk:
+                messages.error(request, "Voce nao pode excluir o seu proprio usuario.")
+                return redirect("configuracoes")
+            if alvo.is_admin_geral and OperadorGestor.objects.filter(papel=PapelOperador.ADMIN_GERAL, ativo=True).count() <= 1:
+                messages.error(request, "Mantenha pelo menos um administrador geral ativo.")
+                return redirect("configuracoes")
+            nome = alvo.nome
+            foto = alvo.foto
+            alvo.delete()
+            if foto:
+                foto.delete(save=False)
+            messages.success(request, f"Usuario {nome} excluido.")
             return redirect("configuracoes")
         if acao == "salvar_empresa":
             if not operador.pode_gerenciar_usuarios:
@@ -353,6 +384,9 @@ def configuracoes(request):
             messages.success(request, "Regras de notificacoes e alertas salvas.")
             return redirect(f"{reverse('configuracoes')}?aba=widgets")
         if acao == "trocar_perfil_proprio":
+            if not operador.is_admin_geral:
+                messages.error(request, "Somente administradores gerais acessam outros usuarios.")
+                return redirect("configuracoes")
             alvo = request.POST.get("usuario_ativo", "").strip()
             if OperadorGestor.objects.filter(nome=alvo, ativo=True).exists():
                 salvar_preferencias({"usuario": alvo})
@@ -377,6 +411,8 @@ def configuracoes(request):
         "layouts_ordem_servico": PerfilEmpresa.LayoutOrdemServico.choices,
         "papeis_operador": PapelOperador.choices,
         "pode_gerenciar_usuarios": operador.pode_gerenciar_usuarios,
+        "pode_gerenciar_usuarios_geral": operador.is_admin_geral,
+        "operador_editando": operador_editando,
         "preferencias": carregar_preferencias(),
         "db": db,
         "legacy_db": legacy_db,
@@ -426,6 +462,7 @@ def _salvar_regras_alerta(request):
 
 
 def producao_home(request):
+    operador = operador_atual(request)
     status = request.GET.get("status", "").strip()
     prioridade = request.GET.get("prioridade", "").strip()
     categoria = request.GET.get("categoria", "").strip()
@@ -478,6 +515,7 @@ def producao_home(request):
         "liberados": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
         "produzindo": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
         "urgentes": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO, prioridade=PrioridadePedido.URGENTE).count(),
+        "pode_acoes_admin": operador.is_admin,
     }
     return render(request, "pedidos/producao.html", contexto)
 

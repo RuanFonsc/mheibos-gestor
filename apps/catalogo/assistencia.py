@@ -3,10 +3,11 @@ from datetime import date, datetime, timedelta
 import unicodedata
 
 from django.db.models import Prefetch
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.catalogo.models import CategoriaServico, ProdutoServico
-from apps.pedidos.models import Pedido, PedidoItem, STATUS_PRE_PRODUCAO
+from apps.pedidos.models import Pedido, PedidoItem, STATUS_ASSISTENCIA
 
 
 def normalizar(texto):
@@ -140,7 +141,7 @@ def categorias_do_pedido(pedido):
     return categorias
 
 
-def pedidos_assistencia():
+def pedidos_assistencia(busca=""):
     categorias = list(CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"))
     itens_prefetch = Prefetch(
         "itens",
@@ -148,12 +149,26 @@ def pedidos_assistencia():
     )
     pedidos = (
         Pedido.objects.filter(
-            status__in=STATUS_PRE_PRODUCAO,
+            status__in=STATUS_ASSISTENCIA,
         )
         .select_related("cliente")
         .prefetch_related(itens_prefetch, "artes")
         .order_by("data_entrega", "id")
     )
+    busca = str(busca or "").strip()
+    if busca:
+        filtros_busca = (
+            Q(cliente__nome__icontains=busca)
+            | Q(tema__icontains=busca)
+            | Q(descricao_legada__icontains=busca)
+            | Q(legado_id__icontains=busca)
+            | Q(itens__nome__icontains=busca)
+            | Q(itens__descricao__icontains=busca)
+            | Q(itens__produto__nome__icontains=busca)
+        )
+        if busca.isdigit():
+            filtros_busca |= Q(pk=int(busca)) | Q(legado_id=int(busca))
+        pedidos = pedidos.filter(filtros_busca).distinct()
     agrupados = defaultdict(list)
     agora = timezone.localtime()
 
