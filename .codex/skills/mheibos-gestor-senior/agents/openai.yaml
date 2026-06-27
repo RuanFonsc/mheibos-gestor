@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mheibos Gestor Senior"
+  short_description: "Economia de tokens e decisões melhores"
+  default_prompt: "Use $mheibos-gestor-senior para trabalhar no Mheibos Gestor com economia de contexto e julgamento técnico."

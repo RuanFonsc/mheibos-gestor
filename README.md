@@ -22,3 +22,8 @@ cd C:\Users\ruan_\Documents\GESTOR\mheibos-gestor
 ```
 
 Antes de aplicar `migrate`, ajuste as credenciais em `.env` com base em `.env.example`.
+
+## Codex
+
+Este projeto guarda uma copia da skill de trabalho em `.codex/skills/mheibos-gestor-senior`.
+Ao abrir o projeto em outro computador, instale ou copie essa skill para `C:\Users\ruan_\.codex\skills` antes de pedir analises amplas ou alteracoes importantes.
