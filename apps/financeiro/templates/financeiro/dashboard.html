@@ -1,24 +1,39 @@
 ﻿{% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
+{% block head %}
+<style>
+  .dashboard-chart-grid { align-items: stretch; }
+  .dashboard-chart-card { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
+  .chart-frame { position: relative; width: 100%; height: clamp(210px, 28vh, 320px); min-height: 0; overflow: hidden; }
+  .chart-frame.compact { height: clamp(180px, 23vh, 260px); }
+  .chart-frame.wide { height: clamp(220px, 28vh, 310px); }
+  .chart-frame canvas { display: block; width: 100% !important; height: 100% !important; }
+  .chart-list { max-height: clamp(96px, 15vh, 150px); overflow: auto; padding-right: 4px; }
+</style>
+{% endblock %}
 {% block top_tabs %}
   <a href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}&escopo={{ escopo }}" class="top-tab {% if aba == 'dashboard' %}active{% endif %}"><i data-lucide="layout-dashboard" class="h-5 w-5"></i> Dashboard</a>
+  <a href="{% url 'dashboard' %}?aba=relatorios&ano={{ ano }}&escopo={{ escopo }}" class="top-tab {% if aba == 'relatorios' %}active{% endif %}"><i data-lucide="file-bar-chart" class="h-5 w-5"></i> Relatorios</a>
   <a href="{% url 'dashboard' %}?aba=crm&ano={{ ano }}&escopo={{ escopo }}" class="top-tab {% if aba == 'crm' %}active{% endif %}"><i data-lucide="table" class="h-5 w-5"></i> CRM</a>
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
-  <div class="flex flex-wrap items-center justify-between gap-3">
+  <div class="page-heading">
     <div>
-      <h2 class="section-title">{% if aba == 'crm' %}CRM Financeiro{% else %}Dashboard{% endif %}</h2>
+      <span class="kicker"><i data-lucide="line-chart" class="h-4 w-4"></i> Financeiro</span>
+      <h2 class="section-title">{% if aba == 'crm' %}CRM Financeiro{% elif aba == 'relatorios' %}Relatorios de vendas{% else %}Dashboard{% endif %}</h2>
       <p class="text-sm text-[var(--text-secondary)]">
         {% if aba == 'crm' %}
           Receitas, despesas e fluxo de caixa no modelo da planilha Sólides — integrado aos pedidos do gestor.
+        {% elif aba == 'relatorios' %}
+          PDFs e consulta paginada de vendas por periodo.
         {% else %}
           Visão geral de pedidos, receitas e margem do negócio.
         {% endif %}
       </p>
     </div>
-    <form method="get" class="flex items-center gap-2">
+    <form method="get" class="page-actions items-center">
       <input type="hidden" name="aba" value="{{ aba }}">
       <input type="hidden" name="escopo" value="{{ escopo }}">
       <label class="field-label mb-0">Ano</label>
@@ -57,6 +72,26 @@
         {% endif %}
       </div>
     </div>
+    {% if escopo != 'geral' %}
+      <div class="mt-5">
+        <div class="rounded-lg bg-[#171a29] p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase text-[#8892b0]">Meta mensal</p>
+              <strong class="mt-1 block text-2xl text-[#00e5ff]">R$ {{ meta_usuario.valor|floatformat:2 }}</strong>
+            </div>
+            <div class="text-right">
+              <p class="text-xs uppercase text-[#8892b0]">Realizado</p>
+              <strong class="mt-1 block text-2xl text-[#00c896]">R$ {{ vendas_mes_total|floatformat:2 }}</strong>
+            </div>
+          </div>
+          <div class="mt-3 h-3 overflow-hidden rounded-full bg-[#10131f]">
+            <div class="h-full rounded-full bg-[#00e5ff]" style="width: {% if progresso_meta > 100 %}100{% else %}{{ progresso_meta|floatformat:0 }}{% endif %}%"></div>
+          </div>
+          <p class="mt-2 text-xs text-[#8892b0]">{{ progresso_meta|floatformat:1 }}% da meta · faltam R$ {{ falta_meta|floatformat:2 }}</p>
+        </div>
+      </div>
+    {% endif %}
     <div class="mt-5 grid gap-3 md:grid-cols-3">
       <div class="rounded-lg bg-[#171a29] p-4"><p class="text-xs uppercase text-[#8892b0]">Vendas hoje</p><strong class="mt-2 block text-xl text-[#00c896]">R$ {{ vendas_dia_total|floatformat:2 }}</strong><span class="text-xs text-[#8892b0]">{{ vendas_dia_count }} pedido(s)</span></div>
       <div class="rounded-lg bg-[#171a29] p-4"><p class="text-xs uppercase text-[#8892b0]">Vendas no mês</p><strong class="mt-2 block text-xl text-[#00c896]">R$ {{ vendas_mes_total|floatformat:2 }}</strong><span class="text-xs text-[#8892b0]">{{ vendas_mes_count }} pedido(s)</span></div>
@@ -64,24 +99,117 @@
     </div>
   </section>
 
+  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div class="card metric-card">
+      <p>Receita total</p>
+      <strong>R$ {{ receita_total|floatformat:2 }}</strong>
+    </div>
+    <div class="card metric-card">
+      <p>Pedidos</p>
+      <strong>{{ total_pedidos }}</strong>
+      <span class="text-[#ffb347]">{{ em_producao }} em produção</span>
+    </div>
+    <div class="card metric-card">
+      <p>Ticket médio</p>
+      <strong>R$ {{ ticket_medio|floatformat:2 }}</strong>
+    </div>
+    <div class="card metric-card">
+      <p>Margem real</p>
+      <strong>{{ margem|floatformat:1 }}%</strong>
+      <span>Custo R$ {{ custo_producao|floatformat:2 }}</span>
+    </div>
+  </section>
+
+  {% if escopo == 'geral' %}
+    <section class="dashboard-chart-grid grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
+      <div class="dashboard-chart-card card p-5">
+        <h2 class="mb-4 font-semibold">Ranking de vendedores</h2>
+        <div class="chart-frame"><canvas id="sellerChart"></canvas></div>
+      </div>
+      <div class="dashboard-chart-card card p-5">
+        <h2 class="mb-4 font-semibold">Vendas de hoje</h2>
+        <div class="chart-frame"><canvas id="todaySalesChart"></canvas></div>
+      </div>
+    </section>
+  {% else %}
+    <section class="dashboard-chart-grid grid gap-6 xl:grid-cols-3">
+      <div class="dashboard-chart-card card p-5">
+        <h2 class="mb-4 font-semibold">Crescimento individual</h2>
+        <div class="chart-frame compact"><canvas id="personalGrowthChart"></canvas></div>
+      </div>
+      <div class="dashboard-chart-card card p-5">
+        <h2 class="mb-4 font-semibold">Vendas de hoje</h2>
+        <div class="chart-frame compact"><canvas id="todaySalesChart"></canvas></div>
+      </div>
+      <div class="dashboard-chart-card card p-5">
+        <h2 class="mb-3 font-semibold">Balanço do mês</h2>
+        <div class="grid gap-3">
+          <div class="rounded-lg bg-[#171a29] p-4"><p class="text-xs uppercase text-[#8892b0]">Mês anterior</p><strong class="mt-1 block text-xl">R$ {{ vendas_mes_anterior_total|floatformat:2 }}</strong></div>
+          <div class="rounded-lg bg-[#171a29] p-4"><p class="text-xs uppercase text-[#8892b0]">Crescimento</p><strong class="mt-1 block text-xl {% if crescimento_mes >= 0 %}text-[#00c896]{% else %}text-[#ff4b4b]{% endif %}">{{ crescimento_mes|floatformat:1 }}%</strong></div>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
+  <section class="dashboard-chart-grid grid gap-6 xl:grid-cols-[1.35fr_.95fr]">
+    <div class="dashboard-chart-card card p-5">
+      <h2 class="mb-4 font-semibold">Fluxo de caixa mensal ({{ ano }})</h2>
+      <div class="chart-frame compact"><canvas id="cashflowChart"></canvas></div>
+    </div>
+    <div class="dashboard-chart-card card p-5">
+      <h2 class="mb-4 font-semibold">Categorias mais vendidas</h2>
+      <div class="chart-frame compact"><canvas id="categoriesChart"></canvas></div>
+      <div class="chart-list mt-4 space-y-2">
+        {% for row in top_categorias_ranking %}
+          <div class="flex items-center justify-between rounded-lg bg-[#171a29] px-3 py-2 text-sm">
+            <span>{{ row.categoria_servico__nome|default:"Sem categoria" }}</span>
+            <strong>R$ {{ row.faturamento|floatformat:2 }}</strong>
+          </div>
+        {% empty %}
+          <p class="text-sm text-[var(--text-secondary)]">Sem categorias para exibir.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="dashboard-chart-grid grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
+    <div class="dashboard-chart-card card p-5">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="font-semibold">Vendas por mês</h2>
+        <a href="{% url 'pedido_list' %}" class="text-sm text-[#00e5ff]">Ver pedidos</a>
+      </div>
+      <div class="chart-frame compact"><canvas id="salesChart"></canvas></div>
+    </div>
+    <div class="dashboard-chart-card card p-5">
+      <h2 class="mb-4 font-semibold">Produtos em destaque</h2>
+      <div class="chart-frame wide"><canvas id="productsChart"></canvas></div>
+    </div>
+  </section>
+  {% elif aba == 'relatorios' %}
   <section class="card p-5">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 class="font-semibold">Relatorios de vendas</h2>
-        <p class="text-sm text-[#8892b0]">Use os atalhos ou escolha um periodo especifico.</p>
+        <p class="text-sm text-[#8892b0]">A lista mostra no maximo 20 vendas por pagina.</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <a class="btn-secondary" href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}&escopo={{ escopo }}&inicio={% now 'Y-m-d' %}&fim={% now 'Y-m-d' %}">Hoje</a>
-        <a class="btn-secondary" href="{% url 'dashboard' %}?aba=dashboard&ano={{ ano }}&escopo={{ escopo }}">Mes atual</a>
+        <a class="btn-secondary" href="{% url 'dashboard' %}?aba=relatorios&ano={{ ano }}&escopo={{ escopo }}&inicio={% now 'Y-m-d' %}&fim={% now 'Y-m-d' %}">Hoje</a>
+        <a class="btn-secondary" href="{% url 'dashboard' %}?aba=relatorios&ano={{ ano }}&escopo={{ escopo }}">Mes atual</a>
       </div>
     </div>
-    <form method="get" class="mb-4 grid gap-3 md:grid-cols-[180px_180px_auto_1fr]">
-      <input type="hidden" name="aba" value="dashboard">
+    <form method="get" action="{% url 'dashboard' %}" class="mb-4 grid gap-3 md:grid-cols-[180px_180px_auto_auto_auto_1fr]">
+      <input type="hidden" name="aba" value="relatorios">
       <input type="hidden" name="ano" value="{{ ano }}">
       <input type="hidden" name="escopo" value="{{ escopo }}">
       <input type="date" name="inicio" value="{{ periodo_inicio|date:'Y-m-d' }}">
       <input type="date" name="fim" value="{{ periodo_fim|date:'Y-m-d' }}">
-      <button class="btn-primary" type="submit">Gerar relatorio</button>
+      {% if escopo != 'geral' %}
+        <button class="btn-secondary" type="submit" name="relatorio" value="dia"><i data-lucide="file-down" class="h-4 w-4"></i> PDF do dia</button>
+        <button class="btn-primary" type="submit" name="relatorio" value="mes"><i data-lucide="bar-chart-3" class="h-4 w-4"></i> PDF do mes</button>
+      {% endif %}
+      {% if escopo == 'geral' and pode_relatorio_geral %}
+        <button class="btn-primary" type="submit" name="relatorio" value="crm_geral"><i data-lucide="building-2" class="h-4 w-4"></i> PDF geral CRM</button>
+      {% endif %}
       <div class="flex items-center justify-end text-sm text-[#8892b0]">Total do periodo: <strong class="ml-2 text-[#00c896]">R$ {{ vendas_periodo_total|floatformat:2 }}</strong></div>
     </form>
     <div class="overflow-auto">
@@ -96,71 +224,19 @@
         </tbody>
       </table>
     </div>
-  </section>
-
-  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-    <div class="card p-5">
-      <p class="text-sm text-[var(--text-secondary)]">Receita total</p>
-      <strong class="mt-4 block text-3xl">R$ {{ receita_total|floatformat:2 }}</strong>
-    </div>
-    <div class="card p-5">
-      <p class="text-sm text-[var(--text-secondary)]">Pedidos</p>
-      <strong class="mt-4 block text-3xl">{{ total_pedidos }}</strong>
-      <span class="mt-2 inline-block text-xs text-[#ffb347]">{{ em_producao }} em produção</span>
-    </div>
-    <div class="card p-5">
-      <p class="text-sm text-[var(--text-secondary)]">Ticket médio</p>
-      <strong class="mt-4 block text-3xl">R$ {{ ticket_medio|floatformat:2 }}</strong>
-    </div>
-    <div class="card p-5">
-      <p class="text-sm text-[var(--text-secondary)]">Margem real</p>
-      <strong class="mt-4 block text-3xl">{{ margem|floatformat:1 }}%</strong>
-      <span class="mt-2 inline-block text-xs text-[var(--text-secondary)]">Custo R$ {{ custo_producao|floatformat:2 }}</span>
-    </div>
-  </section>
-
-  <section class="grid gap-6 xl:grid-cols-[1.35fr_.95fr]">
-    <div class="card p-5">
-      <h2 class="mb-4 font-semibold">Fluxo de caixa mensal ({{ ano }})</h2>
-      <canvas id="cashflowChart" height="118"></canvas>
-    </div>
-    <div class="card p-5">
-      <h2 class="mb-4 font-semibold">Status dos pedidos</h2>
-      <canvas id="statusChart" height="150"></canvas>
-      <div class="mt-4 space-y-2">
-        {% for row in status_rows %}
-          <div class="flex items-center justify-between rounded-lg bg-[#171a29] px-3 py-2 text-sm">
-            <span>{{ row.status }}</span>
-            <strong>{{ row.total }}</strong>
-          </div>
-        {% empty %}
-          <p class="text-sm text-[var(--text-secondary)]">Sem pedidos importados ainda.</p>
-        {% endfor %}
+    {% if vendas_periodo.paginator.num_pages > 1 %}
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#8892b0]">
+        <span>Pagina {{ vendas_periodo.number }} de {{ vendas_periodo.paginator.num_pages }}</span>
+        <div class="flex gap-2">
+          {% if vendas_periodo.has_previous %}
+            <a class="btn-secondary min-h-[36px]" href="?aba=relatorios&ano={{ ano }}&escopo={{ escopo }}&inicio={{ periodo_inicio|date:'Y-m-d' }}&fim={{ periodo_fim|date:'Y-m-d' }}&pagina={{ vendas_periodo.previous_page_number }}">Anterior</a>
+          {% endif %}
+          {% if vendas_periodo.has_next %}
+            <a class="btn-primary min-h-[36px]" href="?aba=relatorios&ano={{ ano }}&escopo={{ escopo }}&inicio={{ periodo_inicio|date:'Y-m-d' }}&fim={{ periodo_fim|date:'Y-m-d' }}&pagina={{ vendas_periodo.next_page_number }}">Proxima</a>
+          {% endif %}
+        </div>
       </div>
-    </div>
-  </section>
-
-  <section class="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
-    <div class="card p-5">
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="font-semibold">Vendas por mês</h2>
-        <a href="{% url 'pedido_list' %}" class="text-sm text-[#00e5ff]">Ver pedidos</a>
-      </div>
-      <canvas id="salesChart" height="130"></canvas>
-    </div>
-    <div class="card p-5">
-      <h2 class="mb-4 font-semibold">Produtos em destaque</h2>
-      <div class="divide-y divide-[#2d3154]">
-        {% for produto in top_produtos %}
-          <div class="flex items-center justify-between py-3 text-sm">
-            <span>{{ produto.nome }}</span>
-            <span class="text-[#00c896]">{{ produto.quantidade }}x</span>
-          </div>
-        {% empty %}
-          <p class="text-sm text-[var(--text-secondary)]">Sem produtos para exibir.</p>
-        {% endfor %}
-      </div>
-    </div>
+    {% endif %}
   </section>
   {% else %}
   <section class="grid gap-5 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
@@ -354,10 +430,28 @@
 {{ meses|json_script:"months-data" }}
 {{ receita_mensal|json_script:"revenue-data" }}
 {{ despesa_mensal|json_script:"expense-data" }}
+{{ vendedores_labels|json_script:"sellers-labels-data" }}
+{{ vendedores_valores|json_script:"sellers-values-data" }}
+{{ vendedores_fotos|json_script:"sellers-photos-data" }}
+{{ produtos_labels|json_script:"products-labels-data" }}
+{{ produtos_valores|json_script:"products-values-data" }}
+{{ categorias_labels|json_script:"categories-labels-data" }}
+{{ categorias_valores|json_script:"categories-values-data" }}
+{{ vendas_hoje_labels|json_script:"today-labels-data" }}
+{{ vendas_hoje_valores|json_script:"today-values-data" }}
 <script>
   const months = JSON.parse(document.getElementById("months-data").textContent);
   const revenue = JSON.parse(document.getElementById("revenue-data").textContent);
   const expense = JSON.parse(document.getElementById("expense-data").textContent);
+  const sellerLabels = JSON.parse(document.getElementById("sellers-labels-data").textContent);
+  const sellerValues = JSON.parse(document.getElementById("sellers-values-data").textContent);
+  const sellerPhotos = JSON.parse(document.getElementById("sellers-photos-data").textContent);
+  const productLabels = JSON.parse(document.getElementById("products-labels-data").textContent);
+  const productValues = JSON.parse(document.getElementById("products-values-data").textContent);
+  const categoryLabels = JSON.parse(document.getElementById("categories-labels-data").textContent);
+  const categoryValues = JSON.parse(document.getElementById("categories-values-data").textContent);
+  const todayLabels = JSON.parse(document.getElementById("today-labels-data").textContent);
+  const todayValues = JSON.parse(document.getElementById("today-values-data").textContent);
   const grid = { color: "rgba(136,146,176,.18)" };
   const ticks = { color: "#8892b0" };
 
@@ -370,23 +464,97 @@
         { label: "Despesas", data: expense, borderColor: "#ffb347", backgroundColor: "rgba(255,179,71,.1)", tension: .42, fill: true }
       ]
     },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid, ticks }, y: { grid, ticks } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid, ticks }, y: { grid, ticks } } }
   });
 
   new Chart(document.getElementById("salesChart"), {
     type: "bar",
     data: { labels: months, datasets: [{ data: revenue, backgroundColor: "#0d5da8", borderRadius: 8, maxBarThickness: 26 }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks }, y: { grid, ticks } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks }, y: { grid, ticks } } }
   });
 
-  new Chart(document.getElementById("statusChart"), {
-    type: "doughnut",
-    data: {
-      labels: [{% for row in status_rows %}"{{ row.status }}",{% endfor %}],
-      datasets: [{ data: [{% for row in status_rows %}{{ row.total }},{% endfor %}], backgroundColor: ["#4b66ff", "#00e5ff", "#00c896", "#ffb347", "#ff4b4b"], borderWidth: 0 }]
-    },
-    options: { cutout: "68%", plugins: { legend: { display: false } } }
-  });
+  const categoryCanvas = document.getElementById("categoriesChart");
+  if (categoryCanvas) {
+    new Chart(categoryCanvas, {
+      type: "bar",
+      data: { labels: categoryLabels, datasets: [{ data: categoryValues, backgroundColor: ["#00e5ff", "#4b66ff", "#00c896", "#ffb347", "#6fe7ff", "#7085ff"], borderRadius: 8, maxBarThickness: 28 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks }, y: { grid, ticks } } }
+    });
+  }
+
+  const sellerCanvas = document.getElementById("sellerChart");
+  if (sellerCanvas) {
+    const sellerImages = sellerPhotos.map((src) => {
+      if (!src) return null;
+      const img = new Image();
+      img.src = src;
+      return img;
+    });
+    const sellerPhotoPlugin = {
+      id: "sellerPhotoPlugin",
+      afterDatasetsDraw(chart) {
+        const meta = chart.getDatasetMeta(0);
+        const { ctx } = chart;
+        meta.data.forEach((bar, index) => {
+          const img = sellerImages[index];
+          const x = bar.x;
+          const y = bar.y - 18;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, 14, 0, Math.PI * 2);
+          ctx.fillStyle = "#171a29";
+          ctx.fill();
+          ctx.clip();
+          if (img?.complete && img.naturalWidth) ctx.drawImage(img, x - 14, y - 14, 28, 28);
+          else {
+            ctx.fillStyle = "#00e5ff";
+            ctx.fillRect(x - 14, y - 14, 28, 28);
+          }
+          ctx.restore();
+        });
+      }
+    };
+    const sellerChart = new Chart(sellerCanvas, {
+      type: "bar",
+      data: {
+        labels: sellerLabels,
+        datasets: [{ data: sellerValues, backgroundColor: "#00e5ff", borderRadius: 8, maxBarThickness: 34 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 28 } }, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks }, y: { grid, ticks } } },
+      plugins: [sellerPhotoPlugin]
+    });
+    sellerImages.forEach((img) => { if (img) img.onload = () => sellerChart.draw(); });
+  }
+
+  const productsCanvas = document.getElementById("productsChart");
+  if (productsCanvas) {
+    new Chart(productsCanvas, {
+      type: "bar",
+      data: { labels: productLabels, datasets: [{ data: productValues, backgroundColor: "rgb(0, 229, 255)", borderRadius: 10, maxBarThickness: 24 }] },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { grid, ticks }, y: { grid: { display: false }, ticks } } }
+    });
+  }
+
+  const todayCanvas = document.getElementById("todaySalesChart");
+  if (todayCanvas) {
+    new Chart(todayCanvas, {
+      type: "line",
+      data: { labels: todayLabels, datasets: [{ data: todayValues, borderColor: "#00c896", backgroundColor: "rgba(0,200,150,.14)", tension: .42, fill: true, pointBackgroundColor: "#00e5ff" }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks }, y: { grid, ticks } } }
+    });
+  }
+
+  const personalCanvas = document.getElementById("personalGrowthChart");
+  if (personalCanvas) {
+    new Chart(personalCanvas, {
+      type: "line",
+      data: {
+        labels: months,
+        datasets: [{ label: "Vendas", data: revenue, borderColor: "#00c896", backgroundColor: "rgba(0,200,150,.12)", tension: .42, fill: true }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid, ticks }, y: { grid, ticks } } }
+    });
+  }
 </script>
 {% else %}
 <script>

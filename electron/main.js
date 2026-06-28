@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require("electron");
-const { spawn } = require("child_process");
+const { execFileSync, spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
@@ -214,6 +214,41 @@ function abrirCaminhoLocal(url) {
   }
 }
 
+function normalizarCaminhoServidor(filePath) {
+  const original = String(filePath || "").trim();
+  if (!original) return { path: "", isNetwork: false, message: "" };
+  const normalized = original.replaceAll("/", "\\");
+  if (normalized.startsWith("\\\\")) {
+    return { path: normalized, isNetwork: true, message: "" };
+  }
+  const driveMatch = normalized.match(/^([A-Za-z]):\\/);
+  if (driveMatch && process.platform === "win32") {
+    try {
+      const drive = `${driveMatch[1].toUpperCase()}:`;
+      const output = execFileSync("net", ["use", drive], { encoding: "utf8", windowsHide: true });
+      const remoteLine = output
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.includes("\\\\"));
+      const remote = remoteLine?.match(/(\\\\.+)$/)?.[1]?.trim();
+      if (remote) {
+        return {
+          path: `${remote}${normalized.slice(2)}`,
+          isNetwork: true,
+          message: "Unidade mapeada convertida para caminho do servidor.",
+        };
+      }
+    } catch {
+      // Sem mapeamento de rede para esta unidade.
+    }
+  }
+  return {
+    path: normalized,
+    isNetwork: false,
+    message: "Selecione um arquivo em uma pasta compartilhada do servidor, nao em uma pasta local deste computador.",
+  };
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: modoAtual() === "producao" ? 1360 : 1440,
@@ -254,6 +289,25 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
+  ipcMain.handle("corel:select-file", async () => {
+    const result = await dialog.showOpenDialog({
+      title: "Selecionar arquivo Corel no servidor",
+      properties: ["openFile"],
+      filters: [
+        { name: "Arquivos Corel", extensions: ["cdr", "cdt", "cmx"] },
+        { name: "Todos os arquivos", extensions: ["*"] },
+      ],
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    return normalizarCaminhoServidor(result.filePaths[0]);
+  });
+  ipcMain.handle("corel:normalize-path", (_event, filePath) => normalizarCaminhoServidor(filePath));
+  ipcMain.handle("corel:open-path", (_event, filePath) => {
+    const normalized = normalizarCaminhoServidor(filePath);
+    if (!normalized.path || !normalized.isNetwork) return normalized;
+    shell.openPath(normalized.path);
+    return normalized;
+  });
   const config = await ensureConfig();
   if (!config) {
     app.quit();

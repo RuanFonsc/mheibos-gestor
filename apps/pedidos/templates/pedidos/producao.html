@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Producao{% endblock %}
 {% block page_title %}Producao{% endblock %}
 {% block top_tabs %}
@@ -8,10 +9,20 @@
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
+  <div class="page-heading">
+    <div>
+      <span class="kicker"><i data-lucide="factory" class="h-4 w-4"></i> Producao</span>
+      <h2 class="section-title">Fila da producao</h2>
+      <p>Pedidos agrupados por categoria, com prazo, prioridade e arte visiveis para execucao.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'pedido_list' %}?status=PRONTO" class="btn-secondary"><i data-lucide="package-check" class="h-4 w-4"></i> Ver prontos</a>
+    </div>
+  </div>
   <section class="grid gap-3 md:grid-cols-3">
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Enviados</p><strong class="mt-2 block text-2xl text-[#00e5ff]">{{ liberados }}</strong></div>
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Em producao</p><strong class="mt-2 block text-2xl text-[#ffb347]">{{ produzindo }}</strong></div>
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Urgentes</p><strong class="mt-2 block text-2xl text-[#ff4b4b]">{{ urgentes }}</strong></div>
+    <div class="card metric-card"><p>Enviados</p><strong class="text-[#00e5ff]">{{ liberados }}</strong><span>na fila atual</span></div>
+    <div class="card metric-card"><p>Em producao</p><strong class="text-[#ffb347]">{{ produzindo }}</strong><span>em andamento</span></div>
+    <div class="card metric-card"><p>Urgentes</p><strong class="text-[#ff4b4b]">{{ urgentes }}</strong><span>exigem atencao</span></div>
   </section>
 
   <form class="card grid gap-3 p-4 md:grid-cols-[220px_220px_1fr_auto_auto]" method="get">
@@ -66,8 +77,8 @@
                   <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2">
                     <span class="rounded-md bg-[#10131f] px-2 py-1 text-xs text-[#8892b0]">#{{ pedido.legado_id|default:pedido.pk }}</span>
-                    <span class="rounded-md bg-[#00e5ff]/15 px-2 py-1 text-xs text-[#00e5ff]">{{ pedido.get_status_display }}</span>
-                    <span class="rounded-md px-2 py-1 text-xs {% if pedido.prioridade == 'URGENTE' or pedido.alerta_prazo %}bg-[#ff4b4b]/20 text-[#ffd1d1]{% elif pedido.prioridade == 'ALTA' %}bg-[#ffb347]/15 text-[#ffb347]{% else %}bg-[#2d3154] text-[#8892b0]{% endif %}">{{ pedido.get_prioridade_display }}</span>
+                    <span class="status-pill is-info">{{ pedido.get_status_display }}</span>
+                    <span class="status-pill {% if pedido.prioridade == 'URGENTE' or pedido.alerta_prazo %}is-danger{% elif pedido.prioridade == 'ALTA' %}is-work{% else %}is-info{% endif %}">{{ pedido.get_prioridade_display }}</span>
                   </div>
                   <h2 class="mt-3 truncate text-lg font-semibold">{{ pedido.cliente.nome }}</h2>
                   <p class="mt-1 truncate text-sm text-[#8892b0]">{{ pedido.tema|default:"Sem tema" }}</p>
@@ -121,7 +132,12 @@
         </div>
       </div>
     {% empty %}
-      <div class="card p-8 text-center text-[#8892b0] xl:col-span-3">Nenhum pedido enviado para producao.</div>
+      <div class="empty-state xl:col-span-3">
+        <div>
+          <strong>Nenhum pedido enviado para producao</strong>
+          <span>Quando um pedido entrar na fila, ele aparecera agrupado por categoria.</span>
+        </div>
+      </div>
     {% endfor %}
   </section>
 </div>
@@ -142,16 +158,8 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="{% static 'js/corel_path.js' %}"></script>
 <script>
-  document.querySelectorAll("[data-corel-path]").forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      const caminho = link.dataset.corelPath || "";
-      if (!caminho) return;
-      window.open(`file:///${caminho.replaceAll("\\", "/")}`);
-    });
-  });
-
   const modal = document.getElementById("modalRejeitar");
   const form = document.getElementById("formRejeitar");
   const label = document.getElementById("modalRejeitarPedido");

@@ -1,6 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Configuracoes de Notificacoes e Alertas{% endblock %}
-{% block page_title %}Configuracoes de Notificacoes e Alertas{% endblock %}
+{% load l10n %}
+{% block title %}Configuracoes{% endblock %}
+{% block page_title %}Configuracoes{% endblock %}
+{% block page_icon %}settings{% endblock %}
 {% block head %}
 <style>
   .config-tabs { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -24,10 +26,12 @@
   .profile-fields { display: grid; gap: 18px 28px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .profile-field label { margin-bottom: 8px; }
   .profile-field .readonly { display: flex; align-items: center; min-height: 52px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 0 16px; color: var(--text-primary); font-weight: 750; }
-  .user-admin-layout { display: grid; gap: 20px; grid-template-columns: minmax(280px, 420px) minmax(0, 1fr); margin-top: 20px; }
+  .user-admin-layout { display: grid; gap: 20px; grid-template-columns: minmax(320px, 520px) minmax(0, 1fr); margin-top: 20px; }
   .soft-panel { border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); padding: 22px; }
-  .user-list { display: grid; gap: 10px; }
-  .user-row { display: grid; grid-template-columns: minmax(0, 1fr) 170px 90px auto; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
+  .user-admin-actions { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
+  .user-list { display: grid; gap: 10px; max-height: min(56vh, 620px); overflow-y: auto; padding-right: 6px; scrollbar-gutter: stable; }
+  .user-list-panel { max-width: 520px; }
+  .user-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 78px auto; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
   .user-row.is-editing { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
   .user-mini { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .user-mini-avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--bg-card); color: var(--accent-2); overflow: hidden; }
@@ -38,10 +42,17 @@
   .os-field-row { display: grid; grid-template-columns: minmax(180px, 1fr) 150px; align-items: end; gap: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 12px; }
   .header-line-preview { height: 10px; border-radius: 999px; margin-top: 8px; }
   .password-panel { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.68); padding: 20px; }
+  .modal-backdrop.is-open { display: flex; }
+  .modal-card { width: min(520px, 100%); border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); box-shadow: 0 24px 80px rgba(0,0,0,.38); padding: 22px; }
+  .modal-card.wide { width: min(760px, 100%); }
+  .meta-users { display: grid; gap: 10px; }
+  .meta-user-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) 190px; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
+  .meta-user-row input[type="number"] { min-height: 44px; }
   @media (max-width: 1100px) {
     .profile-main { padding: 22px 18px; }
     .profile-top, .profile-identity { align-items: stretch; flex-direction: column; }
-    .profile-fields, .user-admin-layout, .os-field-row { grid-template-columns: 1fr; }
+    .profile-fields, .user-admin-layout, .os-field-row, .meta-user-row { grid-template-columns: 1fr; }
     .user-row { grid-template-columns: 1fr; }
   }
 </style>
@@ -74,8 +85,10 @@
           {% endif %}
         </div>
 
-        <form method="post" enctype="multipart/form-data" class="profile-card">
+        <form method="post" enctype="multipart/form-data" class="profile-card" id="perfilForm">
           {% csrf_token %}
+          <input type="hidden" name="acao" id="perfilAcaoInput" value="">
+          <input type="hidden" name="senha_atual" id="perfilSenhaAtualInput" value="">
           <div class="profile-cover"></div>
           <div class="profile-body">
             <div class="profile-identity">
@@ -98,49 +111,62 @@
                   <p>{{ operador_atual.get_papel_display }}</p>
                 </div>
               </div>
-              {% if pode_gerenciar_usuarios_geral %}
-                <div class="flex min-w-[260px] gap-2">
-                  <select id="configUsuarioSelect" name="usuario_ativo">
-                    {% for operador in operadores %}
-                      <option value="{{ operador.nome }}">{{ operador.nome }}</option>
-                    {% endfor %}
-                  </select>
-                  <button id="btnTrocarUsuario" class="btn-primary" type="button">Usar</button>
-                </div>
-              {% endif %}
             </div>
 
             <div class="profile-fields">
               <div class="profile-field"><label>Nome completo</label>{{ perfil_form.nome }}{% if perfil_form.nome.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ perfil_form.nome.errors|join:", " }}</p>{% endif %}</div>
-              <div class="profile-field"><label>Confirme sua senha para salvar</label><input type="password" name="senha_atual" autocomplete="current-password" placeholder="Digite sua senha atual"></div>
-              <div class="profile-field md:col-span-2"><label>Permissao</label><div class="readonly">{{ operador_atual.get_papel_display }}</div>{% if perfil_form.foto.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ perfil_form.foto.errors|join:", " }}</p>{% endif %}</div>
-            </div>
-
-            <div class="password-panel">
-              <h4 class="mb-3 text-sm font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Alterar senha</h4>
-              <div class="profile-fields">
-                <div class="profile-field"><label>{{ senha_form.senha_atual.label }}</label>{{ senha_form.senha_atual }}{% if senha_form.senha_atual.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_atual.errors|join:", " }}</p>{% endif %}</div>
-                <div class="profile-field"><label>{{ senha_form.senha_nova.label }}</label>{{ senha_form.senha_nova }}{% if senha_form.senha_nova.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_nova.errors|join:", " }}</p>{% endif %}</div>
-                <div class="profile-field md:col-span-2"><label>{{ senha_form.senha_confirmacao.label }}</label>{{ senha_form.senha_confirmacao }}{% if senha_form.senha_confirmacao.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_confirmacao.errors|join:", " }}</p>{% endif %}</div>
-              </div>
+              <div class="profile-field"><label>Permissao</label><div class="readonly">{{ operador_atual.get_papel_display }}</div>{% if perfil_form.foto.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ perfil_form.foto.errors|join:", " }}</p>{% endif %}</div>
             </div>
 
             <div class="mt-5 flex flex-wrap justify-end gap-3">
-              <button class="btn-secondary" type="submit" name="acao" value="trocar_senha"><i data-lucide="key-round" class="h-4 w-4"></i> Trocar a senha</button>
-              <button class="btn-primary" type="submit" name="acao" value="salvar_perfil"><i data-lucide="save" class="h-4 w-4"></i> Salvar perfil</button>
+              <button class="btn-secondary" type="button" data-open-modal="modalTrocarSenha"><i data-lucide="key-round" class="h-4 w-4"></i> Trocar a senha</button>
+              <button class="btn-primary" type="button" data-open-modal="modalSalvarPerfil"><i data-lucide="save" class="h-4 w-4"></i> Salvar perfil</button>
             </div>
           </div>
         </form>
 
+        <div class="modal-backdrop" id="modalSalvarPerfil">
+          <div class="modal-card">
+            <h3 class="text-lg font-semibold">Confirmar alteracoes do perfil</h3>
+            <p class="mt-1 text-sm text-[#8892b0]">Informe sua senha atual para salvar nome e foto.</p>
+            <div class="mt-4 profile-field"><label>Senha atual</label><input type="password" id="perfilSenhaModalInput" autocomplete="current-password" required></div>
+            <div class="mt-5 flex justify-end gap-2">
+              <button class="btn-secondary" type="button" data-close-modal>Cancelar</button>
+              <button class="btn-primary" type="button" id="btnConfirmarSalvarPerfil">Confirmar e salvar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-backdrop" id="modalTrocarSenha">
+          <form method="post" class="modal-card">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="trocar_senha">
+            <h3 class="text-lg font-semibold">Trocar senha</h3>
+            <p class="mt-1 text-sm text-[#8892b0]">Defina uma nova senha para seu usuario.</p>
+            <div class="mt-4 grid gap-3">
+              <div class="profile-field"><label>{{ senha_form.senha_atual.label }}</label>{{ senha_form.senha_atual }}{% if senha_form.senha_atual.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_atual.errors|join:", " }}</p>{% endif %}</div>
+              <div class="profile-field"><label>{{ senha_form.senha_nova.label }}</label>{{ senha_form.senha_nova }}{% if senha_form.senha_nova.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_nova.errors|join:", " }}</p>{% endif %}</div>
+              <div class="profile-field"><label>{{ senha_form.senha_confirmacao.label }}</label>{{ senha_form.senha_confirmacao }}{% if senha_form.senha_confirmacao.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ senha_form.senha_confirmacao.errors|join:", " }}</p>{% endif %}</div>
+            </div>
+            <div class="mt-5 flex justify-end gap-2">
+              <button class="btn-secondary" type="button" data-close-modal>Cancelar</button>
+              <button class="btn-primary" type="submit">Trocar a senha</button>
+            </div>
+          </form>
+        </div>
+
         {% if pode_gerenciar_usuarios_geral %}
-          <div class="user-admin-layout">
-            <form method="post" enctype="multipart/form-data" class="soft-panel grid gap-3">
+          <div class="user-admin-actions flex justify-end">
+            <button class="btn-primary" type="button" data-open-modal="modalOperador"><i data-lucide="user-plus" class="h-4 w-4"></i> Novo usuario</button>
+          </div>
+          <div class="modal-backdrop {% if operador_editando %}is-open{% endif %}" id="modalOperador">
+            <form method="post" enctype="multipart/form-data" class="modal-card wide grid gap-3">
               {% csrf_token %}
               <input type="hidden" name="acao" value="salvar_operador">
               <input type="hidden" name="operador_id" value="{{ operador_editando.pk|default:'' }}">
               <div class="flex items-center justify-between gap-3">
                 <h3 class="text-lg font-semibold">{% if operador_editando %}Editar usuario{% else %}Novo usuario{% endif %}</h3>
-                {% if operador_editando %}<a class="btn-secondary min-h-[36px] text-xs" href="{% url 'configuracoes' %}?aba=usuarios">Novo</a>{% endif %}
+                <button class="btn-secondary min-h-[36px] text-xs" type="button" data-close-modal>Fechar</button>
               </div>
               <div><label>Nome</label>{{ operador_form.nome }}</div>
               <div><label>Senha</label>{{ operador_form.senha }}</div>
@@ -150,10 +176,12 @@
               <label class="flex items-center gap-2">{{ operador_form.ativo }} Ativo</label>
               <button class="btn-primary" type="submit">Salvar usuario</button>
             </form>
-            <div class="soft-panel">
+          </div>
+          <div class="user-admin-layout">
+            <div class="soft-panel user-list-panel">
               <div class="mb-4 flex items-center justify-between">
                 <h3 class="text-lg font-semibold">Usuarios cadastrados</h3>
-                <span class="text-sm text-[#8892b0]">{{ todos_operadores|length }}</span>
+                <span class="text-sm text-[#8892b0]">{{ todos_operadores|length }} total</span>
               </div>
               <div class="user-list" id="usuariosLista">
                 {% for usuario in todos_operadores %}
@@ -185,6 +213,44 @@
               </div>
             </div>
           </div>
+        {% endif %}
+        {% if pode_gerenciar_usuarios %}
+          <form method="post" class="soft-panel mt-5" id="metas-usuarios">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="salvar_metas_usuarios">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-semibold">Metas dos usuarios</h3>
+                <p class="mt-1 text-sm text-[#8892b0]">Defina valores diferentes para varios usuarios e salve tudo de uma vez.</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button class="btn-secondary min-h-[36px] text-xs" type="button" id="btnSelecionarMetas">Selecionar todos</button>
+                <button class="btn-primary min-h-[36px] text-xs" type="submit">Salvar metas selecionadas</button>
+              </div>
+            </div>
+            <div class="meta-users">
+              {% for item in metas_usuarios %}
+                <div class="meta-user-row">
+                  <input type="checkbox" name="meta_operador_ids" value="{{ item.operador.pk }}" data-meta-checkbox>
+                  <div class="user-mini">
+                    <span class="user-mini-avatar">
+                      {% if item.operador.foto %}<img src="{{ item.operador.foto.url }}" alt="{{ item.operador.nome }}">{% else %}<i data-lucide="circle-user-round" class="h-6 w-6"></i>{% endif %}
+                    </span>
+                    <div class="min-w-0">
+                      <strong class="block truncate">{{ item.operador.nome }}</strong>
+                      <span class="block truncate text-xs text-[#8892b0]">{{ item.operador.get_papel_display }}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label>Meta</label>
+                    <input name="meta_valor_{{ item.operador.pk }}" type="number" min="0" step="0.01" value="{% if item.meta %}{{ item.meta.valor|unlocalize }}{% else %}0.00{% endif %}">
+                  </div>
+                </div>
+              {% empty %}
+                <div class="empty-state"><strong>Nenhum usuario ativo</strong><span>Cadastre usuarios ativos para definir metas.</span></div>
+              {% endfor %}
+            </div>
+          </form>
         {% endif %}
       </div>
     </div>
@@ -417,10 +483,8 @@
   function preencherFormulario(prefs) {
     const tema = document.getElementById("configTema");
     const zoom = document.getElementById("configZoom");
-    const select = document.getElementById("configUsuarioSelect");
     if (tema) tema.value = prefs.tema;
     if (zoom) zoom.value = String(prefs.zoom);
-    if (select) select.value = prefs.usuario;
     if (!document.getElementById("widgetPrazosAtivo")) return;
     const prazos = prefs.widgets.prazos;
     document.getElementById("widgetPrazosAtivo").checked = prazos.ativo;
@@ -474,12 +538,6 @@
   preencherFormulario(GestorPrefs.load());
   document.getElementById("btnAplicarTema")?.addEventListener("click", async () => salvarComFeedback({ tema: document.getElementById("configTema").value }, "Tema aplicado."));
   document.getElementById("btnAplicarZoom")?.addEventListener("click", async () => salvarComFeedback({ zoom: Number(document.getElementById("configZoom").value) }, "Zoom aplicado."));
-  document.getElementById("btnTrocarUsuario")?.addEventListener("click", async () => {
-    const select = document.getElementById("configUsuarioSelect");
-    if (!select?.value) return;
-    await salvarComFeedback({ usuario: select.value }, `Usuario ativo: ${select.value}`);
-    window.location.reload();
-  });
   ["widgetPrazosModo", "notifAssistenciaModo"].forEach((id) => {
     document.getElementById(id)?.addEventListener("change", () => {
       if (id === "widgetPrazosModo") alternarCamposPeriodicos("widgetPrazosModo", "widgetPrazosIntervaloWrap", "widgetPrazosVisivelWrap");
@@ -491,6 +549,57 @@
     await salvarComFeedback({ widgets: coletarWidgets() }, "Verificacao iniciada.");
     window.dispatchEvent(new CustomEvent("gestor:widgets-verificar"));
   });
+
+  function abrirModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.add("is-open");
+    modal.querySelector("input:not([type=hidden]), select, textarea, button")?.focus();
+  }
+  function fecharModal(modal) {
+    modal?.classList.remove("is-open");
+  }
+  document.querySelectorAll("[data-open-modal]").forEach((botao) => {
+    botao.addEventListener("click", () => abrirModal(botao.dataset.openModal));
+  });
+  document.querySelectorAll("[data-close-modal]").forEach((botao) => {
+    botao.addEventListener("click", () => fecharModal(botao.closest(".modal-backdrop")));
+  });
+  document.querySelectorAll(".modal-backdrop").forEach((modal) => {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) fecharModal(modal);
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") document.querySelectorAll(".modal-backdrop.is-open").forEach(fecharModal);
+  });
+  document.getElementById("btnSelecionarMetas")?.addEventListener("click", () => {
+    const caixas = [...document.querySelectorAll("[data-meta-checkbox]")];
+    const selecionar = caixas.some((caixa) => !caixa.checked);
+    caixas.forEach((caixa) => { caixa.checked = selecionar; });
+  });
+
+  const perfilFormPrincipal = document.getElementById("perfilForm");
+  const perfilAcaoInput = document.getElementById("perfilAcaoInput");
+  const perfilSenhaAtualInput = document.getElementById("perfilSenhaAtualInput");
+  const perfilSenhaModalInput = document.getElementById("perfilSenhaModalInput");
+  const btnConfirmarSalvarPerfil = document.getElementById("btnConfirmarSalvarPerfil");
+  perfilFormPrincipal?.addEventListener("submit", (event) => {
+    if (perfilAcaoInput?.value === "salvar_perfil") return;
+    event.preventDefault();
+    abrirModal("modalSalvarPerfil");
+  });
+  btnConfirmarSalvarPerfil?.addEventListener("click", () => {
+    if (!perfilFormPrincipal || !perfilAcaoInput || !perfilSenhaAtualInput || !perfilSenhaModalInput) return;
+    if (!perfilSenhaModalInput.reportValidity()) return;
+    perfilAcaoInput.value = "salvar_perfil";
+    perfilSenhaAtualInput.value = perfilSenhaModalInput.value;
+    perfilFormPrincipal.requestSubmit();
+  });
+
+  {% if senha_form.errors %}
+    abrirModal("modalTrocarSenha");
+  {% endif %}
 
   const fotoPerfilInput = document.getElementById("{{ perfil_form.foto.id_for_label }}");
   const avatarPreview = document.getElementById("profileAvatarPreview");

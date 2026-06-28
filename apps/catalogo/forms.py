@@ -18,10 +18,12 @@ class ProdutoServicoForm(forms.ModelForm):
             "unidade",
             "preco_venda_padrao",
             "custo_estimado",
+            "prazo_entrega_dias_uteis",
             "ativo",
         ]
         widgets = {
             "unidade": forms.Select(choices=UnidadeMedida.choices),
+            "prazo_entrega_dias_uteis": forms.NumberInput(attrs={"min": 0}),
         }
 
 

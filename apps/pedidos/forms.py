@@ -7,6 +7,19 @@ class MultipleFileInput(forms.FileInput):
     allow_multiple_selected = True
 
 
+def caminho_corel_valido(valor):
+    valor = (valor or "").strip()
+    if not valor:
+        return valor
+    normalizado = valor.replace("/", "\\")
+    if normalizado.startswith("\\\\"):
+        return normalizado
+    raise forms.ValidationError(
+        "Use um caminho de rede do servidor, por exemplo \\\\SERVIDOR\\Artes\\arquivo.cdr. "
+        "Caminhos locais como C:\\... nao abrem nos outros computadores."
+    )
+
+
 class PedidoCreateForm(forms.Form):
     nome_cliente = forms.CharField(label="Nome do Cliente", max_length=180)
     data_pedido = forms.DateField(
@@ -23,12 +36,20 @@ class PedidoCreateForm(forms.Form):
     )
     hora_entrega = forms.TimeField(label="Hora da Entrega", required=False, widget=forms.TimeInput(attrs={"type": "time"}))
     observacoes = forms.CharField(label="Observações", required=False, widget=forms.Textarea(attrs={"rows": 3}))
-    caminho_arquivo_corel = forms.CharField(label="Caminho do arquivo Corel", max_length=500, required=False)
+    caminho_arquivo_corel = forms.CharField(
+        label="Arquivo Corel no servidor",
+        max_length=500,
+        required=False,
+        widget=forms.HiddenInput(attrs={"data-corel-input": "1"}),
+    )
     prioridade = forms.ChoiceField(label="Prioridade", choices=PrioridadePedido.choices, initial=PrioridadePedido.NORMAL)
     valor_pago = forms.DecimalField(label="Valor Pago", max_digits=12, decimal_places=2, initial=0)
     forma_pagamento = forms.ChoiceField(label="Forma de Pagamento", choices=FormaPagamento.choices)
     desconto_ajuste = forms.DecimalField(label="Desconto / Acréscimo", max_digits=12, decimal_places=2, initial=0)
     marcar_pronto = forms.BooleanField(label="Marcar como pronto imediatamente", required=False)
+
+    def clean_caminho_arquivo_corel(self):
+        return caminho_corel_valido(self.cleaned_data.get("caminho_arquivo_corel"))
 
 
 class PedidoStatusForm(forms.Form):
@@ -48,7 +69,12 @@ class PedidoEditForm(forms.Form):
     )
     hora_entrega = forms.TimeField(label="Hora da Entrega", required=False, widget=forms.TimeInput(attrs={"type": "time"}))
     observacoes = forms.CharField(label="Observações", required=False, widget=forms.Textarea(attrs={"rows": 3}))
-    caminho_arquivo_corel = forms.CharField(label="Caminho do arquivo Corel", max_length=500, required=False)
+    caminho_arquivo_corel = forms.CharField(
+        label="Arquivo Corel no servidor",
+        max_length=500,
+        required=False,
+        widget=forms.HiddenInput(attrs={"data-corel-input": "1"}),
+    )
     prioridade = forms.ChoiceField(label="Prioridade", choices=PrioridadePedido.choices)
     valor_pago = forms.DecimalField(label="Valor Pago", max_digits=12, decimal_places=2, initial=0)
     forma_pagamento = forms.ChoiceField(label="Forma de Pagamento", choices=FormaPagamento.choices)
@@ -70,6 +96,9 @@ class PedidoEditForm(forms.Form):
 
     def clean_artes(self):
         return None
+
+    def clean_caminho_arquivo_corel(self):
+        return caminho_corel_valido(self.cleaned_data.get("caminho_arquivo_corel"))
 
     def clean_hora_entrega(self):
         return self.cleaned_data.get("hora_entrega") or None

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load l10n %}
+{% load l10n static %}
 {% block title %}Novo Pedido{% endblock %}
 {% block page_title %}Gestor de Pedidos{% endblock %}
 {% block top_tabs %}
@@ -11,12 +11,21 @@
 {% block content %}
 <form method="post" enctype="multipart/form-data" class="panel page-content w-full">
   {% csrf_token %}
-  <input type="hidden" name="usuario_cadastro" id="usuarioCadastroInput" value="">
+  <input type="hidden" name="usuario_cadastro" id="usuarioCadastroInput" value="{{ operador_atual.nome }}">
   {% if form.errors %}
     <div class="mb-3 rounded-lg border border-[#ff4b4b]/40 bg-[#ff4b4b]/10 p-3 text-sm text-[#ffd1d1]">{{ form.errors }}</div>
   {% endif %}
 
-  <h2 class="section-title">Novo Pedido</h2>
+  <div class="page-heading">
+    <div>
+      <span class="kicker"><i data-lucide="clipboard-list" class="h-4 w-4"></i> Atendimento</span>
+      <h2 class="section-title">Novo pedido</h2>
+      <p>Cadastre o cliente, os itens, a arte e o pagamento em uma unica rotina.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'pedido_list' %}" class="btn-secondary"><i data-lucide="list" class="h-4 w-4"></i> Ver pedidos</a>
+    </div>
+  </div>
   <div class="section-line"></div>
 
   <div class="grid gap-3 md:grid-cols-[1fr_125px]">
@@ -39,7 +48,7 @@
   </div>
   <div class="space-y-3" id="items">
     {% for index in "12345" %}
-      <div class="{% if not forloop.first %}hidden{% endif %} item-row">
+      <div class="{% if not forloop.first %}hidden{% endif %} item-row rounded-lg border border-[var(--border)] bg-[#171a29] p-3">
         <div class="grid items-end gap-2 md:grid-cols-[118px_1fr_220px_200px_46px]">
           <div>
             <label>Quantidade</label>
@@ -62,7 +71,7 @@
               {% endfor %}
             </select>
           </div>
-          <button type="button" class="btn-primary add-inline h-[39px] min-h-0 rounded-md px-0" title="Adicionar item">+</button>
+          <button type="button" class="btn-primary add-inline h-[39px] min-h-0 rounded-md px-0" title="Adicionar item"><i data-lucide="plus" class="h-4 w-4"></i></button>
         </div>
         <div class="mt-2">
           <label>Descrição</label>
@@ -101,11 +110,7 @@
     <div><label>{{ form.prioridade.label }}</label>{{ form.prioridade }}</div>
   </div>
   <div class="mt-3"><label>{{ form.observacoes.label }}</label>{{ form.observacoes }}</div>
-  <div class="mt-3">
-    <label>{{ form.caminho_arquivo_corel.label }}</label>
-    {{ form.caminho_arquivo_corel }}
-    <p class="mt-1 text-xs text-[#8892b0]">Opcional. Informe o caminho do arquivo no servidor local, sem anexar o arquivo ao sistema.</p>
-  </div>
+  {% include "pedidos/partials/_corel_field.html" with field=form.caminho_arquivo_corel %}
 
   <div class="section-line"></div>
   <span class="field-label">Informações Financeiras</span>
@@ -123,20 +128,23 @@
 
   <label class="mt-4 flex items-center gap-3 text-sm">{{ form.marcar_pronto }} {{ form.marcar_pronto.label }}</label>
 
-  <div class="mt-5 flex gap-3">
-    <button class="btn-primary flex-1" type="submit">Gerar Pedido e Salvar</button>
+  <div class="mt-5 flex flex-wrap gap-3">
+    <button class="btn-primary flex-1" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Gerar pedido e salvar</button>
     <a href="{% url 'pedido_list' %}" class="btn-secondary">Cancelar</a>
   </div>
 </form>
 <datalist id="produtos-list">
   {% for produto in produtos %}
-    <option value="{{ produto.nome }}" data-preco="{{ produto.preco_venda_padrao|unlocalize }}" data-custo="{{ produto.custo_estimado|unlocalize }}" data-categoria-id="{{ produto.categoria_servico_id|default:'' }}" data-categoria="{{ produto.categoria_servico.nome|default:'' }}"></option>
+    <option value="{{ produto.nome }}" data-preco="{{ produto.preco_venda_padrao|unlocalize }}" data-custo="{{ produto.custo_estimado|unlocalize }}" data-prazo="{{ produto.prazo_entrega_dias_uteis }}" data-categoria-id="{{ produto.categoria_servico_id|default:'' }}" data-categoria="{{ produto.categoria_servico.nome|default:'' }}"></option>
   {% endfor %}
 </datalist>
 {% endblock %}
 {% block scripts %}
+<script src="{% static 'js/corel_path.js' %}"></script>
 <script>
   const rows = [...document.querySelectorAll(".item-row")];
+  let entregaManual = false;
+  const entregaInput = document.querySelector("[name=data_entrega]");
   function showNextItem() {
     const next = rows.find(row => row.classList.contains("hidden"));
     if (next) next.classList.remove("hidden");
@@ -156,6 +164,41 @@
     });
     const ajuste = parseFloat(document.querySelector("[name=desconto_ajuste]").value || "0");
     document.getElementById("totalPreview").textContent = money(total + ajuste);
+    atualizarEntregaAutomatica();
+  }
+  function addDiasUteis(data, dias) {
+    const resultado = new Date(data);
+    let adicionados = 0;
+    while (adicionados < dias) {
+      resultado.setDate(resultado.getDate() + 1);
+      const diaSemana = resultado.getDay();
+      if (diaSemana !== 0 && diaSemana !== 6) adicionados += 1;
+    }
+    return resultado;
+  }
+  function dataIso(data) {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+  }
+  function prazoMaximoItens() {
+    let maiorPrazo = 0;
+    rows.forEach((row, idx) => {
+      const input = document.querySelector(`[name=item_nome_${idx + 1}]`);
+      const option = [...document.querySelectorAll("#produtos-list option")].find(item => item.value.toLowerCase() === input.value.trim().toLowerCase());
+      if (option) maiorPrazo = Math.max(maiorPrazo, Number(option.dataset.prazo || 0));
+    });
+    return maiorPrazo;
+  }
+  function atualizarEntregaAutomatica() {
+    if (!entregaInput || entregaManual) return;
+    const prazo = prazoMaximoItens();
+    if (!prazo) {
+      entregaInput.value = dataIso(new Date());
+      return;
+    }
+    entregaInput.value = dataIso(addDiasUteis(new Date(), prazo));
   }
   function applyProductData(input) {
     const option = [...document.querySelectorAll("#produtos-list option")].find(item => item.value.toLowerCase() === input.value.trim().toLowerCase());
@@ -168,15 +211,13 @@
     if (categoria && option.dataset.categoriaId) categoria.value = option.dataset.categoriaId;
     recalc();
   }
+  entregaInput?.addEventListener("input", () => { entregaManual = true; });
   document.querySelectorAll("[name^=item_nome_]").forEach(input => {
     input.addEventListener("input", () => applyProductData(input));
     input.addEventListener("change", () => applyProductData(input));
   });
   document.addEventListener("input", recalc);
   recalc();
-  const usuarioInput = document.getElementById("usuarioCadastroInput");
-  if (usuarioInput && window.GestorPrefs) usuarioInput.value = GestorPrefs.load().usuario || "Ruan";
-
   const arteInput = document.getElementById("arteInput");
   const arteForm = arteInput?.closest("form");
   const arteDropZone = document.getElementById("arteDropZone");

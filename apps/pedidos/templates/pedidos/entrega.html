@@ -1,10 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Entrega/Loja{% endblock %}
 {% block page_title %}Entrega/Loja{% endblock %}
-{% block top_tabs %}
-  <a href="{% url 'entrega_list' %}" class="top-tab active"><i data-lucide="package-check" class="h-5 w-5"></i> Prontos</a>
-  <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo pedido</a>
-{% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
   <section class="grid gap-3 md:grid-cols-2">

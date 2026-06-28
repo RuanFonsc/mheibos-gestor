@@ -1,4 +1,6 @@
-from apps.catalogo.assistencia import pedidos_assistencia, regra_categoria
+from difflib import SequenceMatcher
+
+from apps.catalogo.assistencia import normalizar, pedidos_assistencia, regra_categoria
 
 MAX_ITENS_WIDGET = 9
 
@@ -12,6 +14,49 @@ _CATEGORIA_CURTA = {
 
 def _categoria_curta(tipo):
     return _CATEGORIA_CURTA.get(tipo, "Pedido")
+
+
+def _chave_nome_categoria(nome):
+    return "".join(ch for ch in normalizar(nome) if ch.isalnum())
+
+
+def _nomes_equivalentes(nome_a, nome_b):
+    chave_a = _chave_nome_categoria(nome_a)
+    chave_b = _chave_nome_categoria(nome_b)
+    if not chave_a or not chave_b:
+        return False
+    if chave_a == chave_b or chave_a in chave_b or chave_b in chave_a:
+        return True
+    return SequenceMatcher(None, chave_a, chave_b).ratio() >= 0.72
+
+
+def _expandir_categorias_equivalentes(grupos_raw, categorias_ids):
+    if not categorias_ids:
+        return None
+    ids = {int(item) for item in categorias_ids if str(item).isdigit()}
+    if not ids:
+        return None
+    grupos_por_id = {grupo["categoria"].id: grupo for grupo in grupos_raw}
+    nomes = []
+    assinaturas = set()
+    tipos = set()
+    for categoria_id in ids:
+        grupo = grupos_por_id.get(categoria_id)
+        if not grupo:
+            continue
+        categoria = grupo["categoria"]
+        nomes.append(categoria.nome)
+        assinaturas.add((normalizar(categoria.nome), grupo["regra"]["tipo"]))
+        tipos.add(grupo["regra"]["tipo"])
+    if not assinaturas:
+        return ids
+    equivalentes = set(ids)
+    for grupo in grupos_raw:
+        categoria = grupo["categoria"]
+        assinatura = (normalizar(categoria.nome), grupo["regra"]["tipo"])
+        if assinatura in assinaturas or grupo["regra"]["tipo"] in tipos or any(_nomes_equivalentes(categoria.nome, nome) for nome in nomes):
+            equivalentes.add(categoria.id)
+    return equivalentes
 
 
 def _calcular_quotas(grupos, categorias):
@@ -59,7 +104,7 @@ def _serializar_pedido(pedido, categoria, tipo):
 def pedidos_para_widget(categorias_ids=None):
     grupos_raw = pedidos_assistencia()
     if categorias_ids:
-        ids = {int(item) for item in categorias_ids if str(item).isdigit()}
+        ids = _expandir_categorias_equivalentes(grupos_raw, categorias_ids)
         grupos_raw = [grupo for grupo in grupos_raw if grupo["categoria"].id in ids]
 
     grupos = {}
@@ -87,7 +132,7 @@ def pedidos_para_widget(categorias_ids=None):
 def resumo_assistencia_envio(categorias_ids=None):
     grupos_raw = pedidos_assistencia()
     if categorias_ids:
-        ids = {int(item) for item in categorias_ids if str(item).isdigit()}
+        ids = _expandir_categorias_equivalentes(grupos_raw, categorias_ids)
         grupos_raw = [grupo for grupo in grupos_raw if grupo["categoria"].id in ids]
 
     por_categoria = []

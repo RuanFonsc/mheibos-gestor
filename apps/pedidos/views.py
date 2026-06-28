@@ -2,11 +2,11 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.db.models.deletion import ProtectedError
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.catalogo.assistencia import pedido_em_alerta
+from apps.catalogo.assistencia import pedido_em_alerta, preparar_categorias_pedidos
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
@@ -37,7 +37,11 @@ def pedido_list(request):
     modo_visualizacao = request.GET.get("visualizacao", "grade").strip()
     if modo_visualizacao not in {"grade", "lista"}:
         modo_visualizacao = "grade"
-    pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "artes")
+    itens_prefetch = Prefetch(
+        "itens",
+        queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
+    )
+    pedidos = Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "artes")
 
     if busca:
         filtros_busca = (
@@ -61,7 +65,7 @@ def pedido_list(request):
             Q(itens__categoria_servico_id=categoria) | Q(itens__produto__categoria_servico_id=categoria)
         ).distinct()
 
-    pedidos_lista = list(pedidos[:80])
+    pedidos_lista = preparar_categorias_pedidos(pedidos[:80])
     for pedido in pedidos_lista:
         pedido.alerta_prazo = pedido_em_alerta(pedido)
 
@@ -87,10 +91,14 @@ def pedido_list(request):
 
 def entrega_list(request):
     operador = operador_atual(request)
-    pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "pagamentos").filter(
+    itens_prefetch = Prefetch(
+        "itens",
+        queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
+    )
+    pedidos = Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "pagamentos", "artes").filter(
         status__in=STATUS_ENTREGA
     )
-    pedidos_lista = list(pedidos.order_by("data_entrega", "id")[:120])
+    pedidos_lista = preparar_categorias_pedidos(pedidos.order_by("data_entrega", "id")[:120])
     for pedido in pedidos_lista:
         pedido.alerta_prazo = pedido_em_alerta(pedido)
     contexto = {
@@ -380,6 +388,7 @@ def pedido_create(request):
         form = PedidoCreateForm(
             initial={
                 "data_pedido": hoje,
+                "data_entrega": hoje,
                 "forma_pagamento": "PIX",
                 "valor_pago": Decimal("0.00"),
                 "desconto_ajuste": Decimal("0.00"),
@@ -449,7 +458,7 @@ def _criar_pedido(form, arquivos):
         prioridade=dados["prioridade"],
         status=status,
         origem="BALCAO",
-        usuario_cadastro=(form.data.get("usuario_cadastro") or "").strip(),
+        usuario_cadastro=(form.data.get("usuario_cadastro") or "").strip() or "Usuario Temporario",
         data_registro=timezone.now(),
     )
 

@@ -1,6 +1,6 @@
 from django import forms
 
-from apps.financeiro.models import CategoriaFinanceira, ContaFinanceira, LancamentoFinanceiro, StatusLancamento, TipoLancamento
+from apps.financeiro.models import CategoriaFinanceira, ContaFinanceira, LancamentoFinanceiro, MetaVendasUsuario, StatusLancamento, TipoLancamento
 
 
 class LancamentoCRMForm(forms.ModelForm):
@@ -42,3 +42,12 @@ class LancamentoCRMForm(forms.ModelForm):
         if tipo and categoria and categoria.tipo != tipo:
             self.add_error("categoria", "A categoria precisa ser do mesmo tipo do lançamento.")
         return dados
+
+
+class MetaVendasUsuarioForm(forms.ModelForm):
+    class Meta:
+        model = MetaVendasUsuario
+        fields = ["valor"]
+        widgets = {
+            "valor": forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
+        }

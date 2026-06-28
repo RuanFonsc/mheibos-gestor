@@ -1,0 +1,14 @@
+<div class="mt-3" data-corel-field>
+  <label>{{ field.label }}</label>
+  {{ field }}
+  <div data-corel-drop class="mt-1 flex min-h-[112px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#3d4275] bg-[#22253a] p-4 text-center transition-colors">
+    <i data-lucide="folder-open" class="mb-2 h-7 w-7 text-[#00e5ff]"></i>
+    <p data-corel-empty class="text-sm font-semibold text-[var(--text-primary)]">Arraste o arquivo Corel do servidor aqui</p>
+    <p data-corel-value class="hidden max-w-full break-all text-sm font-semibold text-[#00e5ff]"></p>
+    <p data-corel-feedback class="mt-1 text-xs text-[#8892b0]">Ou carregue um arquivo salvo em uma pasta compartilhada do servidor.</p>
+  </div>
+  <div class="mt-2 flex flex-wrap gap-2">
+    <button type="button" data-corel-select class="btn-secondary"><i data-lucide="folder-search" class="h-4 w-4"></i> Carregar do dispositivo</button>
+    <button type="button" data-corel-clear class="btn-danger"><i data-lucide="x" class="h-4 w-4"></i> Remover referencia</button>
+  </div>
+</div>

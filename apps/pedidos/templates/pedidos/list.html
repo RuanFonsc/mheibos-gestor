@@ -9,11 +9,21 @@
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
+  <div class="page-heading">
+    <div>
+      <span class="kicker"><i data-lucide="kanban-square" class="h-4 w-4"></i> Pedidos</span>
+      <h2 class="section-title">Fila de atendimento</h2>
+      <p>Acompanhe pedidos por status, categoria, prazo e arte anexada.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{% url 'pedido_create' %}" class="btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Novo pedido</a>
+    </div>
+  </div>
   <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Total</p><strong class="mt-2 block text-2xl">{{ total }}</strong></div>
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Em produção</p><strong class="mt-2 block text-2xl text-[#ffb347]">{{ em_producao }}</strong></div>
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Prontos</p><strong class="mt-2 block text-2xl text-[#00c896]">{{ prontos }}</strong></div>
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Cancelados</p><strong class="mt-2 block text-2xl text-[#ff4b4b]">{{ cancelados }}</strong></div>
+    <div class="card metric-card"><p>Total</p><strong>{{ total }}</strong><span>pedidos no sistema</span></div>
+    <div class="card metric-card"><p>Em producao</p><strong class="text-[#ffb347]">{{ em_producao }}</strong><span>aguardando execucao</span></div>
+    <div class="card metric-card"><p>Prontos</p><strong class="text-[#00c896]">{{ prontos }}</strong><span>liberados para entrega</span></div>
+    <div class="card metric-card"><p>Cancelados</p><strong class="text-[#ff4b4b]">{{ cancelados }}</strong><span>fora da fila ativa</span></div>
   </section>
 
 <form class="card mb-4 grid gap-3 p-4 md:grid-cols-[1fr_240px_auto_auto]" method="get">
@@ -62,7 +72,7 @@
 
 <section id="pedidosLista" class="grid gap-3 {% if modo_visualizacao == 'grade' %}lg:grid-cols-2 xl:grid-cols-3{% else %}grid-cols-1{% endif %}">
   {% for pedido in pedidos %}
-    <article data-bulk-card class="card block p-4 transition hover:border-[#00e5ff] {% if pedido.alerta_prazo %}!border-[#ff4b4b] !bg-[#3a1820]{% endif %} {% if modo_visualizacao == 'lista' %}max-w-none{% endif %}">
+    <article data-bulk-card class="card block p-4 transition hover:-translate-y-0.5 hover:border-[#00e5ff] {% if pedido.alerta_prazo %}!border-[#ff4b4b] !bg-[#3a1820]{% endif %} {% if modo_visualizacao == 'lista' %}max-w-none{% endif %}">
       <div class="flex items-start justify-between gap-4">
         <div class="flex min-w-0 gap-3">
           <label class="bulk-select mt-0.5" title="Selecionar pedido #{{ pedido.legado_id|default:pedido.pk }}">
@@ -71,10 +81,10 @@
           <div class="min-w-0">
           <div class="flex items-center gap-2">
             <span class="rounded-md bg-[#171a29] px-2 py-1 text-xs text-[#8892b0]">#{{ pedido.legado_id|default:pedido.pk }}</span>
-            <span class="rounded-md px-2 py-1 text-xs
-              {% if pedido.status == 'PRONTO' %}bg-[#00c896]/15 text-[#00c896]
-              {% elif pedido.status == 'CANCELADO' %}bg-[#ff4b4b]/15 text-[#ff4b4b]
-              {% else %}bg-[#ffb347]/15 text-[#ffb347]{% endif %}">
+            <span class="status-pill
+              {% if pedido.status == 'PRONTO' %}is-ok
+              {% elif pedido.status == 'CANCELADO' %}is-danger
+              {% else %}is-work{% endif %}">
               {{ pedido.get_status_display }}
             </span>
           </div>
@@ -115,8 +125,14 @@
       </div>
     </article>
   {% empty %}
-    <div class="card p-8 text-center text-[#8892b0] xl:col-span-3">
-      Nenhum pedido encontrado. Importe o legado ou crie um novo pedido.
+    <div class="empty-state xl:col-span-3">
+      <div>
+        <strong>Nenhum pedido encontrado</strong>
+        <span>Altere os filtros ou crie um novo pedido para iniciar a fila.</span>
+        <div class="mt-4">
+          <a href="{% url 'pedido_create' %}" class="btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Novo pedido</a>
+        </div>
+      </div>
     </div>
   {% endfor %}
   </section>

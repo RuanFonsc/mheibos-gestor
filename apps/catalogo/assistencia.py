@@ -114,9 +114,41 @@ def pedido_em_alerta(pedido, agora=None):
     return any(pedido_entrou_na_regra(pedido, categoria, agora) for categoria in categorias_do_pedido(pedido))
 
 
+def preparar_categorias_pedidos(pedidos):
+    pedidos_lista = list(pedidos)
+    nomes_pendentes = set()
+    for pedido in pedidos_lista:
+        pedido._categorias_preparadas = True
+        for item in pedido.itens.all():
+            if item.categoria_servico:
+                continue
+            if item.produto and item.produto.categoria_servico:
+                item.categoria_servico = item.produto.categoria_servico
+                continue
+            nomes_pendentes.add(normalizar(item.nome))
+    if nomes_pendentes:
+        produtos_por_nome = {}
+        for produto in ProdutoServico.objects.select_related("categoria_servico").filter(ativo=True):
+            chave = normalizar(produto.nome)
+            if chave in nomes_pendentes and chave not in produtos_por_nome:
+                produtos_por_nome[chave] = produto
+        for pedido in pedidos_lista:
+            for item in pedido.itens.all():
+                if item.categoria_servico:
+                    continue
+                produto = produtos_por_nome.get(normalizar(item.nome))
+                if produto:
+                    if not item.produto_id:
+                        item.produto = produto
+                    if produto.categoria_servico:
+                        item.categoria_servico = produto.categoria_servico
+    return pedidos_lista
+
+
 def categorias_do_pedido(pedido):
     categorias = set()
     itens_atualizar = []
+    categorias_preparadas = getattr(pedido, "_categorias_preparadas", False)
     for item in pedido.itens.all():
         categoria = None
         if item.categoria_servico:
@@ -125,7 +157,7 @@ def categorias_do_pedido(pedido):
             categoria = item.produto.categoria_servico
             item.categoria_servico = categoria
             itens_atualizar.append(item)
-        else:
+        elif not categorias_preparadas:
             produto = ProdutoServico.objects.filter(nome__iexact=item.nome).select_related("categoria_servico").first()
             if produto:
                 if not item.produto_id:
@@ -172,7 +204,7 @@ def pedidos_assistencia(busca=""):
     agrupados = defaultdict(list)
     agora = timezone.localtime()
 
-    for pedido in pedidos:
+    for pedido in preparar_categorias_pedidos(pedidos):
         for categoria in categorias_do_pedido(pedido):
             if pedido_entrou_na_regra(pedido, categoria, agora):
                 if pedido not in agrupados[categoria.id]:

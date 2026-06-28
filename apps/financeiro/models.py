@@ -109,3 +109,24 @@ class LancamentoFinanceiro(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} - {self.descricao} - {self.valor}"
+
+
+class MetaVendasUsuario(models.Model):
+    operador = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="metas_vendas",
+        on_delete=models.CASCADE,
+    )
+    ano = models.PositiveIntegerField()
+    mes = models.PositiveSmallIntegerField()
+    valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-ano", "-mes", "operador__nome"]
+        constraints = [
+            models.UniqueConstraint(fields=["operador", "ano", "mes"], name="uniq_meta_vendas_operador_mes")
+        ]
+
+    def __str__(self):
+        return f"{self.operador} - {self.mes:02d}/{self.ano} - {self.valor}"

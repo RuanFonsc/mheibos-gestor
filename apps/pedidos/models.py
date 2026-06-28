@@ -121,6 +121,14 @@ class Pedido(models.Model):
 
     @property
     def total_pago(self):
+        pagamentos_prefetch = getattr(self, "_prefetched_objects_cache", {}).get("pagamentos")
+        if pagamentos_prefetch is not None:
+            total = sum(
+                (pagamento.valor or Decimal("0.00"))
+                for pagamento in pagamentos_prefetch
+                if pagamento.status == StatusPagamento.CONFIRMADO
+            )
+            return max(total, self.valor_pago_legado or Decimal("0.00"))
         total = self.pagamentos.filter(status=StatusPagamento.CONFIRMADO).aggregate(
             soma=models.Sum("valor")
         )["soma"]

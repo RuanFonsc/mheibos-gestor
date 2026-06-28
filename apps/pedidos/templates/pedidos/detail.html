@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Pedido #{{ pedido.pk }}{% endblock %}
 {% block page_title %}Gestor de Pedidos{% endblock %}
 {% block top_tabs %}
@@ -9,16 +10,19 @@
 {% endblock %}
 {% block content %}
 <div class="page-content w-full">
-  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <h2 class="section-title">Pedido #{{ pedido.legado_id|default:pedido.pk }}</h2>
-    <div class="flex flex-wrap gap-2">
+  <div class="page-heading">
+    <div>
+      <span class="kicker"><i data-lucide="receipt-text" class="h-4 w-4"></i> Pedido</span>
+      <h2 class="section-title">Pedido #{{ pedido.legado_id|default:pedido.pk }}</h2>
+      <p>{{ pedido.cliente.nome }}{% if pedido.tema %} · {{ pedido.tema }}{% endif %}</p>
+    </div>
+    <div class="page-actions">
       <a href="{% url 'pedido_ordem_servico' pedido.pk %}" target="_blank" class="btn-secondary"><i data-lucide="printer" class="h-4 w-4"></i> Ordem de servico</a>
       {% if pode_editar %}
         <a href="{% url 'pedido_edit' pedido.pk %}" class="btn-primary"><i data-lucide="pencil" class="h-4 w-4"></i> Editar pedido</a>
       {% endif %}
     </div>
   </div>
-  <div class="section-line"></div>
 
   <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
     <section class="space-y-6">
@@ -49,9 +53,9 @@
 
       <div class="card p-5">
         <h2 class="mb-4 font-semibold">Itens do pedido</h2>
-        <div class="overflow-hidden rounded-lg border border-[#2d3154]">
-          <table class="w-full text-left text-sm">
-            <thead class="bg-[#171a29] text-[var(--text-secondary)]">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
               <tr><th class="p-3">Qtd</th><th class="p-3">Item</th><th class="p-3">Preço</th><th class="p-3">Subtotal</th></tr>
             </thead>
             <tbody class="divide-y divide-[#2d3154]">
@@ -140,14 +144,5 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script>
-  document.querySelectorAll("[data-corel-path]").forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      const caminho = link.dataset.corelPath || "";
-      if (!caminho) return;
-      window.open(`file:///${caminho.replaceAll("\\", "/")}`);
-    });
-  });
-</script>
+<script src="{% static 'js/corel_path.js' %}"></script>
 {% endblock %}

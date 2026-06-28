@@ -1,10 +1,11 @@
 import json
 import hashlib
 from collections import defaultdict
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -12,7 +13,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 
-from apps.catalogo.assistencia import categorias_do_pedido, dias_uteis_restantes, pedido_em_alerta, pedidos_assistencia
+from apps.catalogo.assistencia import categorias_do_pedido, dias_uteis_restantes, pedido_em_alerta, pedidos_assistencia, preparar_categorias_pedidos
 from apps.catalogo.bootstrap import primeiro_admin_pendente
 from apps.catalogo.forms import (
     CategoriaServicoForm,
@@ -35,7 +36,8 @@ from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os,
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
 from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
-from apps.pedidos.models import Pedido, PrioridadePedido, StatusPedido
+from apps.financeiro.models import MetaVendasUsuario
+from apps.pedidos.models import Pedido, PedidoItem, PrioridadePedido, StatusPedido
 
 
 def _destino_seguro(request, padrao):
@@ -265,6 +267,7 @@ def configuracoes(request):
     senha_form = OperadorSenhaForm(prefix="senha")
     perfil_empresa_form = PerfilEmpresaForm(prefix="empresa", instance=perfil_empresa)
     linha_cabecalho_cores = cores_linha_cabecalho_form(perfil_empresa.os_linha_cabecalho)
+    hoje = timezone.localdate()
 
     if request.method == "POST":
         acao = request.POST.get("acao")
@@ -310,6 +313,36 @@ def configuracoes(request):
             else:
                 messages.error(request, "Não foi possível salvar o usuário. Confira os campos.")
             return redirect("configuracoes")
+        if acao == "salvar_metas_usuarios":
+            if not operador.pode_gerenciar_usuarios:
+                messages.error(request, "Somente administradores definem metas de usuarios.")
+                return redirect("configuracoes")
+            operador_ids = request.POST.getlist("meta_operador_ids")
+            if not operador_ids:
+                messages.error(request, "Selecione pelo menos um usuario para salvar a meta.")
+                return redirect(f"{reverse('configuracoes')}?aba=usuarios#metas-usuarios")
+            usuarios_meta = OperadorGestor.objects.filter(pk__in=operador_ids, ativo=True)
+            salvos = 0
+            for usuario_meta in usuarios_meta:
+                valor_txt = (request.POST.get(f"meta_valor_{usuario_meta.pk}") or "0").strip()
+                if "," in valor_txt and "." in valor_txt:
+                    valor_txt = valor_txt.replace(".", "").replace(",", ".")
+                elif "," in valor_txt:
+                    valor_txt = valor_txt.replace(",", ".")
+                try:
+                    valor = max(Decimal("0.00"), Decimal(valor_txt or "0"))
+                except (InvalidOperation, ValueError):
+                    messages.error(request, f"Meta invalida para {usuario_meta.nome}.")
+                    return redirect(f"{reverse('configuracoes')}?aba=usuarios#metas-usuarios")
+                MetaVendasUsuario.objects.update_or_create(
+                    operador=usuario_meta,
+                    ano=hoje.year,
+                    mes=hoje.month,
+                    defaults={"valor": valor},
+                )
+                salvos += 1
+            messages.success(request, f"Metas atualizadas para {salvos} usuario(s).")
+            return redirect(f"{reverse('configuracoes')}?aba=usuarios#metas-usuarios")
         if acao == "excluir_operador":
             if not operador.is_admin_geral:
                 messages.error(request, "Somente administradores gerais excluem usuarios.")
@@ -395,11 +428,23 @@ def configuracoes(request):
 
     db = settings.DATABASES["default"]
     legacy_db = settings.DATABASES.get("legacy", {})
+    todos_operadores_qs = OperadorGestor.objects.all() if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk)
+    operadores_ativos_qs = OperadorGestor.objects.filter(ativo=True) if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk)
+    metas_mes = {
+        meta.operador_id: meta
+        for meta in MetaVendasUsuario.objects.filter(ano=hoje.year, mes=hoje.month, operador__in=operadores_ativos_qs)
+    }
+    metas_usuarios = [
+        {"operador": item, "meta": metas_mes.get(item.pk)}
+        for item in operadores_ativos_qs.order_by("nome")
+    ]
     contexto = {
         "active": "configuracoes",
         "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
-        "operadores": OperadorGestor.objects.filter(ativo=True) if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk),
-        "todos_operadores": OperadorGestor.objects.all() if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk),
+        "operadores": operadores_ativos_qs,
+        "todos_operadores": todos_operadores_qs,
+        "metas_usuarios": metas_usuarios,
+        "metas_mes_referencia": hoje,
         "operador_form": operador_form,
         "perfil_form": perfil_form,
         "senha_form": senha_form,
@@ -470,7 +515,11 @@ def producao_home(request):
     if ordem not in {"asc", "desc"}:
         ordem = "asc"
 
-    pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "artes").filter(status=StatusPedido.EM_PRODUCAO)
+    itens_prefetch = Prefetch(
+        "itens",
+        queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
+    )
+    pedidos = Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "artes").filter(status=StatusPedido.EM_PRODUCAO)
     if status == StatusPedido.EM_PRODUCAO:
         pedidos = pedidos.filter(status=status)
     if prioridade:
@@ -481,7 +530,7 @@ def producao_home(request):
         ).distinct()
 
     categorias = list(CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"))
-    pedidos_lista = list(pedidos.order_by("data_entrega" if ordem == "asc" else "-data_entrega", "id")[:180])
+    pedidos_lista = preparar_categorias_pedidos(pedidos.order_by("data_entrega" if ordem == "asc" else "-data_entrega", "id")[:180])
     grupos_map = defaultdict(list)
     sem_categoria = []
     for pedido in pedidos_lista:
