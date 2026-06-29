@@ -186,6 +186,44 @@
     .metric-card p { margin: 0; color: var(--text-secondary); font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
     .metric-card strong { display: block; margin-top: 9px; font-size: 26px; line-height: 1; }
     .metric-card span { display: inline-block; margin-top: 8px; color: var(--text-secondary); font-size: 12px; }
+    .danger-glow-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 75, 75, .42);
+      background: radial-gradient(circle at 16% 0%, rgba(255, 75, 75, .24), transparent 32%), linear-gradient(145deg, rgba(58, 24, 32, .97), rgba(34, 20, 31, .98));
+      box-shadow: inset 0 0 28px rgba(255, 75, 75, .05), 0 14px 34px rgba(0, 0, 0, .16);
+    }
+    .danger-glow-card::after {
+      content: "";
+      position: absolute;
+      inset: auto 12% -42px;
+      height: 88px;
+      border-radius: 50%;
+      background: rgba(255, 75, 75, .22);
+      filter: blur(30px);
+      pointer-events: none;
+    }
+    .danger-glow-card > * { position: relative; z-index: 1; }
+    html[data-theme="light"] .danger-glow-card { background: radial-gradient(circle at 16% 0%, rgba(255,75,75,.18), transparent 32%), #fff1f2; }
+    .ready-glow-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(172, 102, 255, .46);
+      background: radial-gradient(circle at 16% 0%, rgba(172, 102, 255, .26), transparent 32%), linear-gradient(145deg, rgba(44, 30, 72, .98), rgba(31, 24, 54, .98));
+      box-shadow: inset 0 0 28px rgba(172, 102, 255, .06), 0 14px 34px rgba(0, 0, 0, .16);
+    }
+    .ready-glow-card::after {
+      content: "";
+      position: absolute;
+      inset: auto 12% -42px;
+      height: 88px;
+      border-radius: 50%;
+      background: rgba(172, 102, 255, .24);
+      filter: blur(30px);
+      pointer-events: none;
+    }
+    .ready-glow-card > * { position: relative; z-index: 1; }
+    html[data-theme="light"] .ready-glow-card { background: radial-gradient(circle at 16% 0%, rgba(172,102,255,.18), transparent 32%), #f5f0ff; }
     .status-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; border-radius: 999px; padding: 0 10px; font-size: 11px; font-weight: 900; text-transform: uppercase; white-space: nowrap; }
     .status-pill.is-work { background: rgba(255, 179, 71, .14); color: var(--warning); }
     .status-pill.is-ok { background: rgba(0, 200, 150, .14); color: var(--success); }
@@ -260,6 +298,12 @@
       box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
       max-width: calc(100vw - 32px);
     }
+    .widget-prazos.pos-superior-esquerda { left: 18px; right: auto; top: 18px; bottom: auto; transform: none; }
+    .widget-prazos.pos-superior-direita { right: 18px; left: auto; top: 18px; bottom: auto; transform: none; }
+    .widget-prazos.pos-inferior-esquerda { left: 18px; right: auto; bottom: 18px; top: auto; transform: none; }
+    .widget-prazos.pos-inferior-direita { right: 18px; left: auto; bottom: 18px; top: auto; transform: none; }
+    .widget-prazos.pos-inferior-centro { left: 50%; right: auto; bottom: 18px; top: auto; transform: translateX(-50%); }
+    .widget-prazos.pos-centro { left: 50%; right: auto; top: 50%; bottom: auto; transform: translate(-50%, -50%); }
     html[data-theme="light"] .widget-prazos { background: rgba(255, 255, 255, .96); }
     .widget-prazos-items {
       display: flex;
@@ -332,6 +376,11 @@
       grid-template-columns: 1fr auto;
       gap: 10px;
     }
+    .notif-assistencia.pos-superior-esquerda { left: 18px; right: auto; top: 18px; bottom: auto; transform: none; }
+    .notif-assistencia.pos-superior-direita { right: 18px; left: auto; top: 18px; bottom: auto; transform: none; }
+    .notif-assistencia.pos-inferior-direita { right: 18px; left: auto; bottom: 18px; top: auto; transform: none; }
+    .notif-assistencia.pos-inferior-esquerda { left: 18px; right: auto; bottom: 18px; top: auto; transform: none; }
+    .notif-assistencia.pos-centro { left: 50%; right: auto; top: 50%; bottom: auto; transform: translate(-50%, -50%); }
     html[data-theme="light"] .notif-assistencia { background: rgba(255, 255, 255, .96); }
     .notif-assistencia.is-alert { border-color: var(--danger); background: rgba(58, 24, 32, .98); }
     html[data-theme="light"] .notif-assistencia.is-alert { background: #fff1f2; }
@@ -371,8 +420,14 @@
         {% if not modo_producao %}<a href="{% url 'pedido_create' %}" class="side-link {% if active == 'novo_pedido' or active == 'pedidos' %}active{% endif %}">
           <i data-lucide="messages-square" class="h-5 w-5"></i> Gestor de Pedidos
         </a>
+        <a href="{% url 'atendimento_list' %}" class="side-link {% if active == 'atendimento' %}active{% endif %}">
+          <i data-lucide="headphones" class="h-5 w-5"></i> Atendimento
+        </a>
         <a href="{% url 'dashboard' %}" class="side-link {% if active == 'dashboard' %}active{% endif %}">
           <i data-lucide="layout-dashboard" class="h-5 w-5"></i> Dashboard
+        </a>
+        <a href="{% url 'clientes' %}" class="side-link {% if active == 'clientes' %}active{% endif %}">
+          <i data-lucide="users-round" class="h-5 w-5"></i> Clientes
         </a>
         <a href="{% url 'produtos' %}" class="side-link {% if active == 'produtos' %}active{% endif %}">
           <i data-lucide="package" class="h-5 w-5"></i> Produtos
@@ -380,8 +435,11 @@
         <a href="{% url 'assistencia_envio' %}" class="side-link {% if active == 'assistencia' %}active{% endif %}">
           <i data-lucide="send" class="h-5 w-5"></i> Assist&ecirc;ncia de envio
         </a>
+        <a href="{% url 'vendas_home' %}" class="side-link">
+          <i data-lucide="shopping-bag" class="h-5 w-5"></i> Mheibos Vendas
+        </a>
         <a href="{% url 'entrega_list' %}" class="side-link {% if active == 'entrega' %}active{% endif %}">
-          <i data-lucide="package-check" class="h-5 w-5"></i> Entrega/Loja
+          <i data-lucide="package-check" class="h-5 w-5"></i> Assistência de entrega
         </a>
         <a href="{% url 'configuracoes' %}" class="side-link {% if active == 'configuracoes' %}active{% endif %}">
           <i data-lucide="settings" class="h-5 w-5"></i> Configurações
@@ -415,6 +473,11 @@
             <a class="topbar-action" href="{% url 'producao_home' %}" title="Abrir a Produção">
               <i data-lucide="factory" class="h-5 w-5"></i>
               <span>Abrir a Produção</span>
+            </a>
+          {% elif operador_atual.is_admin_geral %}
+            <a class="topbar-action" href="{% url 'pedido_create' %}" title="Abrir o Mheibos Gestor">
+              <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+              <span>Abrir Gestor</span>
             </a>
           {% endif %}
           <span>{% now "d/m/Y" %}</span>

@@ -22,7 +22,7 @@ from apps.financeiro.crm import MESES_CURTOS, relatorio_crm
 from apps.financeiro.forms import LancamentoCRMForm
 from apps.financeiro.models import CategoriaFinanceira, LancamentoFinanceiro, MetaVendasUsuario, StatusLancamento, TipoLancamento
 from apps.financeiro.services import garantir_categorias_financeiras
-from apps.catalogo.models import OperadorGestor
+from apps.catalogo.models import CategoriaUsuario, OperadorGestor
 from apps.catalogo.permissions import operador_atual
 from apps.pedidos.models import Pedido, PedidoItem, StatusPedido
 
@@ -31,7 +31,9 @@ def dashboard(request):
     garantir_categorias_financeiras()
     operador = operador_atual(request)
     aba = request.GET.get("aba", "dashboard")
-    if aba not in {"dashboard", "relatorios", "crm"}:
+    if aba not in {"dashboard", "relatorios", "crm", "metas"}:
+        aba = "dashboard"
+    if aba == "metas" and not operador.is_admin_geral:
         aba = "dashboard"
     escopo = request.GET.get("escopo", "pessoal")
     if escopo == "geral" and not operador.is_admin:
@@ -44,6 +46,20 @@ def dashboard(request):
         pass
     hoje = timezone.localdate()
     inicio_mes = hoje.replace(day=1)
+    data_inicio_txt = request.GET.get("inicio") or ""
+    data_fim_txt = request.GET.get("fim") or ""
+    periodo_inicio = inicio_mes
+    periodo_fim = hoje
+    periodo_manual = bool(data_inicio_txt or data_fim_txt)
+    try:
+        if data_inicio_txt:
+            periodo_inicio = timezone.datetime.fromisoformat(data_inicio_txt).date()
+        if data_fim_txt:
+            periodo_fim = timezone.datetime.fromisoformat(data_fim_txt).date()
+    except ValueError:
+        periodo_inicio, periodo_fim = inicio_mes, hoje
+    if periodo_inicio > periodo_fim:
+        periodo_inicio, periodo_fim = periodo_fim, periodo_inicio
     meta_usuario, _ = MetaVendasUsuario.objects.get_or_create(
         operador=operador,
         ano=inicio_mes.year,
@@ -55,6 +71,35 @@ def dashboard(request):
         if acao == "salvar_meta":
             messages.error(request, "Metas de usuarios devem ser definidas nas configuracoes por um administrador.")
             return redirect(f"{request.path}?aba=dashboard&ano={ano}&escopo=pessoal")
+        if acao == "salvar_metas_usuarios":
+            if not operador.is_admin_geral:
+                raise PermissionDenied("Somente administradores gerais definem metas.")
+            operador_ids = request.POST.getlist("meta_operador_ids")
+            categoria_redirect = request.POST.get("categoria_usuario") or ""
+            if not operador_ids:
+                messages.error(request, "Selecione pelo menos um usuario para salvar a meta.")
+                return redirect(f"{request.path}?aba=metas&ano={ano}&categoria_usuario={categoria_redirect}")
+            salvos = 0
+            for usuario_meta in OperadorGestor.objects.filter(pk__in=operador_ids, ativo=True):
+                valor_txt = (request.POST.get(f"meta_valor_{usuario_meta.pk}") or "0").strip()
+                if "," in valor_txt and "." in valor_txt:
+                    valor_txt = valor_txt.replace(".", "").replace(",", ".")
+                elif "," in valor_txt:
+                    valor_txt = valor_txt.replace(",", ".")
+                try:
+                    valor = max(Decimal("0.00"), Decimal(valor_txt or "0"))
+                except (ValueError, ArithmeticError):
+                    messages.error(request, f"Meta invalida para {usuario_meta.nome}.")
+                    return redirect(f"{request.path}?aba=metas&ano={ano}&categoria_usuario={categoria_redirect}")
+                MetaVendasUsuario.objects.update_or_create(
+                    operador=usuario_meta,
+                    ano=inicio_mes.year,
+                    mes=inicio_mes.month,
+                    defaults={"valor": valor},
+                )
+                salvos += 1
+            messages.success(request, f"Metas atualizadas para {salvos} usuario(s).")
+            return redirect(f"{request.path}?aba=metas&ano={ano}&categoria_usuario={categoria_redirect}")
         if acao == "criar_lancamento":
             form = LancamentoCRMForm(request.POST)
             if form.is_valid():
@@ -76,6 +121,8 @@ def dashboard(request):
     pedidos_validos = Pedido.objects.exclude(status=StatusPedido.CANCELADO)
     if escopo != "geral":
         pedidos_validos = pedidos_validos.filter(usuario_cadastro__iexact=operador.nome)
+    if periodo_manual:
+        pedidos_validos = pedidos_validos.filter(data_pedido__range=(periodo_inicio, periodo_fim))
     pedidos_validos = pedidos_validos.select_related("cliente")
     pedidos_ids = pedidos_validos.values("id")
     receita_total = (
@@ -192,17 +239,6 @@ def dashboard(request):
             for hora in range(8, 19)
         ]
 
-    data_inicio_txt = request.GET.get("inicio") or ""
-    data_fim_txt = request.GET.get("fim") or ""
-    periodo_inicio = inicio_mes
-    periodo_fim = hoje
-    try:
-        if data_inicio_txt:
-            periodo_inicio = timezone.datetime.fromisoformat(data_inicio_txt).date()
-        if data_fim_txt:
-            periodo_fim = timezone.datetime.fromisoformat(data_fim_txt).date()
-    except ValueError:
-        periodo_inicio, periodo_fim = inicio_mes, hoje
     vendas_periodo = None
     vendas_periodo_total = Decimal("0.00")
     if aba == "relatorios":
@@ -257,6 +293,61 @@ def dashboard(request):
         )
         categorias_receita = CategoriaFinanceira.objects.filter(tipo=TipoLancamento.RECEITA, ativa=True)
         categorias_despesa = CategoriaFinanceira.objects.filter(tipo=TipoLancamento.DESPESA, ativa=True)
+    categorias_usuario = CategoriaUsuario.objects.filter(ativa=True).order_by("ordem", "nome")
+    categoria_usuario_atual = request.GET.get("categoria_usuario", "").strip()
+    metas_usuarios = []
+    metas_labels = []
+    metas_valores = []
+    metas_realizado_valores = []
+    metas_fotos = []
+    meta_geral_total = Decimal("0.00")
+    meta_geral_realizado = Decimal("0.00")
+    meta_geral_progresso = Decimal("0.00")
+    meta_geral_falta = Decimal("0.00")
+    if aba == "metas":
+        usuarios_meta_qs = OperadorGestor.objects.select_related("categoria_usuario").filter(ativo=True).order_by("nome")
+        if categoria_usuario_atual.isdigit():
+            usuarios_meta_qs = usuarios_meta_qs.filter(categoria_usuario_id=int(categoria_usuario_atual))
+        usuarios_meta = list(usuarios_meta_qs)
+        metas_mes = {
+            meta.operador_id: meta
+            for meta in MetaVendasUsuario.objects.filter(
+                ano=inicio_mes.year,
+                mes=inicio_mes.month,
+                operador__in=usuarios_meta,
+            )
+        }
+        vendas_por_nome = {
+            (row["usuario_cadastro"] or "").casefold(): row["total"] or Decimal("0.00")
+            for row in Pedido.objects.exclude(status=StatusPedido.CANCELADO)
+            .filter(data_pedido__range=(inicio_mes, hoje))
+            .exclude(usuario_cadastro="")
+            .values("usuario_cadastro")
+            .annotate(total=Sum("valor_total"))
+        }
+        for usuario_meta in usuarios_meta:
+            meta = metas_mes.get(usuario_meta.pk)
+            valor_meta = meta.valor if meta else Decimal("0.00")
+            realizado = vendas_por_nome.get(usuario_meta.nome.casefold(), Decimal("0.00"))
+            progresso = (realizado / valor_meta * 100) if valor_meta else Decimal("0.00")
+            metas_usuarios.append(
+                {
+                    "operador": usuario_meta,
+                    "meta": meta,
+                    "valor_meta": valor_meta,
+                    "realizado": realizado,
+                    "progresso": progresso,
+                    "falta": max(Decimal("0.00"), valor_meta - realizado),
+                }
+            )
+            metas_labels.append(usuario_meta.nome)
+            metas_valores.append(float(valor_meta))
+            metas_realizado_valores.append(float(realizado))
+            metas_fotos.append(usuario_meta.foto.url if usuario_meta.foto else "")
+        meta_geral_total = sum((item["valor_meta"] for item in metas_usuarios), Decimal("0.00"))
+        meta_geral_realizado = sum((item["realizado"] for item in metas_usuarios), Decimal("0.00"))
+        meta_geral_progresso = (meta_geral_realizado / meta_geral_total * 100) if meta_geral_total else Decimal("0.00")
+        meta_geral_falta = max(Decimal("0.00"), meta_geral_total - meta_geral_realizado)
     anos_disponiveis = list(range(timezone.localdate().year, timezone.localdate().year - 5, -1))
 
     contexto = {
@@ -310,6 +401,17 @@ def dashboard(request):
         "lancamentos_recentes": lancamentos_recentes,
         "categorias_receita": categorias_receita,
         "categorias_despesa": categorias_despesa,
+        "categorias_usuario": categorias_usuario,
+        "categoria_usuario_atual": categoria_usuario_atual,
+        "metas_usuarios": metas_usuarios,
+        "metas_labels": metas_labels,
+        "metas_valores": metas_valores,
+        "metas_realizado_valores": metas_realizado_valores,
+        "metas_fotos": metas_fotos,
+        "meta_geral_total": meta_geral_total,
+        "meta_geral_realizado": meta_geral_realizado,
+        "meta_geral_progresso": meta_geral_progresso,
+        "meta_geral_falta": meta_geral_falta,
     }
     return render(request, "financeiro/dashboard.html", contexto)
 

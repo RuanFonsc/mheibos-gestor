@@ -48,10 +48,10 @@
       <button type="submit">Entrar</button>
     </form>
     <div class="switch">
-      {% if producao %}
+      {% if producao or vendas %}
         <a href="{% url 'login' %}">Abrir Mheibos Gestor</a>
       {% else %}
-        <a href="{% url 'producao_login' %}">Abrir Mheibos Producao</a>
+        <a href="{% url 'vendas_login' %}">Abrir Mheibos Vendas</a>
       {% endif %}
       <span>Senha padrao: 1234</span>
     </div>

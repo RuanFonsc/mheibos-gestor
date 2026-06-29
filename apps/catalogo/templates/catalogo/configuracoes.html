@@ -6,7 +6,9 @@
 {% block head %}
 <style>
   .config-tabs { display: flex; flex-wrap: wrap; gap: 10px; }
-  .profile-shell { min-height: 620px; overflow: hidden; border: 1px solid var(--border); border-radius: 22px; background: var(--bg-card); box-shadow: 0 18px 54px rgba(0,0,0,.18); }
+  .profile-shell { position: relative; min-height: 620px; overflow: hidden; border: 1px solid rgba(0,229,255,.24); border-radius: 18px; background: radial-gradient(circle at 12% 0%, rgba(0,229,255,.16), transparent 30%), linear-gradient(145deg, rgba(23,26,41,.96), rgba(24,32,56,.96)); box-shadow: 0 18px 54px rgba(0,0,0,.18); }
+  .profile-shell::after { content: ""; position: absolute; inset: auto 12% -50px; height: 100px; border-radius: 50%; background: rgba(0,229,255,.14); filter: blur(32px); pointer-events: none; }
+  .profile-shell > * { position: relative; z-index: 1; }
   .profile-main { min-width: 0; padding: 28px 32px 32px; }
   .profile-top { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
   .profile-search { display: flex; align-items: center; gap: 10px; min-width: min(420px, 100%); min-height: 50px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 0 14px; color: var(--text-secondary); }
@@ -26,14 +28,15 @@
   .profile-fields { display: grid; gap: 18px 28px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .profile-field label { margin-bottom: 8px; }
   .profile-field .readonly { display: flex; align-items: center; min-height: 52px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 0 16px; color: var(--text-primary); font-weight: 750; }
-  .user-admin-layout { display: grid; gap: 20px; grid-template-columns: minmax(320px, 520px) minmax(0, 1fr); margin-top: 20px; }
+  .user-admin-layout { display: block; margin-top: 20px; }
   .soft-panel { border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); padding: 22px; }
   .user-admin-actions { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
   .user-list { display: grid; gap: 10px; max-height: min(56vh, 620px); overflow-y: auto; padding-right: 6px; scrollbar-gutter: stable; }
-  .user-list-panel { max-width: 520px; }
-  .user-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 78px auto; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
+  .user-list-panel { width: 100%; max-width: none; }
+  .user-row { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(150px, auto) 78px auto; align-items: center; gap: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
   .user-row.is-editing { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
   .user-mini { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .user-mini-name { min-width: 0; }
   .user-mini-avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--bg-card); color: var(--accent-2); overflow: hidden; }
   .user-mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .permission-chip { justify-self: start; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-2); padding: 7px 10px; font-size: 11px; font-weight: 900; }
@@ -46,13 +49,11 @@
   .modal-backdrop.is-open { display: flex; }
   .modal-card { width: min(520px, 100%); border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); box-shadow: 0 24px 80px rgba(0,0,0,.38); padding: 22px; }
   .modal-card.wide { width: min(760px, 100%); }
-  .meta-users { display: grid; gap: 10px; }
-  .meta-user-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) 190px; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
-  .meta-user-row input[type="number"] { min-height: 44px; }
+  .user-category-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
   @media (max-width: 1100px) {
     .profile-main { padding: 22px 18px; }
     .profile-top, .profile-identity { align-items: stretch; flex-direction: column; }
-    .profile-fields, .user-admin-layout, .os-field-row, .meta-user-row { grid-template-columns: 1fr; }
+    .profile-fields, .user-admin-layout, .os-field-row, .user-category-row { grid-template-columns: 1fr; }
     .user-row { grid-template-columns: 1fr; }
   }
 </style>
@@ -61,10 +62,13 @@
 <div class="page-content space-y-5">
   <div class="config-tabs">
     <button class="top-tab active" type="button" data-config-tab="usuarios"><i data-lucide="circle-user-round" class="h-5 w-5"></i> Meu perfil</button>
+    <button class="top-tab" type="button" data-config-tab="aparencia"><i data-lucide="monitor-cog" class="h-5 w-5"></i> Aparencia</button>
+    <button class="top-tab" type="button" data-config-tab="widgets"><i data-lucide="bell" class="h-5 w-5"></i> Alertas</button>
     {% if pode_gerenciar_usuarios %}
       <button class="top-tab" type="button" data-config-tab="empresa"><i data-lucide="building-2" class="h-5 w-5"></i> Empresa</button>
-      <button class="top-tab" type="button" data-config-tab="aparencia"><i data-lucide="monitor-cog" class="h-5 w-5"></i> Aparencia</button>
-      <button class="top-tab" type="button" data-config-tab="widgets"><i data-lucide="bell" class="h-5 w-5"></i> Alertas</button>
+      {% if pode_gerenciar_usuarios_geral %}
+        <button class="top-tab" type="button" data-config-tab="usuarios_config"><i data-lucide="users-round" class="h-5 w-5"></i> Usuarios</button>
+      {% endif %}
       <button class="top-tab" type="button" data-config-tab="banco"><i data-lucide="database" class="h-5 w-5"></i> Banco</button>
     {% endif %}
   </div>
@@ -160,22 +164,35 @@
             <button class="btn-primary" type="button" data-open-modal="modalOperador"><i data-lucide="user-plus" class="h-4 w-4"></i> Novo usuario</button>
           </div>
           <div class="modal-backdrop {% if operador_editando %}is-open{% endif %}" id="modalOperador">
-            <form method="post" enctype="multipart/form-data" class="modal-card wide grid gap-3">
+            <form method="post" enctype="multipart/form-data" class="modal-card wide grid gap-3" id="operadorForm">
               {% csrf_token %}
               <input type="hidden" name="acao" value="salvar_operador">
               <input type="hidden" name="operador_id" value="{{ operador_editando.pk|default:'' }}">
+              <input type="hidden" name="senha_admin" id="operadorSenhaAdminInput" value="">
               <div class="flex items-center justify-between gap-3">
                 <h3 class="text-lg font-semibold">{% if operador_editando %}Editar usuario{% else %}Novo usuario{% endif %}</h3>
                 <button class="btn-secondary min-h-[36px] text-xs" type="button" data-close-modal>Fechar</button>
               </div>
-              <div><label>Nome</label>{{ operador_form.nome }}</div>
-              <div><label>Senha</label>{{ operador_form.senha }}</div>
-              <div><label>Permissao</label>{{ operador_form.papel }}</div>
-              <div><label>Foto</label>{{ operador_form.foto }}</div>
-              <div><label>Observacoes</label>{{ operador_form.observacoes }}</div>
+              <div><label>Nome</label>{{ operador_form.nome }}{% if operador_form.nome.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ operador_form.nome.errors|join:", " }}</p>{% endif %}</div>
+              <div><label>Senha</label>{{ operador_form.senha }}{% if operador_form.senha.help_text %}<p class="mt-1 text-xs text-[#8892b0]">{{ operador_form.senha.help_text }}</p>{% endif %}{% if operador_form.senha.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ operador_form.senha.errors|join:", " }}</p>{% endif %}</div>
+              <div><label>Permissao</label>{{ operador_form.papel }}{% if operador_form.papel.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ operador_form.papel.errors|join:", " }}</p>{% endif %}</div>
+              <div><label>Categoria de usuario</label>{{ operador_form.categoria_usuario }}{% if operador_form.categoria_usuario.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ operador_form.categoria_usuario.errors|join:", " }}</p>{% endif %}</div>
+              <div><label>Foto</label>{{ operador_form.foto }}{% if operador_form.foto.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ operador_form.foto.errors|join:", " }}</p>{% endif %}</div>
+              <div><label>Observacoes</label>{{ operador_form.observacoes }}{% if operador_form.observacoes.errors %}<p class="mt-1 text-sm text-[#ff4b4b]">{{ operador_form.observacoes.errors|join:", " }}</p>{% endif %}</div>
               <label class="flex items-center gap-2">{{ operador_form.ativo }} Ativo</label>
-              <button class="btn-primary" type="submit">Salvar usuario</button>
+              <button class="btn-primary" type="button" data-open-modal="modalConfirmarOperador">Salvar usuario</button>
             </form>
+          </div>
+          <div class="modal-backdrop" id="modalConfirmarOperador">
+            <div class="modal-card">
+              <h3 class="text-lg font-semibold">Confirmar salvamento</h3>
+              <p class="mt-1 text-sm text-[#8892b0]">Digite sua senha de administrador para salvar este usuario.</p>
+              <div class="mt-4 profile-field"><label>Sua senha</label><input type="password" id="operadorSenhaAdminModalInput" autocomplete="current-password" required></div>
+              <div class="mt-5 flex justify-end gap-2">
+                <button class="btn-secondary" type="button" data-close-modal>Cancelar</button>
+                <button class="btn-primary" type="button" id="btnConfirmarSalvarOperador">Confirmar e salvar</button>
+              </div>
+            </div>
           </div>
           <div class="user-admin-layout">
             <div class="soft-panel user-list-panel">
@@ -187,10 +204,10 @@
                 {% for usuario in todos_operadores %}
                   <div class="user-row {% if operador_editando and operador_editando.pk == usuario.pk %}is-editing{% endif %}" data-user-row data-user-name="{{ usuario.nome|lower }}">
                     <div class="user-mini">
-                      <span class="user-mini-avatar">
-                        {% if usuario.foto %}<img src="{{ usuario.foto.url }}" alt="{{ usuario.nome }}">{% else %}<i data-lucide="circle-user-round" class="h-6 w-6"></i>{% endif %}
+                      <span class="user-mini-avatar" title="{{ usuario.nome }}">
+                        {% if usuario.foto %}<img src="{{ usuario.foto.url }}" alt="{{ usuario.nome }}">{% else %}<span class="font-black">{{ usuario.nome|first|upper }}</span>{% endif %}
                       </span>
-                      <div class="min-w-0">
+                      <div class="user-mini-name">
                         <strong class="block truncate">{{ usuario.nome }}</strong>
                         <span class="block truncate text-xs text-[#8892b0]">Senha configurada</span>
                       </div>
@@ -214,49 +231,78 @@
             </div>
           </div>
         {% endif %}
-        {% if pode_gerenciar_usuarios %}
-          <form method="post" class="soft-panel mt-5" id="metas-usuarios">
-            {% csrf_token %}
-            <input type="hidden" name="acao" value="salvar_metas_usuarios">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 class="text-lg font-semibold">Metas dos usuarios</h3>
-                <p class="mt-1 text-sm text-[#8892b0]">Defina valores diferentes para varios usuarios e salve tudo de uma vez.</p>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <button class="btn-secondary min-h-[36px] text-xs" type="button" id="btnSelecionarMetas">Selecionar todos</button>
-                <button class="btn-primary min-h-[36px] text-xs" type="submit">Salvar metas selecionadas</button>
-              </div>
-            </div>
-            <div class="meta-users">
-              {% for item in metas_usuarios %}
-                <div class="meta-user-row">
-                  <input type="checkbox" name="meta_operador_ids" value="{{ item.operador.pk }}" data-meta-checkbox>
-                  <div class="user-mini">
-                    <span class="user-mini-avatar">
-                      {% if item.operador.foto %}<img src="{{ item.operador.foto.url }}" alt="{{ item.operador.nome }}">{% else %}<i data-lucide="circle-user-round" class="h-6 w-6"></i>{% endif %}
-                    </span>
-                    <div class="min-w-0">
-                      <strong class="block truncate">{{ item.operador.nome }}</strong>
-                      <span class="block truncate text-xs text-[#8892b0]">{{ item.operador.get_papel_display }}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label>Meta</label>
-                    <input name="meta_valor_{{ item.operador.pk }}" type="number" min="0" step="0.01" value="{% if item.meta %}{{ item.meta.valor|unlocalize }}{% else %}0.00{% endif %}">
-                  </div>
-                </div>
-              {% empty %}
-                <div class="empty-state"><strong>Nenhum usuario ativo</strong><span>Cadastre usuarios ativos para definir metas.</span></div>
-              {% endfor %}
-            </div>
-          </form>
-        {% endif %}
       </div>
     </div>
   </section>
 
-  {% if pode_gerenciar_usuarios %}
+    {% if pode_gerenciar_usuarios_geral %}
+      <section id="tab-usuarios_config" class="config-panel hidden space-y-5">
+        <div class="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <form method="post" class="card p-5">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="salvar_categoria_usuario">
+            <h3 class="mb-2 text-lg font-semibold">Categorias de usuarios</h3>
+            <p class="mb-4 text-sm text-[var(--text-secondary)]">Crie agrupamentos como vendas, atendimento ou producao para filtrar as metas.</p>
+            <div class="grid gap-3">
+              <div><label>Nome</label>{{ categoria_usuario_form.nome }}</div>
+              <div><label>Descricao</label>{{ categoria_usuario_form.descricao }}</div>
+              <div><label>Ordem</label>{{ categoria_usuario_form.ordem }}</div>
+              <label class="flex items-center gap-2 text-sm normal-case tracking-normal">{{ categoria_usuario_form.ativa }} Ativa</label>
+            </div>
+            <button class="btn-primary mt-4 w-full" type="submit"><i data-lucide="plus" class="h-4 w-4"></i> Criar categoria</button>
+          </form>
+
+          <form method="post" class="card p-5">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="salvar_categorias_usuarios">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-semibold">Usuarios e categorias</h3>
+                <p class="mt-1 text-sm text-[var(--text-secondary)]">Defina a categoria de cada usuario existente.</p>
+              </div>
+              <button class="btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Salvar categorias</button>
+            </div>
+            <div class="grid gap-3">
+              {% for usuario in todos_operadores %}
+                <div class="user-category-row">
+                  <input type="hidden" name="usuario_categoria_ids" value="{{ usuario.pk }}">
+                  <div class="user-mini">
+                    <span class="user-mini-avatar">
+                      {% if usuario.foto %}<img src="{{ usuario.foto.url }}" alt="{{ usuario.nome }}">{% else %}<i data-lucide="circle-user-round" class="h-6 w-6"></i>{% endif %}
+                    </span>
+                    <div class="min-w-0">
+                      <strong class="block truncate">{{ usuario.nome }}</strong>
+                      <span class="block truncate text-xs text-[#8892b0]">{{ usuario.get_papel_display }}</span>
+                    </div>
+                  </div>
+                  <select name="usuario_categoria_{{ usuario.pk }}">
+                    <option value="">Sem categoria</option>
+                    {% for categoria_usuario in categorias_usuario %}
+                      <option value="{{ categoria_usuario.pk }}" {% if usuario.categoria_usuario_id == categoria_usuario.pk %}selected{% endif %}>{{ categoria_usuario.nome }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              {% empty %}
+                <div class="empty-state"><strong>Nenhum usuario cadastrado</strong><span>Cadastre usuarios para organizar por categoria.</span></div>
+              {% endfor %}
+            </div>
+          </form>
+        </div>
+
+        <section class="card p-5">
+          <h3 class="mb-3 text-lg font-semibold">Categorias existentes</h3>
+          <div class="flex flex-wrap gap-2">
+            {% for categoria_usuario in categorias_usuario %}
+              <span class="rounded-full border border-[#3d4275] bg-[#171a29] px-3 py-2 text-sm text-[#00e5ff]">{{ categoria_usuario.nome }}</span>
+            {% empty %}
+              <p class="text-sm text-[var(--text-secondary)]">Nenhuma categoria de usuario criada.</p>
+            {% endfor %}
+          </div>
+        </section>
+      </section>
+    {% endif %}
+
+    {% if pode_gerenciar_usuarios %}
     <section id="tab-empresa" class="config-panel hidden space-y-5">
       <div class="card p-5">
         <h3 class="mb-4 text-lg font-semibold">Perfil da empresa</h3>
@@ -267,8 +313,10 @@
           <div><label>Razao social</label>{{ perfil_empresa_form.razao_social }}</div>
           <div><label>CNPJ</label>{{ perfil_empresa_form.cnpj }}</div>
           <div><label>Instagram</label>{{ perfil_empresa_form.instagram }}</div>
+          <div><label>Instagram adicional</label>{{ perfil_empresa_form.instagram_secundario }}</div>
           <div><label>Telefone principal</label>{{ perfil_empresa_form.telefone }}</div>
           <div><label>Telefone secundario</label>{{ perfil_empresa_form.telefone_secundario }}</div>
+          <div><label>Telefone adicional</label>{{ perfil_empresa_form.telefone_terciario }}</div>
           <div><label>Email</label>{{ perfil_empresa_form.email }}</div>
           <div class="md:col-span-2">
             <label>Logo da empresa</label>
@@ -286,6 +334,9 @@
           </div>
           <div class="md:col-span-2"><label>Endereco</label>{{ perfil_empresa_form.endereco }}</div>
           <div class="md:col-span-2"><label>Observacoes</label>{{ perfil_empresa_form.observacoes }}</div>
+          <p class="md:col-span-2 rounded-lg border border-[#3d4275] bg-[#171a29] p-3 text-sm text-[var(--text-secondary)]">
+            Caso precise colocar mais alguma informacao no layout alem das opcoes disponiveis, contate o suporte.
+          </p>
           <button class="btn-primary md:col-span-2" type="submit">Salvar perfil da empresa</button>
         </form>
       </div>
@@ -349,6 +400,7 @@
         </form>
       </div>
     </section>
+    {% endif %}
 
     <section id="tab-aparencia" class="config-panel hidden space-y-5">
       <div class="card p-5">
@@ -370,6 +422,7 @@
     <section id="tab-widgets" class="config-panel hidden">
       <div class="card p-5 space-y-6">
         <h3 class="text-lg font-semibold">Configuracoes de Notificacoes e Alertas</h3>
+        {% if pode_gerenciar_usuarios %}
         <form method="post" class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
           {% csrf_token %}
           <input type="hidden" name="acao" value="salvar_alertas">
@@ -397,6 +450,7 @@
           </div>
           <button class="btn-primary mt-4" type="submit">Salvar regras de alerta</button>
         </form>
+        {% endif %}
         <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
           <h4 class="mb-3 font-semibold">Widget de prazos</h4>
           <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="widgetPrazosAtivo" type="checkbox" checked> Ativar widget</label>
@@ -414,10 +468,11 @@
         <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
           <h4 class="mb-3 font-semibold">Notificacao de assistencia de envio</h4>
           <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="notifAssistenciaAtivo" type="checkbox" checked> Ativar notificacao</label>
-          <div class="grid gap-3 md:grid-cols-3">
+          <div class="grid gap-3 md:grid-cols-4">
             <div><label>Comportamento</label><select id="notifAssistenciaModo"><option value="periodico">Voltar de tempos em tempos</option><option value="sempre">Ficar ativa o tempo todo</option></select></div>
             <div id="notifAssistenciaIntervaloWrap"><label>Voltar a cada</label><select id="notifAssistenciaIntervalo">{% for minutos in intervalo_opcoes %}<option value="{{ minutos }}">{{ minutos }} minutos</option>{% endfor %}</select></div>
             <div id="notifAssistenciaVisivelWrap"><label>Ficar visivel por</label><select id="notifAssistenciaVisivel">{% for segundos in visivel_opcoes %}<option value="{{ segundos }}">{{ segundos }}s</option>{% endfor %}</select></div>
+            <div><label>Posicao</label><select id="notifAssistenciaPosicao"><option value="superior_direita">Superior direita</option><option value="superior_esquerda">Superior esquerda</option><option value="inferior_direita">Inferior direita</option><option value="inferior_esquerda">Inferior esquerda</option><option value="centro">Centro</option></select></div>
           </div>
         </div>
         <div class="flex flex-wrap gap-3">
@@ -428,6 +483,7 @@
       </div>
     </section>
 
+    {% if pode_gerenciar_usuarios %}
     <section id="tab-banco" class="config-panel hidden">
       <div class="card p-5">
         <h3 class="mb-4 text-lg font-semibold">Banco de dados</h3>
@@ -441,12 +497,12 @@
         </div>
       </div>
     </section>
-  {% endif %}
+    {% endif %}
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
-  const allowedConfigTabs = ["usuarios"{% if pode_gerenciar_usuarios %}, "empresa", "aparencia", "widgets", "banco"{% endif %}];
+  const allowedConfigTabs = ["usuarios", "aparencia", "widgets"{% if pode_gerenciar_usuarios %}, "empresa", "banco"{% endif %}{% if pode_gerenciar_usuarios_geral %}, "usuarios_config"{% endif %}];
   function openTab(tab) {
     const alvo = allowedConfigTabs.includes(tab) ? tab : "usuarios";
     document.querySelectorAll("[data-config-tab]").forEach((btn) => btn.classList.toggle("active", btn.dataset.configTab === alvo));
@@ -496,6 +552,7 @@
     document.getElementById("notifAssistenciaModo").value = assistencia.modo;
     document.getElementById("notifAssistenciaIntervalo").value = String(assistencia.intervalo_minutos);
     document.getElementById("notifAssistenciaVisivel").value = String(assistencia.visivel_segundos);
+    document.getElementById("notifAssistenciaPosicao").value = assistencia.posicao || "superior_direita";
     const selecionadas = new Set((prazos.categorias || []).map(Number));
     document.querySelectorAll(".widget-categoria").forEach((item) => { item.checked = selecionadas.size ? selecionadas.has(Number(item.value)) : true; });
     alternarCamposPeriodicos("widgetPrazosModo", "widgetPrazosIntervaloWrap", "widgetPrazosVisivelWrap");
@@ -515,6 +572,7 @@
         modo: document.getElementById("notifAssistenciaModo").value,
         intervalo_minutos: Number(document.getElementById("notifAssistenciaIntervalo").value),
         visivel_segundos: Number(document.getElementById("notifAssistenciaVisivel").value),
+        posicao: document.getElementById("notifAssistenciaPosicao").value,
       },
     };
   }
@@ -573,12 +631,6 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") document.querySelectorAll(".modal-backdrop.is-open").forEach(fecharModal);
   });
-  document.getElementById("btnSelecionarMetas")?.addEventListener("click", () => {
-    const caixas = [...document.querySelectorAll("[data-meta-checkbox]")];
-    const selecionar = caixas.some((caixa) => !caixa.checked);
-    caixas.forEach((caixa) => { caixa.checked = selecionar; });
-  });
-
   const perfilFormPrincipal = document.getElementById("perfilForm");
   const perfilAcaoInput = document.getElementById("perfilAcaoInput");
   const perfilSenhaAtualInput = document.getElementById("perfilSenhaAtualInput");
@@ -595,6 +647,17 @@
     perfilAcaoInput.value = "salvar_perfil";
     perfilSenhaAtualInput.value = perfilSenhaModalInput.value;
     perfilFormPrincipal.requestSubmit();
+  });
+
+  const operadorForm = document.getElementById("operadorForm");
+  const operadorSenhaAdminInput = document.getElementById("operadorSenhaAdminInput");
+  const operadorSenhaAdminModalInput = document.getElementById("operadorSenhaAdminModalInput");
+  const btnConfirmarSalvarOperador = document.getElementById("btnConfirmarSalvarOperador");
+  btnConfirmarSalvarOperador?.addEventListener("click", () => {
+    if (!operadorForm || !operadorSenhaAdminInput || !operadorSenhaAdminModalInput) return;
+    if (!operadorSenhaAdminModalInput.reportValidity()) return;
+    operadorSenhaAdminInput.value = operadorSenhaAdminModalInput.value;
+    operadorForm.requestSubmit();
   });
 
   {% if senha_form.errors %}

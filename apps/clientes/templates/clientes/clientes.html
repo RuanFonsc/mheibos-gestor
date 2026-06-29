@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Clientes{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+{% block page_icon %}users-round{% endblock %}
+{% block head %}
+<style>
+  .client-hero { position: relative; overflow: hidden; border-color: rgba(0,229,255,.22); background: radial-gradient(circle at 18% 0%, rgba(0,229,255,.14), transparent 32%), linear-gradient(145deg, rgba(23,26,41,.96), rgba(24,32,56,.96)); }
+  .client-hero::after { content: ""; position: absolute; inset: auto 14% -48px; height: 96px; border-radius: 50%; background: rgba(0,229,255,.14); filter: blur(32px); pointer-events: none; }
+  .client-metric { position: relative; z-index: 1; border: 1px solid rgba(0,229,255,.14); border-radius: 10px; background: rgba(16,19,31,.72); padding: 16px; }
+  .client-metric p { margin: 0; color: #8892b0; font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+  .client-metric strong { display: block; margin-top: 8px; font-size: 26px; line-height: 1; color: #00e5ff; }
+  .client-layout { display: grid; grid-template-columns: minmax(320px, 420px) minmax(0,1fr); gap: 18px; align-items: start; }
+  .client-panel { border-color: rgba(0,229,255,.18); background: radial-gradient(circle at 10% 0%, rgba(0,229,255,.10), transparent 26%), var(--bg-card); }
+  .client-list { display: grid; gap: 10px; max-height: min(62vh, 680px); overflow-y: auto; padding-right: 6px; scrollbar-gutter: stable; }
+  .client-row { display: grid; grid-template-columns: 46px minmax(0,1fr) minmax(110px, auto) auto; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 12px; }
+  .client-avatar { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; border: 1px solid rgba(0,229,255,.22); background: rgba(0,229,255,.10); color: #00e5ff; font-weight: 950; }
+  .client-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .client-modal { position: fixed; inset: 0; z-index: 70; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.68); padding: 20px; }
+  .client-modal.is-open { display: flex; }
+  .client-modal-card { width: min(860px, 100%); max-height: calc(100vh - 40px); overflow: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); padding: 22px; box-shadow: 0 24px 80px rgba(0,0,0,.38); }
+  .client-info-grid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .client-info-grid div, .client-order-row { border: 1px solid var(--border); border-radius: 10px; background: var(--bg-input); padding: 12px; }
+  .client-order-row { display: grid; grid-template-columns: minmax(0,1fr) 130px 120px; align-items: center; gap: 12px; }
+  .client-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  @media (max-width: 1100px) { .client-layout, .client-row { grid-template-columns: 1fr; } .client-actions { justify-content: flex-start; } }
+  @media (max-width: 760px) { .client-info-grid, .client-order-row { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-content space-y-5">
+  <section class="client-hero card p-5">
+    <div class="relative z-[1] flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <span class="kicker"><i data-lucide="users-round" class="h-4 w-4"></i> Relacionamento</span>
+        <h2 class="section-title">Clientes</h2>
+        <p class="text-sm text-[var(--text-secondary)]">Cadastre contatos, consulte historico e mantenha a base pronta para novos pedidos.</p>
+      </div>
+      <a class="btn-primary" href="{% url 'pedido_create' %}"><i data-lucide="plus" class="h-4 w-4"></i> Novo pedido</a>
+    </div>
+    <div class="relative z-[1] mt-5 grid gap-3 md:grid-cols-3">
+      <div class="client-metric"><p>Clientes</p><strong>{{ total_clientes }}</strong></div>
+      <div class="client-metric"><p>Com pedidos</p><strong>{{ clientes_com_pedido }}</strong></div>
+      <div class="client-metric"><p>Pedidos totais</p><strong>{{ pedidos_total }}</strong></div>
+    </div>
+  </section>
+
+  <section class="client-layout">
+    <form method="post" class="client-panel card p-5">
+      {% csrf_token %}
+      <input type="hidden" name="cliente_id" value="">
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 class="text-lg font-semibold">Cadastrar novo cliente</h3>
+          <p class="mt-1 text-sm text-[var(--text-secondary)]">Dados de contato, entrega e documento para usos futuros.</p>
+        </div>
+      </div>
+      <div class="grid gap-3">
+        <div><label>Nome</label>{{ form.nome }}</div>
+        <div><label>Telefone principal</label>{{ form.telefone_principal }}</div>
+        <div><label>Telefone secundario</label>{{ form.telefone_secundario }}</div>
+        <div><label>Email</label>{{ form.email }}</div>
+        <div><label>CPF/CNPJ</label>{{ form.cpf_cnpj }}</div>
+        <div><label>Endereco</label>{{ form.endereco }}</div>
+        <div><label>Observacoes</label>{{ form.observacoes }}</div>
+      </div>
+      <button class="btn-primary mt-4 w-full" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Salvar cliente</button>
+    </form>
+
+    <div class="client-panel card p-5">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-lg font-semibold">Lista de clientes</h3>
+          <p class="mt-1 text-sm text-[var(--text-secondary)]">Mostrando ate 120 registros.</p>
+        </div>
+        <form method="get" class="flex min-w-[280px] gap-2">
+          <input name="q" value="{{ busca }}" placeholder="Buscar cliente, telefone ou email">
+          <button class="btn-secondary min-h-[53px]" type="submit"><i data-lucide="search" class="h-4 w-4"></i></button>
+        </form>
+      </div>
+      <div class="client-list">
+        {% for cliente in clientes %}
+          <article class="client-row">
+            <div class="client-avatar">{{ cliente.nome|first|upper }}</div>
+            <div class="min-w-0">
+              <strong class="block truncate text-base">{{ cliente.nome }}</strong>
+              <span class="mt-1 block truncate text-xs text-[var(--text-secondary)]">
+                {{ cliente.telefone_principal|default:"Sem telefone" }}{% if cliente.telefone_secundario %} / {{ cliente.telefone_secundario }}{% endif %}
+              </span>
+              {% if cliente.cpf_cnpj %}<span class="mt-1 block truncate text-xs text-[var(--text-secondary)]">{{ cliente.cpf_cnpj }}</span>{% endif %}
+              {% if cliente.email %}<span class="mt-1 block truncate text-xs text-[#00e5ff]">{{ cliente.email }}</span>{% endif %}
+            </div>
+            <div class="text-sm text-[var(--text-secondary)]">
+              <strong class="block text-[var(--text-primary)]">{{ cliente.total_pedidos }}</strong>
+              pedido(s)
+            </div>
+            <div class="client-actions">
+              <a class="btn-secondary min-h-[36px] px-3 text-xs" href="{% url 'clientes' %}?abrir={{ cliente.pk }}{% if busca %}&q={{ busca }}{% endif %}"><i data-lucide="folder-open" class="h-4 w-4"></i> Abrir</a>
+              {% if not cliente.total_pedidos %}
+                <form method="post" action="{% url 'cliente_excluir' cliente.pk %}" onsubmit="return confirm('Excluir este cliente?')">
+                  {% csrf_token %}
+                  <button class="btn-danger min-h-[36px] px-3 text-xs" type="submit"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                </form>
+              {% endif %}
+            </div>
+          </article>
+        {% empty %}
+          <div class="empty-state"><strong>Nenhum cliente encontrado</strong><span>Cadastre o primeiro cliente ou ajuste a busca.</span></div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+
+{% if cliente_aberto %}
+  <div class="client-modal is-open" id="clienteModal">
+    <div class="client-modal-card">
+      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 class="text-xl font-semibold">{{ cliente_aberto.nome }}</h3>
+          <p class="mt-1 text-sm text-[var(--text-secondary)]">{{ pedidos_cliente.paginator.count }} pedido(s) vinculados.</p>
+        </div>
+        <a class="btn-secondary min-h-[36px] text-xs" href="{% url 'clientes' %}{% if busca %}?q={{ busca }}{% endif %}"><i data-lucide="x" class="h-4 w-4"></i> Fechar</a>
+      </div>
+
+      <form method="post" class="grid gap-3 md:grid-cols-2">
+        {% csrf_token %}
+        <input type="hidden" name="cliente_id" value="{{ cliente_aberto.pk }}">
+        <div><label>Nome</label><input name="nome" value="{{ cliente_aberto.nome }}"></div>
+        <div><label>CPF/CNPJ</label><input name="cpf_cnpj" value="{{ cliente_aberto.cpf_cnpj }}"></div>
+        <div><label>Telefone principal</label><input name="telefone_principal" value="{{ cliente_aberto.telefone_principal }}"></div>
+        <div><label>Telefone secundario</label><input name="telefone_secundario" value="{{ cliente_aberto.telefone_secundario }}"></div>
+        <div class="md:col-span-2"><label>Email</label><input name="email" value="{{ cliente_aberto.email }}"></div>
+        <div class="md:col-span-2"><label>Endereco</label><textarea name="endereco" rows="3">{{ cliente_aberto.endereco }}</textarea></div>
+        <div class="md:col-span-2"><label>Observacoes</label><textarea name="observacoes" rows="3">{{ cliente_aberto.observacoes }}</textarea></div>
+        <button class="btn-primary md:col-span-2" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Salvar alteracoes</button>
+      </form>
+
+      <div class="mt-5">
+        <h4 class="mb-3 font-semibold">Pedidos deste cliente</h4>
+        <div class="grid gap-2">
+          {% for pedido in pedidos_cliente %}
+            <a class="client-order-row text-[var(--text-primary)] no-underline" href="{% url 'pedido_detail' pedido.pk %}">
+              <div>
+                <strong>#{{ pedido.legado_id|default:pedido.pk }} - {{ pedido.tema|default:"Sem tema" }}</strong>
+                <span class="mt-1 block text-xs text-[var(--text-secondary)]">{{ pedido.data_pedido|date:"d/m/Y"|default:"Sem data" }}</span>
+              </div>
+              <span>{{ pedido.get_status_display }}</span>
+              <strong class="text-[#00c896]">R$ {{ pedido.valor_total|floatformat:2 }}</strong>
+            </a>
+          {% empty %}
+            <div class="empty-state"><strong>Sem pedidos</strong><span>Este cliente ainda nao tem pedidos vinculados.</span></div>
+          {% endfor %}
+        </div>
+        {% if pedidos_cliente.paginator.num_pages > 1 %}
+          <div class="client-pagination">
+            {% if pedidos_cliente.has_previous %}
+              <a class="btn-secondary min-h-[34px] text-xs" href="{% url 'clientes' %}?abrir={{ cliente_aberto.pk }}&pagina_pedidos={{ pedidos_cliente.previous_page_number }}{% if busca %}&q={{ busca }}{% endif %}">Anterior</a>
+            {% endif %}
+            <span class="text-sm text-[var(--text-secondary)]">Pagina {{ pedidos_cliente.number }} de {{ pedidos_cliente.paginator.num_pages }}</span>
+            {% if pedidos_cliente.has_next %}
+              <a class="btn-secondary min-h-[34px] text-xs" href="{% url 'clientes' %}?abrir={{ cliente_aberto.pk }}&pagina_pedidos={{ pedidos_cliente.next_page_number }}{% if busca %}&q={{ busca }}{% endif %}">Proxima</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

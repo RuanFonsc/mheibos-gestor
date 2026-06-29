@@ -11,6 +11,7 @@
         modo: "periodico",
         intervalo_minutos: 30,
         visivel_segundos: 60,
+        posicao: "inferior_centro",
         categorias: [],
       },
       assistencia: {
@@ -18,6 +19,7 @@
         modo: "periodico",
         intervalo_minutos: 15,
         visivel_segundos: 30,
+        posicao: "superior_direita",
       },
     },
   };

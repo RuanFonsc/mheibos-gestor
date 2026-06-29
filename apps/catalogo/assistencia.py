@@ -173,8 +173,11 @@ def categorias_do_pedido(pedido):
     return categorias
 
 
-def pedidos_assistencia(busca=""):
+def pedidos_assistencia(busca="", categorias_ids=None, usuarios=None):
     categorias = list(CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"))
+    if categorias_ids:
+        ids = {int(item) for item in categorias_ids if str(item).isdigit()}
+        categorias = [categoria for categoria in categorias if categoria.id in ids]
     itens_prefetch = Prefetch(
         "itens",
         queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
@@ -201,6 +204,13 @@ def pedidos_assistencia(busca=""):
         if busca.isdigit():
             filtros_busca |= Q(pk=int(busca)) | Q(legado_id=int(busca))
         pedidos = pedidos.filter(filtros_busca).distinct()
+    if usuarios:
+        nomes = [str(item).strip() for item in usuarios if str(item).strip()]
+        if nomes:
+            filtros_usuarios = Q()
+            for nome in nomes:
+                filtros_usuarios |= Q(usuario_cadastro__iexact=nome) | Q(designer__iexact=nome)
+            pedidos = pedidos.filter(filtros_usuarios).distinct()
     agrupados = defaultdict(list)
     agora = timezone.localtime()
 

@@ -35,8 +35,12 @@ STATUS_PRODUCAO = [
     StatusPedido.EM_PRODUCAO,
 ]
 
-STATUS_ASSISTENCIA = STATUS_PRE_PRODUCAO
-STATUS_FUNIL_GESTOR = STATUS_PRE_PRODUCAO + STATUS_PRODUCAO
+STATUS_ASSISTENCIA = [
+    StatusPedido.AGUARDANDO_ARTE,
+    StatusPedido.ARTE_EM_PREPARO,
+    StatusPedido.AGUARDANDO_APROVACAO,
+]
+STATUS_FUNIL_GESTOR = STATUS_ASSISTENCIA + STATUS_PRODUCAO
 
 STATUS_ENTREGA = [
     StatusPedido.PRONTO,
@@ -55,6 +59,7 @@ class FormaPagamento(models.TextChoices):
 
 class OrigemPedido(models.TextChoices):
     BALCAO = "BALCAO", "Balcao"
+    VENDAS = "VENDAS", "Mheibos Vendas"
     WHATSAPP = "WHATSAPP", "WhatsApp"
     IA = "IA", "IA"
     LEGADO = "LEGADO", "Legado"

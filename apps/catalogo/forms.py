@@ -1,12 +1,22 @@
 from django import forms
 
-from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico, UnidadeMedida
+from apps.catalogo.models import CategoriaServico, CategoriaUsuario, OperadorGestor, PerfilEmpresa, ProdutoServico, UnidadeMedida
 
 
 class CategoriaServicoForm(forms.ModelForm):
     class Meta:
         model = CategoriaServico
         fields = ["nome", "ordem", "ativa", "alerta_prazo_ativo", "alerta_dias_uteis", "alerta_mesmo_dia_apos_14h"]
+
+
+class CategoriaUsuarioForm(forms.ModelForm):
+    class Meta:
+        model = CategoriaUsuario
+        fields = ["nome", "descricao", "ordem", "ativa"]
+        widgets = {
+            "descricao": forms.TextInput(attrs={"placeholder": "Ex: vendas, atendimento, producao"}),
+            "ordem": forms.NumberInput(attrs={"min": 0}),
+        }
 
 
 class ProdutoServicoForm(forms.ModelForm):
@@ -28,9 +38,22 @@ class ProdutoServicoForm(forms.ModelForm):
 
 
 class OperadorGestorForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["senha"].required = False
+            self.fields["senha"].help_text = "Deixe em branco para manter a senha atual."
+            self.fields["senha"].widget.attrs["placeholder"] = "Manter senha atual"
+
+    def clean_senha(self):
+        senha = self.cleaned_data.get("senha")
+        if self.instance and self.instance.pk and not senha:
+            return self.instance.senha
+        return senha
+
     class Meta:
         model = OperadorGestor
-        fields = ["nome", "foto", "senha", "papel", "observacoes", "ativo"]
+        fields = ["nome", "foto", "senha", "papel", "categoria_usuario", "observacoes", "ativo"]
         widgets = {
             "foto": forms.FileInput(attrs={"accept": "image/*"}),
             "senha": forms.PasswordInput(render_value=True),
@@ -83,7 +106,9 @@ class PerfilEmpresaForm(forms.ModelForm):
             "cnpj",
             "telefone",
             "telefone_secundario",
+            "telefone_terciario",
             "instagram",
+            "instagram_secundario",
             "email",
             "endereco",
             "logo",

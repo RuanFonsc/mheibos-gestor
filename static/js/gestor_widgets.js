@@ -56,8 +56,47 @@
     toast?.setAttribute("aria-hidden", "false");
   }
 
+  function aplicarPosicaoToast(posicao) {
+    if (!toast) return;
+    toast.classList.remove(
+      "pos-superior-direita",
+      "pos-superior-esquerda",
+      "pos-inferior-direita",
+      "pos-inferior-esquerda",
+      "pos-centro"
+    );
+    const classes = {
+      superior_esquerda: "pos-superior-esquerda",
+      inferior_direita: "pos-inferior-direita",
+      inferior_esquerda: "pos-inferior-esquerda",
+      centro: "pos-centro",
+    };
+    toast.classList.add(classes[posicao] || "pos-superior-direita");
+  }
+
+  function aplicarPosicaoDock(posicao) {
+    if (!dock) return;
+    dock.classList.remove(
+      "pos-superior-direita",
+      "pos-superior-esquerda",
+      "pos-inferior-direita",
+      "pos-inferior-esquerda",
+      "pos-inferior-centro",
+      "pos-centro"
+    );
+    const classes = {
+      superior_direita: "pos-superior-direita",
+      superior_esquerda: "pos-superior-esquerda",
+      inferior_direita: "pos-inferior-direita",
+      inferior_esquerda: "pos-inferior-esquerda",
+      centro: "pos-centro",
+    };
+    dock.classList.add(classes[posicao] || "pos-inferior-centro");
+  }
+
   function renderDock(pedidos, conf) {
     if (!dockItems) return;
+    aplicarPosicaoDock(conf.posicao);
     dockItems.innerHTML = "";
     if (!pedidos.length) {
       if (conf.modo === "sempre" && conf.ativo) {
@@ -169,6 +208,7 @@
         if (cicloCompleto) agendarAssistencia(conf, conf.intervalo_minutos * 60 * 1000);
         return;
       }
+      aplicarPosicaoToast(conf.posicao);
       renderToast(dados);
       if (conf.modo === "sempre") {
         agendarAssistencia(conf, 60 * 1000);

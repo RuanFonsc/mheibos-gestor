@@ -7,13 +7,8 @@
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
-  <section class="card p-5">
-    <h2 class="section-title">Configuracoes</h2>
-    <p class="text-sm text-[#8892b0]">Ajustes locais do Mheibos Producao.</p>
-  </section>
-
   <section class="grid gap-5 xl:grid-cols-2">
-    <div class="card p-5">
+    <div class="card p-5 {% if not pode_ver_banco %}xl:col-span-2{% endif %}">
       <h3 class="mb-4 text-lg font-semibold">Tema e zoom</h3>
       <div class="grid gap-3 md:grid-cols-2">
         <div>
@@ -35,14 +30,16 @@
       <button id="btnSalvarAparencia" class="btn-primary mt-4" type="button">Salvar aparencia</button>
     </div>
 
-    <div class="card p-5">
-      <h3 class="mb-4 text-lg font-semibold">Conexao com banco de dados</h3>
-      <div class="grid gap-3 md:grid-cols-[150px_1fr]">
-        <label>Banco</label><input value="{{ db.NAME }}" readonly>
-        <label>Usuario</label><input value="{{ db.USER }}" readonly>
-        <label>Host</label><input value="{{ db.HOST }}:{{ db.PORT }}" readonly>
+    {% if pode_ver_banco %}
+      <div class="card p-5">
+        <h3 class="mb-4 text-lg font-semibold">Conexao com banco de dados</h3>
+        <div class="grid gap-3 md:grid-cols-[150px_1fr]">
+          <label>Banco</label><input value="{{ db.NAME }}" readonly>
+          <label>Usuario</label><input value="{{ db.USER }}" readonly>
+          <label>Host</label><input value="{{ db.HOST }}:{{ db.PORT }}" readonly>
+        </div>
       </div>
-    </div>
+    {% endif %}
   </section>
 
   <section class="card p-5">
@@ -51,40 +48,23 @@
       <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
         <h4 class="mb-3 font-semibold">Widget flutuante</h4>
         <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="widgetPrazosAtivo" type="checkbox"> Ativar widget</label>
-        <div class="grid gap-3 md:grid-cols-3">
+        <div class="grid gap-3 md:grid-cols-4">
           <div><label>Comportamento</label><select id="widgetPrazosModo"><option value="periodico">Periodico</option><option value="sempre">Sempre ativo</option></select></div>
           <div><label>Intervalo</label><select id="widgetPrazosIntervalo">{% for minutos in intervalo_opcoes %}<option value="{{ minutos }}">{{ minutos }} min</option>{% endfor %}</select></div>
           <div><label>Visivel</label><select id="widgetPrazosVisivel">{% for segundos in visivel_opcoes %}<option value="{{ segundos }}">{{ segundos }}s</option>{% endfor %}</select></div>
+          <div>
+            <label>Posicao</label>
+            <select id="widgetPrazosPosicao">
+              {% for valor, rotulo in posicao_opcoes %}
+                <option value="{{ valor }}">{{ rotulo }}</option>
+              {% endfor %}
+            </select>
+          </div>
         </div>
       </div>
     </div>
     <button id="btnSalvarNotificacoes" class="btn-primary mt-4" type="button">Salvar notificacoes</button>
     <p id="configFeedback" class="mt-3 hidden text-sm font-semibold text-[#00c896]"></p>
-  </section>
-
-  <section class="card p-5">
-    <h3 class="mb-4 text-lg font-semibold">Prioridade e prazo por categoria</h3>
-    <form method="post">
-      {% csrf_token %}
-      <input type="hidden" name="acao" value="salvar_alertas">
-      <div class="grid gap-3">
-        {% for categoria in categorias %}
-          <div class="grid gap-3 rounded-lg bg-[#171a29] p-3 md:grid-cols-[1fr_130px_160px_160px] md:items-center">
-            <div>
-              <strong>{{ categoria.nome }}</strong>
-              <p class="text-xs text-[#8892b0]">Ordem {{ categoria.ordem }}</p>
-            </div>
-            <label class="flex items-center gap-2 text-sm normal-case tracking-normal"><input type="checkbox" name="categoria_{{ categoria.pk }}_ativo" {% if categoria.alerta_prazo_ativo %}checked{% endif %}> Ativo</label>
-            <div>
-              <label>Dias uteis</label>
-              <input type="number" min="0" name="categoria_{{ categoria.pk }}_dias" value="{{ categoria.alerta_dias_uteis }}">
-            </div>
-            <label class="flex items-center gap-2 text-sm normal-case tracking-normal"><input type="checkbox" name="categoria_{{ categoria.pk }}_mesmo_dia" {% if categoria.alerta_mesmo_dia_apos_14h %}checked{% endif %}> Apos 14h</label>
-          </div>
-        {% endfor %}
-      </div>
-      <button class="btn-primary mt-4" type="submit">Salvar regras</button>
-    </form>
   </section>
 </div>
 {% endblock %}
@@ -106,6 +86,7 @@
     document.getElementById("widgetPrazosModo").value = prazos.modo;
     document.getElementById("widgetPrazosIntervalo").value = String(prazos.intervalo_minutos);
     document.getElementById("widgetPrazosVisivel").value = String(prazos.visivel_segundos);
+    document.getElementById("widgetPrazosPosicao").value = prazos.posicao || "inferior_centro";
   }
   document.getElementById("btnSalvarAparencia")?.addEventListener("click", async () => {
     await GestorPrefs.save({ tema: document.getElementById("configTema").value, zoom: Number(document.getElementById("configZoom").value) });
@@ -119,6 +100,7 @@
           modo: document.getElementById("widgetPrazosModo").value,
           intervalo_minutos: Number(document.getElementById("widgetPrazosIntervalo").value),
           visivel_segundos: Number(document.getElementById("widgetPrazosVisivel").value),
+          posicao: document.getElementById("widgetPrazosPosicao").value,
         },
       },
     });

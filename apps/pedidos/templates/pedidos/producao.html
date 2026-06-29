@@ -3,9 +3,8 @@
 {% block title %}Producao{% endblock %}
 {% block page_title %}Producao{% endblock %}
 {% block top_tabs %}
-  <a href="{% url 'producao_home' %}" class="top-tab active"><i data-lucide="factory" class="h-5 w-5"></i> Fila</a>
-  <a href="{% url 'producao_home' %}?status=EM_PRODUCAO&ordem={{ ordem }}" class="top-tab {% if status_atual == 'EM_PRODUCAO' %}active{% endif %}"><i data-lucide="badge-check" class="h-5 w-5"></i> Enviados</a>
-  <a href="{% url 'producao_configuracoes' %}" class="top-tab"><i data-lucide="settings" class="h-5 w-5"></i> Config</a>
+  <a href="{% url 'producao_home' %}?status=EM_PRODUCAO&ordem={{ ordem }}" class="top-tab {% if status_atual == 'EM_PRODUCAO' %}active{% endif %}"><i data-lucide="factory" class="h-5 w-5"></i> Fila</a>
+  <a href="{% url 'producao_home' %}?status=PRONTO&ordem={{ ordem }}" class="top-tab {% if status_atual == 'PRONTO' %}active{% endif %}"><i data-lucide="package-check" class="h-5 w-5"></i> Prontos</a>
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
@@ -15,14 +14,11 @@
       <h2 class="section-title">Fila da producao</h2>
       <p>Pedidos agrupados por categoria, com prazo, prioridade e arte visiveis para execucao.</p>
     </div>
-    <div class="page-actions">
-      <a href="{% url 'pedido_list' %}?status=PRONTO" class="btn-secondary"><i data-lucide="package-check" class="h-4 w-4"></i> Ver prontos</a>
-    </div>
   </div>
   <section class="grid gap-3 md:grid-cols-3">
     <div class="card metric-card"><p>Enviados</p><strong class="text-[#00e5ff]">{{ liberados }}</strong><span>na fila atual</span></div>
     <div class="card metric-card"><p>Em producao</p><strong class="text-[#ffb347]">{{ produzindo }}</strong><span>em andamento</span></div>
-    <div class="card metric-card"><p>Urgentes</p><strong class="text-[#ff4b4b]">{{ urgentes }}</strong><span>exigem atencao</span></div>
+    <div class="card metric-card"><p>{% if status_atual == 'PRONTO' %}Prontos{% else %}Urgentes{% endif %}</p><strong class="{% if status_atual == 'PRONTO' %}text-[#00c896]{% else %}text-[#ff4b4b]{% endif %}">{% if status_atual == 'PRONTO' %}{{ prontos }}{% else %}{{ urgentes }}{% endif %}</strong><span>{% if status_atual == 'PRONTO' %}aguardando retirada{% else %}exigem atencao{% endif %}</span></div>
   </section>
 
   <form class="card grid gap-3 p-4 md:grid-cols-[220px_220px_1fr_auto_auto]" method="get">
@@ -48,6 +44,7 @@
     <button class="btn-primary min-w-[53px] px-0" type="submit" title="Filtrar"><i data-lucide="search" class="h-5 w-5"></i></button>
   </form>
 
+  {% if status_atual != 'PRONTO' %}
   <form class="bulk-toolbar" method="post" action="{% url 'pedido_bulk_action' %}" data-bulk-form data-bulk-scope="#producaoPedidos">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -58,6 +55,7 @@
       <i data-lucide="check" class="h-4 w-4"></i> Marcar como pronto
     </button>
   </form>
+  {% endif %}
 
   <section id="producaoPedidos" class="grid gap-4 xl:grid-cols-3">
     {% for grupo in grupos %}
@@ -68,7 +66,7 @@
         </div>
         <div class="grid gap-3">
           {% for pedido in grupo.pedidos %}
-            <article data-bulk-card class="rounded-xl border p-4 {% if pedido.alerta_prazo %}border-[#ff4b4b] bg-[#3a1820] shadow-[0_0_0_1px_rgba(255,75,75,.18)]{% else %}border-[#2d3154] bg-[#171a29]{% endif %}">
+            <article data-bulk-card class="min-w-0 rounded-xl border p-4 {% if pedido.alerta_prazo and pedido.status == 'PRONTO' %}ready-glow-card{% elif pedido.alerta_prazo %}danger-glow-card{% else %}border-[#2d3154] bg-[#171a29]{% endif %}">
               <div class="flex items-start justify-between gap-4">
                 <div class="flex min-w-0 gap-3">
                   <label class="bulk-select mt-0.5" title="Selecionar pedido #{{ pedido.legado_id|default:pedido.pk }}">
@@ -78,7 +76,7 @@
                   <div class="flex flex-wrap items-center gap-2">
                     <span class="rounded-md bg-[#10131f] px-2 py-1 text-xs text-[#8892b0]">#{{ pedido.legado_id|default:pedido.pk }}</span>
                     <span class="status-pill is-info">{{ pedido.get_status_display }}</span>
-                    <span class="status-pill {% if pedido.prioridade == 'URGENTE' or pedido.alerta_prazo %}is-danger{% elif pedido.prioridade == 'ALTA' %}is-work{% else %}is-info{% endif %}">{{ pedido.get_prioridade_display }}</span>
+                    <span class="status-pill {% if pedido.alerta_prazo and pedido.status == 'PRONTO' %}is-info{% elif pedido.prioridade == 'URGENTE' or pedido.alerta_prazo %}is-danger{% elif pedido.prioridade == 'ALTA' %}is-work{% else %}is-info{% endif %}">{{ pedido.get_prioridade_display }}</span>
                   </div>
                   <h2 class="mt-3 truncate text-lg font-semibold">{{ pedido.cliente.nome }}</h2>
                   <p class="mt-1 truncate text-sm text-[#8892b0]">{{ pedido.tema|default:"Sem tema" }}</p>
@@ -107,7 +105,7 @@
                   {% empty %}
                     <p>Sem itens normalizados.</p>
                   {% endfor %}
-                  {% if pedido.alerta_prazo %}<p class="mt-2 font-semibold text-[#ffd1d1]">Alerta de prazo da categoria</p>{% endif %}
+                  {% if pedido.alerta_prazo %}<p class="mt-2 font-semibold {% if pedido.status == 'PRONTO' %}text-[#eadcff]{% else %}text-[#ffd1d1]{% endif %}">{% if pedido.status == 'PRONTO' %}Pronto com prazo perto ou vencido{% else %}Alerta de prazo da categoria{% endif %}</p>{% endif %}
                   {% if pedido.caminho_arquivo_corel %}
                     <a href="#" data-corel-path="{{ pedido.caminho_arquivo_corel }}" class="mt-2 inline-flex text-xs font-semibold text-[#00e5ff]">
                       <i data-lucide="folder-open" class="mr-1 h-4 w-4"></i> Abrir arquivo Corel
@@ -116,6 +114,7 @@
                 </div>
               </div>
 
+              {% if status_atual != 'PRONTO' %}
               <div class="mt-4 flex flex-wrap gap-2 border-t border-[#2d3154] pt-4">
                 <form method="post" action="{% url 'pedido_update_status' pedido.pk %}">
                   {% csrf_token %}
@@ -127,6 +126,7 @@
                   <i data-lucide="undo-2" class="h-4 w-4"></i> Rejeitar
                 </button>
               </div>
+              {% endif %}
             </article>
           {% endfor %}
         </div>

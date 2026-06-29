@@ -14,16 +14,42 @@
     </div>
   </section>
 
-  <form class="card grid gap-3 p-4 md:grid-cols-[1fr_auto_auto]" method="get">
-    <input name="q" value="{{ busca }}" placeholder="Buscar cliente, tema, produto ou ID">
-    {% if busca %}
-      <a class="btn-secondary min-h-[53px]" href="{% url 'assistencia_envio' %}">
-        <i data-lucide="x" class="h-4 w-4"></i> Limpar
-      </a>
-    {% endif %}
-    <button class="btn-primary min-h-[53px]" type="submit">
-      <i data-lucide="search" class="h-5 w-5"></i>
-    </button>
+  <form class="card grid gap-4 p-4" method="get">
+    <div class="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+      <input name="q" value="{{ busca }}" placeholder="Buscar cliente, tema, produto ou ID">
+      {% if busca or categorias_selecionadas or usuarios_selecionados %}
+        <a class="btn-secondary min-h-[53px]" href="{% url 'assistencia_envio' %}">
+          <i data-lucide="x" class="h-4 w-4"></i> Limpar
+        </a>
+      {% endif %}
+      <button class="btn-primary min-h-[53px]" type="submit">
+        <i data-lucide="search" class="h-5 w-5"></i>
+      </button>
+    </div>
+    <div class="grid gap-3 lg:grid-cols-2">
+      <div>
+        <label>Categorias exibidas</label>
+        <div class="mt-2 flex flex-wrap gap-2">
+          {% for categoria in categorias %}
+            <label class="flex items-center gap-2 rounded-lg bg-[#171a29] px-3 py-2 text-sm normal-case tracking-normal">
+              <input type="checkbox" name="categorias" value="{{ categoria.id }}" {% if not categorias_selecionadas or categoria.id|stringformat:'s' in categorias_selecionadas %}checked{% endif %}>
+              {{ categoria.nome }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label>Usuarios exibidos</label>
+        <div class="mt-2 flex flex-wrap gap-2">
+          {% for usuario in usuarios %}
+            <label class="flex items-center gap-2 rounded-lg bg-[#171a29] px-3 py-2 text-sm normal-case tracking-normal">
+              <input type="checkbox" name="usuarios" value="{{ usuario.nome }}" {% if not usuarios_selecionados or usuario.nome in usuarios_selecionados %}checked{% endif %}>
+              {{ usuario.nome }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
   </form>
 
   <section class="card p-4">
@@ -59,7 +85,7 @@
         </div>
         <div class="grid gap-3">
           {% for pedido in grupo.pedidos %}
-            <article data-bulk-card class="rounded-xl border border-[#ff4b4b] bg-[#3a1820] p-4 shadow-[0_0_0_1px_rgba(255,75,75,.18)]">
+            <article data-bulk-card class="danger-glow-card rounded-xl p-4">
               <div class="mb-3 flex items-center justify-between gap-3">
                 <label class="bulk-select" title="Selecionar pedido #{{ pedido.legado_id|default:pedido.pk }}">
                   <input type="checkbox" value="{{ pedido.pk }}" data-bulk-checkbox>

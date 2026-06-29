@@ -2,6 +2,7 @@
 {% block title %}Gestor de Pedidos{% endblock %}
 {% block page_title %}Gestor de Pedidos{% endblock %}
 {% block top_tabs %}
+  <a href="{% url 'atendimento_list' %}" class="top-tab"><i data-lucide="headphones" class="h-5 w-5"></i> Atendimento</a>
   <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab {% if status_atual == 'EM_PRODUCAO' or status_atual == 'AGUARDANDO_ARTE' %}active{% endif %}"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
   <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab {% if status_atual == 'PRONTO' %}active{% endif %}"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
@@ -72,7 +73,7 @@
 
 <section id="pedidosLista" class="grid gap-3 {% if modo_visualizacao == 'grade' %}lg:grid-cols-2 xl:grid-cols-3{% else %}grid-cols-1{% endif %}">
   {% for pedido in pedidos %}
-    <article data-bulk-card class="card block p-4 transition hover:-translate-y-0.5 hover:border-[#00e5ff] {% if pedido.alerta_prazo %}!border-[#ff4b4b] !bg-[#3a1820]{% endif %} {% if modo_visualizacao == 'lista' %}max-w-none{% endif %}">
+    <article data-bulk-card class="card block p-4 transition hover:-translate-y-0.5 hover:border-[#00e5ff] {% if pedido.alerta_prazo and pedido.status == 'PRONTO' %}ready-glow-card{% elif pedido.alerta_prazo and pedido.status != 'CANCELADO' and pedido.status != 'ENTREGUE' %}danger-glow-card{% endif %} {% if modo_visualizacao == 'lista' %}max-w-none{% endif %}">
       <div class="flex items-start justify-between gap-4">
         <div class="flex min-w-0 gap-3">
           <label class="bulk-select mt-0.5" title="Selecionar pedido #{{ pedido.legado_id|default:pedido.pk }}">
@@ -113,12 +114,14 @@
             <span>{{ pedido.artes.count }} arte(s)</span>
           </div>
         </div>
-        {% with assistencia=pedido.status_assistencia %}
-          <div class="flex shrink-0 items-center gap-1.5 text-xs font-medium {% if assistencia.na_assistencia %}text-red-400{% else %}text-blue-400{% endif %}">
-            <i data-lucide="{% if assistencia.na_assistencia %}alert-circle{% else %}clock{% endif %}" class="h-3.5 w-3.5"></i>
-            {{ assistencia.mensagem }}
-          </div>
-        {% endwith %}
+        {% if pedido.status != 'PRONTO' and pedido.status != 'CANCELADO' %}
+          {% with assistencia=pedido.status_assistencia %}
+            <div class="flex shrink-0 items-center gap-1.5 text-xs font-medium {% if assistencia.na_assistencia %}text-red-400{% else %}text-blue-400{% endif %}">
+              <i data-lucide="{% if assistencia.na_assistencia %}alert-circle{% else %}clock{% endif %}" class="h-3.5 w-3.5"></i>
+              {{ assistencia.mensagem }}
+            </div>
+          {% endwith %}
+        {% endif %}
       </div>
       <div class="mt-3 flex justify-end">
         <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary min-h-[36px] text-xs"><i data-lucide="eye" class="h-4 w-4"></i> Abrir</a>

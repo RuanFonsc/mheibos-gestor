@@ -9,11 +9,15 @@ from config.views import home
 
 urlpatterns = [
     path("", home, name="home"),
+    path("licenca/", catalogo_views.licenca_ativar, name="licenca_ativar"),
     path("login/", catalogo_views.login_operador, name="login"),
     path("sair/", catalogo_views.logout_operador, name="logout"),
     path("primeiro-admin/", catalogo_views.primeiro_admin, name="primeiro_admin"),
     path("", include("apps.financeiro.urls")),
+    path("clientes/", include("apps.clientes.urls")),
     path("pedidos/", include("apps.pedidos.urls")),
+    path("vendas/login/", catalogo_views.login_vendas, name="vendas_login"),
+    path("vendas/", include("apps.vendas.urls")),
     path("produtos/", catalogo_views.produtos, name="produtos"),
     path("produtos/<int:pk>/editar/", catalogo_views.produto_editar, name="produto_editar"),
     path("produtos/<int:pk>/excluir/", catalogo_views.produto_excluir, name="produto_excluir"),

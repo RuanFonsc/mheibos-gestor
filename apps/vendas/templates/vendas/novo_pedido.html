@@ -1,0 +1,155 @@
+{% extends "vendas/base.html" %}
+{% load l10n %}
+{% block title %}Novo pedido - Mheibos Vendas{% endblock %}
+{% block content %}
+<form method="post" class="grid gap-4">
+  {% csrf_token %}
+  <section class="hero-card card p-5">
+    <p class="text-sm font-black uppercase tracking-[1px] text-[#00e5ff]">Novo atendimento</p>
+    <h1 class="mt-1 text-2xl font-black">Novo pedido</h1>
+    <p class="mt-2 text-sm text-[#9aa7d3]">Preencha o atendimento inicial. O designer finaliza depois no Gestor.</p>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="mb-3 text-lg font-black">Cliente</h2>
+    <div class="grid gap-3 md:grid-cols-2">
+      <div><label>{{ form.nome_cliente.label }}</label><input name="nome_cliente" value="{{ form.nome_cliente.value|default:'' }}" list="clientes-list" maxlength="180" required autocomplete="off">{{ form.nome_cliente.errors }}</div>
+      <div><label>{{ form.telefone_1.label }}</label>{{ form.telefone_1 }}</div>
+      <div><label>{{ form.telefone_2.label }}</label>{{ form.telefone_2 }}</div>
+      <div><label>{{ form.cpf_cnpj.label }}</label>{{ form.cpf_cnpj }}</div>
+      <div class="md:col-span-2"><label>{{ form.endereco.label }}</label>{{ form.endereco }}</div>
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <h2 class="text-lg font-black">Itens</h2>
+      <button class="btn-secondary min-h-[38px]" type="button" id="btnAddItem"><i data-lucide="plus" class="h-4 w-4"></i> Item</button>
+    </div>
+    <div class="grid gap-3" id="items">
+      {% for index in "12345" %}
+        <div class="{% if not forloop.first %}hidden{% endif %} item-row rounded-lg border border-[#343a66] bg-[#171a29] p-3">
+          <div class="grid gap-2 md:grid-cols-[110px_1fr_150px_180px]">
+            <div><label>Quantidade</label><input name="item_qtd_{{ index }}" type="number" min="0.01" step="0.01" value="{% if forloop.first %}1{% endif %}"></div>
+            <div><label>Produto/servico</label><input name="item_nome_{{ index }}" list="produtos-list" placeholder="Digite para buscar..."></div>
+            <div><label>Valor unitario</label><input class="price-input" name="item_preco_{{ index }}" type="number" min="0" step="0.01" value="{% if forloop.first %}0.00{% endif %}"></div>
+            <div><label>Categoria</label><select name="item_categoria_{{ index }}"><option value="">Automatica</option>{% for categoria in categorias_servico %}<option value="{{ categoria.id }}">{{ categoria.nome }}</option>{% endfor %}</select></div>
+          </div>
+          <div class="mt-2"><label>Observacao do item</label><textarea name="item_desc_{{ index }}" rows="2"></textarea></div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="mb-3 text-lg font-black">Entrega e pagamento</h2>
+    <div class="grid gap-3 md:grid-cols-3">
+      <div class="md:col-span-2"><label>{{ form.tema.label }}</label>{{ form.tema }}{{ form.tema.errors }}</div>
+      <div><label>{{ form.prioridade.label }}</label>{{ form.prioridade }}</div>
+      <div><label>{{ form.data_entrega.label }}</label>{{ form.data_entrega }}</div>
+      <div><label>{{ form.hora_entrega.label }}</label>{{ form.hora_entrega }}</div>
+      <div><label>{{ form.forma_pagamento.label }}</label>{{ form.forma_pagamento }}</div>
+      <div><label>Valor total</label><div class="flex min-h-[52px] items-center rounded-lg border border-[#343a66] bg-[#171a29] px-4"><strong id="totalPreview" class="text-xl text-[#00c896]">R$ 0,00</strong></div></div>
+      <div><label>{{ form.valor_pago.label }}</label>{{ form.valor_pago }}</div>
+      <div><label>{{ form.desconto_ajuste.label }}</label>{{ form.desconto_ajuste }}</div>
+      <div class="md:col-span-3"><label>{{ form.observacoes.label }}</label>{{ form.observacoes }}</div>
+    </div>
+  </section>
+
+  <button class="btn-primary min-h-[56px] text-base" type="submit"><i data-lucide="send" class="h-5 w-5"></i> Enviar para Atendimento</button>
+</form>
+
+<datalist id="clientes-list">
+  {% for cliente in clientes_autocomplete %}
+    <option value="{{ cliente.nome }}" data-telefone-1="{{ cliente.telefone_principal }}" data-telefone-2="{{ cliente.telefone_secundario }}" data-cpf-cnpj="{{ cliente.cpf_cnpj }}" data-endereco="{{ cliente.endereco }}"></option>
+  {% endfor %}
+</datalist>
+<datalist id="produtos-list">
+  {% for produto in produtos %}
+    <option value="{{ produto.nome }}" data-preco="{{ produto.preco_venda_padrao|unlocalize }}" data-prazo="{{ produto.prazo_entrega_dias_uteis }}" data-categoria-id="{{ produto.categoria_servico_id|default:'' }}"></option>
+  {% endfor %}
+</datalist>
+{% endblock %}
+{% block scripts %}
+<script>
+  const rows = [...document.querySelectorAll(".item-row")];
+  const entregaInput = document.querySelector("[name=data_entrega]");
+  let entregaManual = Boolean(entregaInput?.value);
+  function money(value) {
+    return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+  function addDiasUteis(data, dias) {
+    const resultado = new Date(data);
+    let adicionados = 0;
+    while (adicionados < dias) {
+      resultado.setDate(resultado.getDate() + 1);
+      const diaSemana = resultado.getDay();
+      if (diaSemana !== 0 && diaSemana !== 6) adicionados += 1;
+    }
+    return resultado;
+  }
+  function dataIso(data) {
+    return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
+  }
+  function prazoMaximoItens() {
+    let maiorPrazo = 0;
+    rows.forEach((row, idx) => {
+      const input = document.querySelector(`[name=item_nome_${idx + 1}]`);
+      const option = [...document.querySelectorAll("#produtos-list option")].find(item => item.value.toLowerCase() === input.value.trim().toLowerCase());
+      if (option) maiorPrazo = Math.max(maiorPrazo, Number(option.dataset.prazo || 0));
+    });
+    return maiorPrazo;
+  }
+  function atualizarEntregaAutomatica() {
+    if (!entregaInput || entregaManual) return;
+    const prazo = prazoMaximoItens();
+    if (prazo) entregaInput.value = dataIso(addDiasUteis(new Date(), prazo));
+  }
+  function recalc() {
+    let total = 0;
+    rows.forEach((row, idx) => {
+      const n = idx + 1;
+      const nome = document.querySelector(`[name=item_nome_${n}]`).value.trim();
+      const qtd = parseFloat(document.querySelector(`[name=item_qtd_${n}]`).value || "0");
+      const preco = parseFloat(document.querySelector(`[name=item_preco_${n}]`).value || "0");
+      if (nome) total += qtd * preco;
+    });
+    const ajuste = parseFloat(document.querySelector("[name=desconto_ajuste]").value || "0");
+    document.getElementById("totalPreview").textContent = money(total + ajuste);
+    atualizarEntregaAutomatica();
+  }
+  function applyProductData(input) {
+    const option = [...document.querySelectorAll("#produtos-list option")].find(item => item.value.toLowerCase() === input.value.trim().toLowerCase());
+    if (!option) return;
+    const match = input.name.match(/_(\d+)$/);
+    if (!match) return;
+    const price = document.querySelector(`[name=item_preco_${match[1]}]`);
+    if (price && option.dataset.preco) price.value = Number(option.dataset.preco).toFixed(2);
+    const categoria = document.querySelector(`[name=item_categoria_${match[1]}]`);
+    if (categoria && option.dataset.categoriaId) categoria.value = option.dataset.categoriaId;
+    recalc();
+  }
+  function applyClientData() {
+    const input = document.querySelector("[name=nome_cliente]");
+    const option = [...document.querySelectorAll("#clientes-list option")].find(item => item.value.toLowerCase() === input.value.trim().toLowerCase());
+    if (!option) return;
+    document.querySelector("[name=telefone_1]").value = option.dataset.telefone1 || "";
+    document.querySelector("[name=telefone_2]").value = option.dataset.telefone2 || "";
+    document.querySelector("[name=cpf_cnpj]").value = option.dataset.cpfCnpj || "";
+    document.querySelector("[name=endereco]").value = option.dataset.endereco || "";
+  }
+  document.getElementById("btnAddItem")?.addEventListener("click", () => {
+    const next = rows.find(row => row.classList.contains("hidden"));
+    if (next) next.classList.remove("hidden");
+  });
+  entregaInput?.addEventListener("input", () => { entregaManual = true; });
+  document.querySelector("[name=nome_cliente]")?.addEventListener("input", applyClientData);
+  document.querySelector("[name=nome_cliente]")?.addEventListener("change", applyClientData);
+  document.querySelectorAll("[name^=item_nome_]").forEach(input => {
+    input.addEventListener("input", () => applyProductData(input));
+    input.addEventListener("change", () => applyProductData(input));
+  });
+  document.addEventListener("input", recalc);
+  recalc();
+</script>
+{% endblock %}

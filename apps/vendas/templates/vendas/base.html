@@ -1,0 +1,108 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Mheibos Vendas{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #141720;
+      --card: #22253a;
+      --input: #171a29;
+      --border: #343a66;
+      --accent: #4b66ff;
+      --accent-2: #00e5ff;
+      --success: #00c896;
+      --danger: #ff4b4b;
+      --text: #fff;
+      --muted: #9aa7d3;
+    }
+    html[data-vendas-theme="light"] {
+      --bg: #edf1f8;
+      --card: #ffffff;
+      --input: #f4f6fb;
+      --border: #cbd3e8;
+      --text: #151823;
+      --muted: #5c6681;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: "Segoe UI", system-ui, sans-serif; }
+    .sales-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: radial-gradient(circle at 18% 0%, rgba(0,229,255,.12), transparent 28%), var(--bg); }
+    .sales-topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 66px; border-bottom: 1px solid var(--border); background: rgba(20,23,32,.94); padding: 10px 16px; backdrop-filter: blur(10px); }
+    .brand { min-width: 0; }
+    .brand strong { display: block; font-size: 18px; font-weight: 950; text-transform: uppercase; }
+    .brand span { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .content { width: min(1120px, 100%); margin: 0 auto; padding: 18px 14px 92px; }
+    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-top: 1px solid var(--border); background: rgba(20,23,32,.96); padding: 10px 12px; backdrop-filter: blur(10px); }
+    html[data-vendas-theme="light"] .bottom-nav, html[data-vendas-theme="light"] .sales-topbar { background: rgba(255,255,255,.96); }
+    .nav-item, .btn-primary, .btn-secondary, .btn-danger { min-height: 46px; border-radius: 10px; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 14px; color: var(--text); text-decoration: none; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+    .nav-item { border-color: var(--border); background: var(--card); color: var(--muted); font-size: 11px; }
+    .nav-item.active, .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--input); border-color: var(--border); }
+    .btn-danger { background: var(--danger); }
+    .card { border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 12px 34px rgba(0,0,0,.16); }
+    .hero-card { position: relative; overflow: hidden; border-color: rgba(0,229,255,.22); background: radial-gradient(circle at 16% 0%, rgba(0,229,255,.14), transparent 30%), linear-gradient(145deg, rgba(23,26,41,.96), rgba(24,32,56,.96)); }
+    .hero-card::after { content: ""; position: absolute; inset: auto 10% -46px; height: 94px; border-radius: 50%; background: rgba(0,229,255,.14); filter: blur(30px); pointer-events: none; }
+    .hero-card > * { position: relative; z-index: 1; }
+    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+    input, select, textarea { width: 100%; min-height: 52px; border: 1px solid var(--border); border-radius: 10px; background: var(--input); color: var(--text); padding: 10px 14px; outline: none; font-size: 15px; }
+    textarea { min-height: 76px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(75,102,255,.18); }
+    .metric { border: 1px solid rgba(0,229,255,.14); border-radius: 10px; background: rgba(16,19,31,.72); padding: 14px; }
+    .metric p { margin: 0; color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; }
+    .metric strong { display: block; margin-top: 8px; color: var(--accent-2); font-size: 26px; line-height: 1; }
+    .order-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--input); padding: 14px; }
+    .status-pill { display: inline-flex; align-items: center; min-height: 26px; border-radius: 999px; background: rgba(0,229,255,.12); color: var(--accent-2); padding: 0 10px; font-size: 11px; font-weight: 900; text-transform: uppercase; white-space: nowrap; }
+    .message { margin-bottom: 12px; border: 1px solid rgba(0,200,150,.34); border-radius: 10px; background: rgba(0,200,150,.12); padding: 10px 12px; color: #c9fff1; font-weight: 750; }
+    .chart-box { position: relative; height: clamp(220px, 32vh, 320px); }
+    .chart-box canvas { width: 100% !important; height: 100% !important; }
+    .simple-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end; gap: 8px; min-height: 180px; border: 1px solid rgba(0,229,255,.14); border-radius: 10px; background: rgba(16,19,31,.58); padding: 12px; }
+    .simple-bar-wrap { display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 8px; min-width: 0; height: 154px; text-align: center; color: var(--muted); font-size: 10px; font-weight: 800; }
+    .simple-bar { display: block; min-height: 7px; border-radius: 999px 999px 4px 4px; background: linear-gradient(180deg, #00e5ff, rgba(0,229,255,.24)); box-shadow: 0 0 18px rgba(0,229,255,.28); }
+    .simple-bar.is-month { background: linear-gradient(180deg, #7c8dff, rgba(75,102,255,.30)); box-shadow: 0 0 18px rgba(75,102,255,.26); }
+    .chart-fallback-hidden { display: none; }
+    .errorlist { margin: 6px 0 0; padding: 0; list-style: none; color: #ffd1d1; font-size: 12px; }
+    @media (min-width: 860px) {
+      .content { padding: 24px 24px 100px; }
+      .bottom-nav { left: 50%; width: min(720px, calc(100% - 28px)); transform: translateX(-50%); border: 1px solid var(--border); border-radius: 16px 16px 0 0; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="sales-shell">
+    <header class="sales-topbar">
+      <div class="brand">
+        <strong>Mheibos Vendas</strong>
+        <span>{{ operador_atual.nome|default:"Usuario" }}</span>
+      </div>
+      <div class="top-actions">
+        <a class="btn-secondary" href="{% url 'logout' %}?app=vendas" title="Sair"><i data-lucide="log-out" class="h-5 w-5"></i></a>
+      </div>
+    </header>
+    <main class="content">
+      {% if messages %}
+        {% for message in messages %}<div class="message">{{ message }}</div>{% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    <nav class="bottom-nav">
+      <a class="nav-item {% if active == 'dashboard' %}active{% endif %}" href="{% url 'vendas_dashboard' %}"><i data-lucide="layout-dashboard" class="h-5 w-5"></i> Dashboard</a>
+      <a class="nav-item {% if active == 'home' %}active{% endif %}" href="{% url 'vendas_pedidos' %}"><i data-lucide="list-checks" class="h-5 w-5"></i> Pedidos</a>
+      <a class="nav-item {% if active == 'novo' %}active{% endif %}" href="{% url 'vendas_pedido_novo' %}"><i data-lucide="plus" class="h-5 w-5"></i> Novo</a>
+      <a class="nav-item {% if active == 'configuracoes' %}active{% endif %}" href="{% url 'vendas_configuracoes' %}"><i data-lucide="settings" class="h-5 w-5"></i> Perfil</a>
+    </nav>
+  </div>
+  <script>
+    const vendasTheme = localStorage.getItem("mheibos_vendas_theme") || "dark";
+    document.documentElement.setAttribute("data-vendas-theme", vendasTheme === "light" ? "light" : "dark");
+  </script>
+  <script>lucide.createIcons();</script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

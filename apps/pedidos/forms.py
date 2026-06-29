@@ -42,7 +42,14 @@ class PedidoCreateForm(forms.Form):
         required=False,
         widget=forms.HiddenInput(attrs={"data-corel-input": "1"}),
     )
-    prioridade = forms.ChoiceField(label="Prioridade", choices=PrioridadePedido.choices, initial=PrioridadePedido.NORMAL)
+    prioridade = forms.ChoiceField(
+        label="Prioridade",
+        choices=[
+            (PrioridadePedido.NORMAL, "Normal"),
+            (PrioridadePedido.URGENTE, "Urgente"),
+        ],
+        initial=PrioridadePedido.NORMAL,
+    )
     valor_pago = forms.DecimalField(label="Valor Pago", max_digits=12, decimal_places=2, initial=0)
     forma_pagamento = forms.ChoiceField(label="Forma de Pagamento", choices=FormaPagamento.choices)
     desconto_ajuste = forms.DecimalField(label="Desconto / Acréscimo", max_digits=12, decimal_places=2, initial=0)

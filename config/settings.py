@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "apps.clientes",
     "apps.catalogo",
     "apps.pedidos",
+    "apps.vendas",
     "apps.financeiro",
     "apps.legacy_migration",
 ]
@@ -30,9 +31,11 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "config.middleware.IntegridadeArquivosMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "config.middleware.LicencaMiddleware",
     "config.middleware.PrimeiroAdminMiddleware",
     "config.middleware.OperadorLoginMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -104,3 +107,10 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = DATA_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+MHEIBOS_APP_VERSION = config("MHEIBOS_APP_VERSION", default="dev")
+MHEIBOS_LICENSE_ENFORCED = config("MHEIBOS_LICENSE_ENFORCED", default=False, cast=bool)
+MHEIBOS_LICENSE_PUBLIC_KEY = config("MHEIBOS_LICENSE_PUBLIC_KEY", default="")
+MHEIBOS_LICENSE_SERVER_URL = config("MHEIBOS_LICENSE_SERVER_URL", default="")
+MHEIBOS_LICENSE_OFFLINE_DAYS = config("MHEIBOS_LICENSE_OFFLINE_DAYS", default=30, cast=int)
+MHEIBOS_INTEGRITY_ENFORCED = config("MHEIBOS_INTEGRITY_ENFORCED", default=False, cast=bool)

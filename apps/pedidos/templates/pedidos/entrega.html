@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Entrega/Loja{% endblock %}
-{% block page_title %}Entrega/Loja{% endblock %}
+{% block title %}Assistencia de entrega{% endblock %}
+{% block page_title %}Assistencia de entrega{% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
   <section class="grid gap-3 md:grid-cols-2">
@@ -21,7 +21,7 @@
 
   <section id="entregaPedidos" class="grid gap-3">
     {% for pedido in pedidos %}
-      <article data-bulk-card class="grid gap-4 rounded-xl border p-4 lg:grid-cols-[1fr_220px_auto] lg:items-center {% if pedido.alerta_prazo %}border-[#ff4b4b] bg-[#3a1820] shadow-[0_0_0_1px_rgba(255,75,75,.18)]{% else %}card{% endif %}">
+      <article data-bulk-card class="grid gap-4 rounded-xl border p-4 lg:grid-cols-[1fr_220px_auto] lg:items-center {% if pedido.alerta_prazo %}ready-glow-card{% else %}card{% endif %}">
         <div class="flex min-w-0 gap-3">
           <label class="bulk-select mt-0.5" title="Selecionar pedido #{{ pedido.legado_id|default:pedido.pk }}">
             <input type="checkbox" value="{{ pedido.pk }}" data-bulk-checkbox>
@@ -30,7 +30,7 @@
           <div class="flex flex-wrap items-center gap-2">
             <span class="rounded-md bg-[#171a29] px-2 py-1 text-xs text-[#8892b0]">#{{ pedido.legado_id|default:pedido.pk }}</span>
             <span class="rounded-md bg-[#00c896]/15 px-2 py-1 text-xs text-[#00c896]">{{ pedido.get_status_display }}</span>
-            <span class="rounded-md {% if pedido.alerta_prazo %}bg-[#ff4b4b]/20 text-[#ffd1d1]{% else %}bg-[#2d3154] text-[#8892b0]{% endif %} px-2 py-1 text-xs">{{ pedido.get_prioridade_display }}</span>
+            <span class="rounded-md {% if pedido.alerta_prazo %}bg-[#ac66ff]/20 text-[#eadcff]{% else %}bg-[#2d3154] text-[#8892b0]{% endif %} px-2 py-1 text-xs">{{ pedido.get_prioridade_display }}</span>
           </div>
           <h2 class="mt-2 truncate text-lg font-semibold">{{ pedido.cliente.nome }}</h2>
           <p class="mt-1 truncate text-sm text-[#8892b0]">{{ pedido.tema|default:"Sem tema" }}</p>
@@ -38,7 +38,7 @@
             {{ pedido.cliente.telefone_principal|default:"Sem telefone" }}
             {% if pedido.cliente.telefone_secundario %} / {{ pedido.cliente.telefone_secundario }}{% endif %}
           </p>
-          {% if pedido.alerta_prazo %}<p class="mt-2 text-xs font-semibold uppercase tracking-wide text-[#ffd1d1]">Alerta de prazo da categoria</p>{% endif %}
+          {% if pedido.alerta_prazo %}<p class="mt-2 text-xs font-semibold uppercase tracking-wide text-[#eadcff]">Pronto com prazo perto ou vencido</p>{% endif %}
           </div>
         </div>
 

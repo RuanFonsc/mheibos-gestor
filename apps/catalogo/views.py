@@ -1,7 +1,6 @@
 import json
 import hashlib
 from collections import defaultdict
-from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.conf import settings
@@ -17,6 +16,7 @@ from apps.catalogo.assistencia import categorias_do_pedido, dias_uteis_restantes
 from apps.catalogo.bootstrap import primeiro_admin_pendente
 from apps.catalogo.forms import (
     CategoriaServicoForm,
+    CategoriaUsuarioForm,
     OperadorGestorForm,
     OperadorPerfilForm,
     OperadorSenhaForm,
@@ -24,8 +24,10 @@ from apps.catalogo.forms import (
     ProdutoServicoForm,
     senha_operador_valida,
 )
+from apps.catalogo.licensing import activate_online, install_offline_license, machine_fingerprint, verify_license
 from apps.catalogo.models import (
     CategoriaServico,
+    CategoriaUsuario,
     ChaveRecuperacaoSenha,
     OperadorGestor,
     PapelOperador,
@@ -36,7 +38,6 @@ from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os,
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
 from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
-from apps.financeiro.models import MetaVendasUsuario
 from apps.pedidos.models import Pedido, PedidoItem, PrioridadePedido, StatusPedido
 
 
@@ -45,6 +46,43 @@ def _destino_seguro(request, padrao):
     if proximo.startswith("/") and not proximo.startswith("//"):
         return proximo
     return reverse(padrao)
+
+
+def licenca_ativar(request):
+    status = verify_license()
+    next_url = request.GET.get("next") or request.POST.get("next") or reverse("home")
+    if status.ok and request.method == "GET":
+        return redirect(_destino_seguro(request, "home"))
+
+    erro_middleware = request.session.pop("licenca_erro", "")
+    if erro_middleware:
+        messages.error(request, erro_middleware)
+
+    if request.method == "POST":
+        acao = request.POST.get("acao")
+        try:
+            if acao == "ativar_online":
+                activate_online(request.POST.get("license_key", ""))
+            elif acao == "instalar_offline":
+                install_offline_license(request.POST.get("license_token", ""))
+            else:
+                raise ValueError("Acao de licenca invalida.")
+            messages.success(request, "Licenca ativada com sucesso.")
+            if next_url.startswith("/") and not next_url.startswith("//"):
+                return redirect(next_url)
+            return redirect("home")
+        except ValueError as exc:
+            messages.error(request, str(exc))
+
+    return render(
+        request,
+        "catalogo/licenca.html",
+        {
+            "machine_id": machine_fingerprint(),
+            "status": status,
+            "next": next_url,
+        },
+    )
 
 
 def login_operador(request):
@@ -99,10 +137,41 @@ def login_producao(request):
     )
 
 
+def login_vendas(request):
+    garantir_operadores_padrao()
+    if request.session.get("operador_nome"):
+        return redirect("vendas_home")
+    if request.method == "POST":
+        nome = request.POST.get("usuario", "").strip()
+        senha = request.POST.get("senha", "")
+        operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
+        if operador and operador.senha == senha:
+            request.session["operador_nome"] = operador.nome
+            salvar_preferencias({"usuario": operador.nome})
+            return redirect(_destino_seguro(request, "vendas_home"))
+        messages.error(request, "Usuario ou senha invalidos.")
+    return render(
+        request,
+        "catalogo/login.html",
+        {
+            "titulo": "Mheibos Vendas",
+            "subtitulo": "Atendimento rapido para loja, balcao e WhatsApp.",
+            "usuarios": OperadorGestor.objects.filter(ativo=True).order_by("nome"),
+            "next": request.GET.get("next", ""),
+            "producao": False,
+            "vendas": True,
+        },
+    )
+
+
 def logout_operador(request):
     request.session.flush()
     destino = request.GET.get("app")
-    return redirect("producao_login" if destino == "producao" else "login")
+    if destino == "producao":
+        return redirect("producao_login")
+    if destino == "vendas":
+        return redirect("vendas_login")
+    return redirect("login")
 
 
 def primeiro_admin(request):
@@ -233,13 +302,20 @@ def categoria_excluir(request, pk):
 def assistencia_envio(request):
     operador = operador_atual(request)
     busca = request.GET.get("q", "").strip()
+    categorias_ids = request.GET.getlist("categorias")
+    usuarios = request.GET.getlist("usuarios")
+    grupos = pedidos_assistencia(busca, categorias_ids, usuarios)
     return render(
         request,
         "catalogo/assistencia_envio.html",
         {
             "active": "assistencia",
-            "grupos": pedidos_assistencia(busca),
+            "grupos": grupos,
             "busca": busca,
+            "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
+            "categorias_selecionadas": [str(item) for item in categorias_ids],
+            "usuarios": OperadorGestor.objects.filter(ativo=True).order_by("nome"),
+            "usuarios_selecionados": usuarios,
             "dias_uteis_restantes": dias_uteis_restantes,
             "pode_acoes_admin": operador.is_admin,
         },
@@ -266,8 +342,8 @@ def configuracoes(request):
     perfil_form = OperadorPerfilForm(prefix="perfil", instance=operador)
     senha_form = OperadorSenhaForm(prefix="senha")
     perfil_empresa_form = PerfilEmpresaForm(prefix="empresa", instance=perfil_empresa)
+    categoria_usuario_form = CategoriaUsuarioForm(prefix="categoria_usuario")
     linha_cabecalho_cores = cores_linha_cabecalho_form(perfil_empresa.os_linha_cabecalho)
-    hoje = timezone.localdate()
 
     if request.method == "POST":
         acao = request.POST.get("acao")
@@ -305,6 +381,12 @@ def configuracoes(request):
                 messages.error(request, "Somente administradores cadastram novos usuários.")
                 return redirect("configuracoes")
             operador_id = request.POST.get("operador_id")
+            senha_admin = (request.POST.get("senha_admin") or "").strip()
+            if not senha_operador_valida(operador, senha_admin):
+                messages.error(request, "Senha do administrador incorreta. Informe sua senha para salvar usuarios.")
+                if operador_id:
+                    return redirect(f"{reverse('configuracoes')}?aba=usuarios&operador_id={operador_id}")
+                return redirect(f"{reverse('configuracoes')}?aba=usuarios")
             instance = OperadorGestor.objects.filter(pk=operador_id).first() if operador_id else None
             operador_form = OperadorGestorForm(request.POST, request.FILES, prefix="operador", instance=instance)
             if operador_form.is_valid():
@@ -313,36 +395,31 @@ def configuracoes(request):
             else:
                 messages.error(request, "Não foi possível salvar o usuário. Confira os campos.")
             return redirect("configuracoes")
-        if acao == "salvar_metas_usuarios":
-            if not operador.pode_gerenciar_usuarios:
-                messages.error(request, "Somente administradores definem metas de usuarios.")
+        if acao == "salvar_categoria_usuario":
+            if not operador.is_admin_geral:
+                messages.error(request, "Somente administradores gerais configuram categorias de usuarios.")
                 return redirect("configuracoes")
-            operador_ids = request.POST.getlist("meta_operador_ids")
-            if not operador_ids:
-                messages.error(request, "Selecione pelo menos um usuario para salvar a meta.")
-                return redirect(f"{reverse('configuracoes')}?aba=usuarios#metas-usuarios")
-            usuarios_meta = OperadorGestor.objects.filter(pk__in=operador_ids, ativo=True)
-            salvos = 0
-            for usuario_meta in usuarios_meta:
-                valor_txt = (request.POST.get(f"meta_valor_{usuario_meta.pk}") or "0").strip()
-                if "," in valor_txt and "." in valor_txt:
-                    valor_txt = valor_txt.replace(".", "").replace(",", ".")
-                elif "," in valor_txt:
-                    valor_txt = valor_txt.replace(",", ".")
-                try:
-                    valor = max(Decimal("0.00"), Decimal(valor_txt or "0"))
-                except (InvalidOperation, ValueError):
-                    messages.error(request, f"Meta invalida para {usuario_meta.nome}.")
-                    return redirect(f"{reverse('configuracoes')}?aba=usuarios#metas-usuarios")
-                MetaVendasUsuario.objects.update_or_create(
-                    operador=usuario_meta,
-                    ano=hoje.year,
-                    mes=hoje.month,
-                    defaults={"valor": valor},
-                )
-                salvos += 1
-            messages.success(request, f"Metas atualizadas para {salvos} usuario(s).")
-            return redirect(f"{reverse('configuracoes')}?aba=usuarios#metas-usuarios")
+            categoria_usuario_form = CategoriaUsuarioForm(request.POST, prefix="categoria_usuario")
+            if categoria_usuario_form.is_valid():
+                categoria_usuario_form.save()
+                messages.success(request, "Categoria de usuario salva.")
+                return redirect(f"{reverse('configuracoes')}?aba=usuarios_config")
+            messages.error(request, "Nao foi possivel salvar a categoria. Confira os campos.")
+        if acao == "salvar_categorias_usuarios":
+            if not operador.is_admin_geral:
+                messages.error(request, "Somente administradores gerais configuram categorias de usuarios.")
+                return redirect("configuracoes")
+            atualizados = 0
+            for usuario_id in request.POST.getlist("usuario_categoria_ids"):
+                usuario = OperadorGestor.objects.filter(pk=usuario_id).first()
+                if not usuario:
+                    continue
+                categoria_id = request.POST.get(f"usuario_categoria_{usuario.pk}") or ""
+                usuario.categoria_usuario = CategoriaUsuario.objects.filter(pk=categoria_id, ativa=True).first() if categoria_id else None
+                usuario.save(update_fields=["categoria_usuario", "atualizado_em"])
+                atualizados += 1
+            messages.success(request, f"Categorias atualizadas para {atualizados} usuario(s).")
+            return redirect(f"{reverse('configuracoes')}?aba=usuarios_config")
         if acao == "excluir_operador":
             if not operador.is_admin_geral:
                 messages.error(request, "Somente administradores gerais excluem usuarios.")
@@ -430,21 +507,14 @@ def configuracoes(request):
     legacy_db = settings.DATABASES.get("legacy", {})
     todos_operadores_qs = OperadorGestor.objects.all() if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk)
     operadores_ativos_qs = OperadorGestor.objects.filter(ativo=True) if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk)
-    metas_mes = {
-        meta.operador_id: meta
-        for meta in MetaVendasUsuario.objects.filter(ano=hoje.year, mes=hoje.month, operador__in=operadores_ativos_qs)
-    }
-    metas_usuarios = [
-        {"operador": item, "meta": metas_mes.get(item.pk)}
-        for item in operadores_ativos_qs.order_by("nome")
-    ]
+    categorias_usuario = CategoriaUsuario.objects.filter(ativa=True).order_by("ordem", "nome")
     contexto = {
         "active": "configuracoes",
         "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
         "operadores": operadores_ativos_qs,
         "todos_operadores": todos_operadores_qs,
-        "metas_usuarios": metas_usuarios,
-        "metas_mes_referencia": hoje,
+        "categorias_usuario": categorias_usuario,
+        "categoria_usuario_form": categoria_usuario_form,
         "operador_form": operador_form,
         "perfil_form": perfil_form,
         "senha_form": senha_form,
@@ -519,8 +589,9 @@ def producao_home(request):
         "itens",
         queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
     )
-    pedidos = Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "artes").filter(status=StatusPedido.EM_PRODUCAO)
-    if status == StatusPedido.EM_PRODUCAO:
+    status_base = StatusPedido.PRONTO if status == StatusPedido.PRONTO else StatusPedido.EM_PRODUCAO
+    pedidos = Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "artes").filter(status=status_base)
+    if status in {StatusPedido.EM_PRODUCAO, StatusPedido.PRONTO}:
         pedidos = pedidos.filter(status=status)
     if prioridade:
         pedidos = pedidos.filter(prioridade=prioridade)
@@ -554,7 +625,7 @@ def producao_home(request):
         "active": "producao",
         "modo_producao": True,
         "grupos": grupos,
-        "status_atual": status,
+        "status_atual": status_base,
         "prioridade_atual": prioridade,
         "categoria_atual": categoria,
         "ordem": ordem,
@@ -563,6 +634,7 @@ def producao_home(request):
         "prioridade_choices": PrioridadePedido.choices,
         "liberados": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
         "produzindo": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
+        "prontos": Pedido.objects.filter(status=StatusPedido.PRONTO).count(),
         "urgentes": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO, prioridade=PrioridadePedido.URGENTE).count(),
         "pode_acoes_admin": operador.is_admin,
     }
@@ -571,21 +643,23 @@ def producao_home(request):
 
 def producao_configuracoes(request):
     operador = operador_atual(request)
-    if request.method == "POST":
-        acao = request.POST.get("acao")
-        if acao == "salvar_alertas":
-            _salvar_regras_alerta(request)
-            messages.success(request, "Regras de notificacoes e alertas salvas.")
-            return redirect("producao_configuracoes")
     contexto = {
         "active": "producao_configuracoes",
         "modo_producao": True,
-        "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
         "preferencias": carregar_preferencias(),
         "db": settings.DATABASES["default"],
+        "pode_ver_banco": bool(operador and operador.is_admin_geral),
         "zoom_opcoes": [85, 90, 95, 100, 110, 125, 150, 175],
         "intervalo_opcoes": [5, 10, 15, 30, 60],
         "visivel_opcoes": [30, 60, 120, 300],
+        "posicao_opcoes": [
+            ("inferior_centro", "Inferior centro"),
+            ("inferior_direita", "Inferior direita"),
+            ("inferior_esquerda", "Inferior esquerda"),
+            ("superior_direita", "Superior direita"),
+            ("superior_esquerda", "Superior esquerda"),
+            ("centro", "Centro"),
+        ],
         "operador": operador,
     }
     return render(request, "catalogo/producao_configuracoes.html", contexto)

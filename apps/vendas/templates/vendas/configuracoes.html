@@ -1,0 +1,76 @@
+{% extends "vendas/base.html" %}
+{% block title %}Configurações - Mheibos Vendas{% endblock %}
+{% block content %}
+<section class="hero-card card p-5">
+  <p class="text-sm font-black uppercase tracking-[1px] text-[#00e5ff]">Configurações</p>
+  <h1 class="mt-1 text-2xl font-black">Perfil e aparência</h1>
+  <p class="mt-2 text-sm text-[#9aa7d3]">Ajustes pessoais do Mheibos Vendas.</p>
+</section>
+
+<section class="mt-5 grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
+  <form method="post" enctype="multipart/form-data" class="card p-4">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="salvar_perfil">
+    <h2 class="mb-3 text-lg font-black">Meu perfil</h2>
+    <div class="mb-4 flex items-center gap-4">
+      <div class="grid h-20 w-20 place-items-center overflow-hidden rounded-full border border-[#343a66] bg-[#171a29] text-[#00e5ff]">
+        {% if operador_atual.foto %}
+          <img src="{{ operador_atual.foto.url }}" alt="{{ operador_atual.nome }}" class="h-full w-full object-cover">
+        {% else %}
+          <i data-lucide="circle-user-round" class="h-10 w-10"></i>
+        {% endif %}
+      </div>
+      <div class="min-w-0">
+        <strong class="block truncate text-xl">{{ operador_atual.nome }}</strong>
+        <span class="block text-sm text-[#9aa7d3]">{{ operador_atual.get_papel_display }}</span>
+      </div>
+    </div>
+    <div class="grid gap-3">
+      <div><label>Nome</label>{{ perfil_form.nome }}</div>
+      <div><label>Foto</label>{{ perfil_form.foto }}</div>
+      <div><label>Senha atual</label><input type="password" name="senha_atual" autocomplete="current-password" required></div>
+      <button class="btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Salvar perfil</button>
+    </div>
+  </form>
+
+  <div class="grid gap-4">
+    <form method="post" class="card p-4">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="trocar_senha">
+      <h2 class="mb-3 text-lg font-black">Senha</h2>
+      <div class="grid gap-3">
+        <div><label>{{ senha_form.senha_atual.label }}</label>{{ senha_form.senha_atual }}</div>
+        <div><label>{{ senha_form.senha_nova.label }}</label>{{ senha_form.senha_nova }}</div>
+        <div><label>{{ senha_form.senha_confirmacao.label }}</label>{{ senha_form.senha_confirmacao }}</div>
+        <button class="btn-secondary" type="submit"><i data-lucide="key-round" class="h-4 w-4"></i> Trocar senha</button>
+      </div>
+    </form>
+
+    <section class="card p-4">
+      <h2 class="mb-3 text-lg font-black">Aparência</h2>
+      <div class="grid gap-3">
+        <div>
+          <label>Tema do app</label>
+          <select id="vendasThemeSelect">
+            <option value="dark">Escuro</option>
+            <option value="light">Claro</option>
+          </select>
+        </div>
+        <button class="btn-primary" type="button" id="btnSalvarAparencia"><i data-lucide="palette" class="h-4 w-4"></i> Aplicar aparência</button>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  const themeSelect = document.getElementById("vendasThemeSelect");
+  const currentTheme = localStorage.getItem("mheibos_vendas_theme") || "dark";
+  if (themeSelect) themeSelect.value = currentTheme;
+  document.getElementById("btnSalvarAparencia")?.addEventListener("click", () => {
+    const theme = themeSelect?.value === "light" ? "light" : "dark";
+    localStorage.setItem("mheibos_vendas_theme", theme);
+    document.documentElement.setAttribute("data-vendas-theme", theme);
+  });
+</script>
+{% endblock %}

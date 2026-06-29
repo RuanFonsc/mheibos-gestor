@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Atendimento{% endblock %}
+{% block page_title %}Atendimento{% endblock %}
+{% block page_icon %}headphones{% endblock %}
+{% block top_tabs %}
+  <a href="{% url 'atendimento_list' %}" class="top-tab active"><i data-lucide="headphones" class="h-5 w-5"></i> Atendimento</a>
+  <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
+  <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
+  <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
+{% endblock %}
+{% block content %}
+<div class="page-content w-full space-y-5">
+  <section class="page-heading">
+    <div>
+      <span class="kicker"><i data-lucide="headphones" class="h-4 w-4"></i> Entrada de vendas</span>
+      <h2 class="section-title">Atendimento</h2>
+      <p>Pedidos criados pelo Mheibos Vendas aguardando conferência, arte e finalização pelo designer.</p>
+    </div>
+    <a class="btn-primary" href="{% url 'vendas_home' %}"><i data-lucide="shopping-bag" class="h-4 w-4"></i> Abrir Vendas</a>
+  </section>
+
+  <section class="grid gap-3 md:grid-cols-2">
+    <div class="card metric-card"><p>Pendentes</p><strong class="text-[#00e5ff]">{{ total_atendimento }}</strong><span>aguardando designer</span></div>
+    <div class="card metric-card"><p>Meus captados</p><strong>{{ meus_atendimento }}</strong><span>com seu usuario</span></div>
+  </section>
+
+  <form class="card grid gap-3 p-4 md:grid-cols-[1fr_auto]" method="get">
+    <input name="q" value="{{ busca }}" placeholder="Buscar cliente, item, vendedor ou ID">
+    <button class="btn-primary min-w-[53px] px-0" type="submit" title="Filtrar"><i data-lucide="search" class="h-5 w-5"></i></button>
+  </form>
+
+  <section class="grid gap-3 xl:grid-cols-3">
+    {% for pedido in pedidos %}
+      <article class="card p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="status-pill is-info">{{ pedido.get_status_display }}</span>
+              <span class="rounded-md bg-[#171a29] px-2 py-1 text-xs text-[#8892b0]">#{{ pedido.legado_id|default:pedido.pk }}</span>
+            </div>
+            <h3 class="mt-3 truncate text-lg font-semibold">{{ pedido.cliente.nome }}</h3>
+            <p class="mt-1 truncate text-sm text-[#8892b0]">{{ pedido.tema|default:"Sem resumo" }}</p>
+          </div>
+          <strong class="text-[#00c896]">R$ {{ pedido.valor_total|floatformat:2 }}</strong>
+        </div>
+        <div class="mt-4 grid gap-2 border-t border-[#2d3154] pt-4 text-sm text-[#8892b0]">
+          <p><strong class="text-white">Vendedor:</strong> {{ pedido.usuario_cadastro|default:"-" }}</p>
+          <p><strong class="text-white">Entrega:</strong> {{ pedido.data_entrega|date:"d/m/Y"|default:"-" }} {{ pedido.hora_entrega|time:"H:i" }}</p>
+          <p><strong class="text-white">Itens:</strong> {{ pedido.itens.count }}</p>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <a class="btn-primary" href="{% url 'pedido_edit' pedido.pk %}"><i data-lucide="pencil" class="h-4 w-4"></i> Finalizar cadastro</a>
+        </div>
+      </article>
+    {% empty %}
+      <div class="empty-state xl:col-span-3">
+        <strong>Nenhum pedido em atendimento</strong>
+        <span>Quando a equipe de vendas captar pedidos, eles aparecerao aqui.</span>
+      </div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

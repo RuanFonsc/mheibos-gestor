@@ -90,6 +90,19 @@ class PapelOperador(models.TextChoices):
     TEMPORARIO = "TEMPORARIO", "Usuario temporario"
 
 
+class CategoriaUsuario(models.Model):
+    nome = models.CharField(max_length=80, unique=True)
+    descricao = models.CharField(max_length=180, blank=True)
+    ativa = models.BooleanField(default=True)
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordem", "nome"]
+
+    def __str__(self):
+        return self.nome
+
+
 class OperadorGestor(models.Model):
     nome = models.CharField(max_length=80, unique=True)
     foto = models.ImageField(upload_to="usuarios/fotos/", blank=True)
@@ -101,6 +114,13 @@ class OperadorGestor(models.Model):
         max_length=24,
         choices=PapelOperador.choices,
         default=PapelOperador.USUARIO,
+    )
+    categoria_usuario = models.ForeignKey(
+        CategoriaUsuario,
+        related_name="usuarios",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
     )
     observacoes = models.TextField(blank=True)
     ativo = models.BooleanField(default=True)
@@ -181,7 +201,9 @@ class PerfilEmpresa(models.Model):
     cnpj = models.CharField(max_length=32, blank=True)
     telefone = models.CharField(max_length=32, blank=True)
     telefone_secundario = models.CharField(max_length=32, blank=True)
+    telefone_terciario = models.CharField(max_length=32, blank=True)
     instagram = models.CharField(max_length=120, blank=True)
+    instagram_secundario = models.CharField(max_length=120, blank=True)
     email = models.EmailField(blank=True)
     endereco = models.TextField(blank=True)
     logo = models.ImageField(upload_to="empresa/", blank=True)

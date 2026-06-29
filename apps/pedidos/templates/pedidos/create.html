@@ -2,7 +2,14 @@
 {% load l10n static %}
 {% block title %}Novo Pedido{% endblock %}
 {% block page_title %}Gestor de Pedidos{% endblock %}
+{% block head %}
+<style>
+  .client-field-combo { display: grid; grid-template-columns: minmax(0,1fr) 53px; gap: 10px; align-items: end; }
+  .client-quick-add { width: 53px; min-height: 53px; padding: 0; border-radius: 10px; }
+</style>
+{% endblock %}
 {% block top_tabs %}
+  <a href="{% url 'atendimento_list' %}" class="top-tab"><i data-lucide="headphones" class="h-5 w-5"></i> Atendimento</a>
   <a href="{% url 'pedido_create' %}" class="top-tab active"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
   <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
@@ -20,16 +27,20 @@
     <div>
       <span class="kicker"><i data-lucide="clipboard-list" class="h-4 w-4"></i> Atendimento</span>
       <h2 class="section-title">Novo pedido</h2>
-      <p>Cadastre o cliente, os itens, a arte e o pagamento em uma unica rotina.</p>
-    </div>
-    <div class="page-actions">
-      <a href="{% url 'pedido_list' %}" class="btn-secondary"><i data-lucide="list" class="h-4 w-4"></i> Ver pedidos</a>
     </div>
   </div>
   <div class="section-line"></div>
 
   <div class="grid gap-3 md:grid-cols-[1fr_125px]">
-    <div><label>{{ form.nome_cliente.label }}</label>{{ form.nome_cliente }}</div>
+    <div>
+      <label>{{ form.nome_cliente.label }}</label>
+      <div class="client-field-combo">
+        <input type="text" name="{{ form.nome_cliente.name }}" id="{{ form.nome_cliente.id_for_label }}" value="{{ form.nome_cliente.value|default:'' }}" maxlength="180" required list="clientes-list" autocomplete="off">
+        <a class="btn-secondary client-quick-add" href="{% url 'clientes' %}?next={% url 'pedido_create' %}" title="Cadastrar novo cliente">
+          <i data-lucide="user-plus" class="h-5 w-5"></i>
+        </a>
+      </div>
+    </div>
     <div>
       <label>Data do Pedido</label>
       <div class="flex min-h-[53px] items-center rounded-lg border border-[#2d3154] bg-[#22253a] px-4 font-semibold text-[var(--text-primary)]">{% now "d/m/Y" %}</div>
@@ -138,6 +149,11 @@
     <option value="{{ produto.nome }}" data-preco="{{ produto.preco_venda_padrao|unlocalize }}" data-custo="{{ produto.custo_estimado|unlocalize }}" data-prazo="{{ produto.prazo_entrega_dias_uteis }}" data-categoria-id="{{ produto.categoria_servico_id|default:'' }}" data-categoria="{{ produto.categoria_servico.nome|default:'' }}"></option>
   {% endfor %}
 </datalist>
+<datalist id="clientes-list">
+  {% for cliente in clientes_autocomplete %}
+    <option value="{{ cliente.nome }}" data-telefone-1="{{ cliente.telefone_principal }}" data-telefone-2="{{ cliente.telefone_secundario }}"></option>
+  {% endfor %}
+</datalist>
 {% endblock %}
 {% block scripts %}
 <script src="{% static 'js/corel_path.js' %}"></script>
@@ -211,6 +227,17 @@
     if (categoria && option.dataset.categoriaId) categoria.value = option.dataset.categoriaId;
     recalc();
   }
+  function applyClientData() {
+    const input = document.querySelector("[name=nome_cliente]");
+    const option = [...document.querySelectorAll("#clientes-list option")].find(item => item.value.toLowerCase() === input.value.trim().toLowerCase());
+    if (!option) return;
+    const telefone1 = document.querySelector("[name=telefone_1]");
+    const telefone2 = document.querySelector("[name=telefone_2]");
+    if (telefone1) telefone1.value = option.dataset.telefone1 || "";
+    if (telefone2) telefone2.value = option.dataset.telefone2 || "";
+  }
+  document.querySelector("[name=nome_cliente]")?.addEventListener("change", applyClientData);
+  document.querySelector("[name=nome_cliente]")?.addEventListener("input", applyClientData);
   entregaInput?.addEventListener("input", () => { entregaManual = true; });
   document.querySelectorAll("[name^=item_nome_]").forEach(input => {
     input.addEventListener("input", () => applyProductData(input));

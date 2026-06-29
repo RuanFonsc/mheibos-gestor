@@ -3,6 +3,7 @@
 {% block title %}Editar Pedido #{{ pedido.pk }}{% endblock %}
 {% block page_title %}Gestor de Pedidos{% endblock %}
 {% block top_tabs %}
+  <a href="{% url 'atendimento_list' %}" class="top-tab {% if pedido.status == 'EM_ATENDIMENTO' %}active{% endif %}"><i data-lucide="headphones" class="h-5 w-5"></i> Atendimento</a>
   <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
   <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
@@ -16,7 +17,12 @@
   {% endif %}
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <h2 class="section-title">Editar Pedido #{{ pedido.legado_id|default:pedido.pk }}</h2>
+    <div>
+      <h2 class="section-title">Editar Pedido #{{ pedido.legado_id|default:pedido.pk }}</h2>
+      {% if pedido.status == 'EM_ATENDIMENTO' %}
+        <p class="text-sm text-[#8892b0]">Este pedido veio do Mheibos Vendas. Altere o status ao salvar para ele entrar no fluxo normal.</p>
+      {% endif %}
+    </div>
     <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary">Cancelar</a>
   </div>
   <div class="section-line"></div>

@@ -89,6 +89,33 @@ def pedido_list(request):
     return render(request, "pedidos/list.html", contexto)
 
 
+def atendimento_list(request):
+    operador = operador_atual(request)
+    busca = request.GET.get("q", "").strip()
+    pedidos = Pedido.objects.select_related("cliente").prefetch_related("itens", "artes").filter(status=StatusPedido.EM_ATENDIMENTO)
+    if busca:
+        filtros_busca = (
+            Q(cliente__nome__icontains=busca)
+            | Q(tema__icontains=busca)
+            | Q(usuario_cadastro__icontains=busca)
+            | Q(itens__nome__icontains=busca)
+        )
+        if busca.isdigit():
+            filtros_busca |= Q(pk=int(busca)) | Q(legado_id=int(busca))
+        pedidos = pedidos.filter(filtros_busca).distinct()
+    return render(
+        request,
+        "pedidos/atendimento.html",
+        {
+            "active": "atendimento",
+            "pedidos": pedidos.order_by("data_entrega", "id")[:120],
+            "busca": busca,
+            "total_atendimento": Pedido.objects.filter(status=StatusPedido.EM_ATENDIMENTO).count(),
+            "meus_atendimento": Pedido.objects.filter(status=StatusPedido.EM_ATENDIMENTO, usuario_cadastro__iexact=operador.nome).count(),
+        },
+    )
+
+
 def entrega_list(request):
     operador = operador_atual(request)
     itens_prefetch = Prefetch(
@@ -375,6 +402,7 @@ def pedido_rejeitar_producao(request, pk):
 def pedido_create(request):
     operador = operador_atual(request)
     hoje = timezone.localdate()
+    cliente_prefill = Cliente.objects.filter(pk=request.GET.get("cliente")).first()
     if request.method == "POST":
         dados_post = request.POST.copy()
         dados_post["data_pedido"] = hoje.isoformat()
@@ -385,22 +413,30 @@ def pedido_create(request):
             return redirect("pedido_detail", pk=pedido.pk)
         messages.error(request, "Não foi possível criar o pedido. Confira os campos destacados.")
     else:
-        form = PedidoCreateForm(
-            initial={
-                "data_pedido": hoje,
-                "data_entrega": hoje,
-                "forma_pagamento": "PIX",
-                "valor_pago": Decimal("0.00"),
-                "desconto_ajuste": Decimal("0.00"),
-                "prioridade": PrioridadePedido.NORMAL,
-            }
-        )
+        initial = {
+            "data_pedido": hoje,
+            "data_entrega": hoje,
+            "forma_pagamento": "PIX",
+            "valor_pago": Decimal("0.00"),
+            "desconto_ajuste": Decimal("0.00"),
+            "prioridade": PrioridadePedido.NORMAL,
+        }
+        if cliente_prefill:
+            initial.update(
+                {
+                    "nome_cliente": cliente_prefill.nome,
+                    "telefone_1": cliente_prefill.telefone_principal,
+                    "telefone_2": cliente_prefill.telefone_secundario,
+                }
+            )
+        form = PedidoCreateForm(initial=initial)
 
     recentes = Pedido.objects.select_related("cliente").order_by("-id")[:6]
     prioridades = Pedido.objects.select_related("cliente").filter(
         status__in=STATUS_PRE_PRODUCAO
     ).order_by("data_entrega", "id")[:8]
     produtos = ProdutoServico.objects.select_related("categoria_servico").filter(ativo=True).order_by("nome")
+    clientes_autocomplete = Cliente.objects.order_by("nome")[:400]
     return render(
         request,
         "pedidos/create.html",
@@ -410,6 +446,7 @@ def pedido_create(request):
             "recentes": recentes,
             "prioridades": prioridades,
             "produtos": produtos,
+            "clientes_autocomplete": clientes_autocomplete,
             "categorias_servico": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
             "categorias_tabs": CategoriaServico.objects.filter(ativa=True),
             "operador_atual": operador,
