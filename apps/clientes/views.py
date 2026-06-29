@@ -4,7 +4,7 @@ from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.clientes.forms import ClienteForm
-from apps.clientes.models import Cliente
+from apps.clientes.models import Cliente, StatusCadastroCliente
 from apps.pedidos.models import Pedido
 
 
@@ -28,6 +28,7 @@ def clientes(request):
         if form.is_valid():
             cliente = form.save(commit=False)
             cliente.nome = cliente.nome.strip().upper()
+            cliente.status_cadastro = StatusCadastroCliente.CADASTRADO
             cliente.save()
             messages.success(request, f"Cliente {cliente.nome} salvo.")
             proximo = request.POST.get("next") or ""
@@ -36,7 +37,9 @@ def clientes(request):
             return redirect("clientes")
         messages.error(request, "Nao foi possivel salvar o cliente. Confira os campos.")
 
-    clientes_qs = Cliente.objects.annotate(
+    clientes_qs = Cliente.objects.filter(
+        status_cadastro=StatusCadastroCliente.CADASTRADO
+    ).annotate(
         total_pedidos=Count("pedidos", distinct=True),
         total_vendido=Sum("pedidos__valor_total"),
     )
@@ -50,8 +53,10 @@ def clientes(request):
         )
 
     clientes_lista = clientes_qs.order_by("nome")[:120]
-    total_clientes = Cliente.objects.count()
-    clientes_com_pedido = Cliente.objects.filter(pedidos__isnull=False).distinct().count()
+    clientes_cadastrados = Cliente.objects.filter(status_cadastro=StatusCadastroCliente.CADASTRADO)
+    total_clientes = clientes_cadastrados.count()
+    clientes_com_pedido = clientes_cadastrados.filter(pedidos__isnull=False).distinct().count()
+    clientes_nao_cadastrados = Cliente.objects.filter(status_cadastro=StatusCadastroCliente.NAO_CADASTRADO).count()
     pedidos_total = Pedido.objects.count()
 
     return render(
@@ -66,6 +71,7 @@ def clientes(request):
             "busca": busca,
             "total_clientes": total_clientes,
             "clientes_com_pedido": clientes_com_pedido,
+            "clientes_nao_cadastrados": clientes_nao_cadastrados,
             "pedidos_total": pedidos_total,
             "next": request.GET.get("next", ""),
         },

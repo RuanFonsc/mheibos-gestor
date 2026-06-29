@@ -37,9 +37,10 @@
       </div>
       <a class="btn-primary" href="{% url 'pedido_create' %}"><i data-lucide="plus" class="h-4 w-4"></i> Novo pedido</a>
     </div>
-    <div class="relative z-[1] mt-5 grid gap-3 md:grid-cols-3">
-      <div class="client-metric"><p>Clientes</p><strong>{{ total_clientes }}</strong></div>
+    <div class="relative z-[1] mt-5 grid gap-3 md:grid-cols-4">
+      <div class="client-metric"><p>Clientes cadastrados</p><strong>{{ total_clientes }}</strong></div>
       <div class="client-metric"><p>Com pedidos</p><strong>{{ clientes_com_pedido }}</strong></div>
+      <div class="client-metric"><p>Não cadastrados</p><strong>{{ clientes_nao_cadastrados }}</strong></div>
       <div class="client-metric"><p>Pedidos totais</p><strong>{{ pedidos_total }}</strong></div>
     </div>
   </section>
@@ -70,8 +71,8 @@
     <div class="client-panel card p-5">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 class="text-lg font-semibold">Lista de clientes</h3>
-          <p class="mt-1 text-sm text-[var(--text-secondary)]">Mostrando ate 120 registros.</p>
+          <h3 class="text-lg font-semibold">Lista de clientes cadastrados</h3>
+          <p class="mt-1 text-sm text-[var(--text-secondary)]">Mostrando ate 120 clientes cadastrados.</p>
         </div>
         <form method="get" class="flex min-w-[280px] gap-2">
           <input name="q" value="{{ busca }}" placeholder="Buscar cliente, telefone ou email">

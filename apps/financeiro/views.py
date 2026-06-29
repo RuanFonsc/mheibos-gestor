@@ -24,7 +24,7 @@ from apps.financeiro.models import CategoriaFinanceira, LancamentoFinanceiro, Me
 from apps.financeiro.services import garantir_categorias_financeiras
 from apps.catalogo.models import CategoriaUsuario, OperadorGestor
 from apps.catalogo.permissions import operador_atual
-from apps.pedidos.models import Pedido, PedidoItem, StatusPedido
+from apps.pedidos.models import CanalAtendimentoPedido, Pedido, PedidoItem, StatusPedido
 
 
 def dashboard(request):
@@ -161,6 +161,7 @@ def dashboard(request):
     despesa_mensal = [0] * 12
     top_produtos_ranking = []
     top_categorias_ranking = []
+    canais_ranking = []
     vendedores_ranking = []
     vendedores_fotos_lista = []
     vendas_hoje_labels = []
@@ -233,6 +234,19 @@ def dashboard(request):
         vendedores_fotos_lista = [vendedores_fotos.get((row["usuario_cadastro"] or "").casefold(), "") for row in vendedores_ranking]
         top_produtos_ranking = list(top_produtos)
         top_categorias_ranking = list(top_categorias)
+        canal_labels = dict(CanalAtendimentoPedido.choices)
+        canais_ranking = [
+            {
+                "canal": row["canal_atendimento"],
+                "label": canal_labels.get(row["canal_atendimento"], row["canal_atendimento"] or "Nao informado"),
+                "total": row["total"] or Decimal("0.00"),
+                "pedidos": row["pedidos"],
+            }
+            for row in pedidos_validos.values("canal_atendimento").annotate(
+                total=Sum("valor_total"),
+                pedidos=Count("id"),
+            ).order_by("-total")
+        ]
         vendas_hoje_labels = [f"{hora:02d}h" for hora in range(8, 19)]
         vendas_hoje_valores = [
             float(vendas_dia.filter(criado_em__hour=hora).aggregate(total=Sum("valor_total"))["total"] or 0)
@@ -386,6 +400,7 @@ def dashboard(request):
         "top_produtos": top_produtos_ranking,
         "top_produtos_ranking": top_produtos_ranking,
         "top_categorias_ranking": top_categorias_ranking,
+        "canais_ranking": canais_ranking,
         "vendedores_ranking": vendedores_ranking,
         "vendedores_labels": [row["usuario_cadastro"] for row in vendedores_ranking],
         "vendedores_valores": [float(row["total"] or 0) for row in vendedores_ranking],
@@ -394,6 +409,8 @@ def dashboard(request):
         "produtos_valores": [float(row["quantidade"] or 0) for row in top_produtos_ranking],
         "categorias_labels": [row["categoria_servico__nome"] or "Sem categoria" for row in top_categorias_ranking],
         "categorias_valores": [float(row["faturamento"] or 0) for row in top_categorias_ranking],
+        "canais_labels": [row["label"] for row in canais_ranking],
+        "canais_valores": [float(row["total"] or 0) for row in canais_ranking],
         "vendas_hoje_labels": vendas_hoje_labels,
         "vendas_hoje_valores": vendas_hoje_valores,
         "crm": crm,

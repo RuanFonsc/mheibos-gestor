@@ -26,6 +26,6 @@ class CategoriaUsuarioAdmin(admin.ModelAdmin):
 
 @admin.register(OperadorGestor)
 class OperadorGestorAdmin(admin.ModelAdmin):
-    list_display = ("nome", "papel", "categoria_usuario", "ativo")
-    list_filter = ("papel", "categoria_usuario", "ativo")
+    list_display = ("nome", "papel", "categoria_usuario", "canal_atendimento_padrao", "ativo")
+    list_filter = ("papel", "categoria_usuario", "canal_atendimento_padrao", "ativo")
     search_fields = ("nome",)

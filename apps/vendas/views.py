@@ -17,7 +17,7 @@ from apps.catalogo.forms import OperadorPerfilForm, OperadorSenhaForm, senha_ope
 from apps.catalogo.models import CategoriaServico, ProdutoServico
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import salvar_preferencias
-from apps.clientes.models import Cliente
+from apps.clientes.models import Cliente, StatusCadastroCliente
 from apps.financeiro.crm import MESES_CURTOS
 from apps.financeiro.models import LancamentoFinanceiro, MetaVendasUsuario, StatusLancamento, TipoLancamento
 from apps.pedidos.models import Pedido, PedidoItem, StatusPedido
@@ -272,14 +272,21 @@ def vendas_pedido_novo(request):
             return redirect("vendas_home")
         messages.error(request, "Nao foi possivel salvar. Confira os campos.")
     else:
-        form = VendasPedidoForm(initial={"forma_pagamento": "PIX", "valor_pago": 0, "desconto_ajuste": 0})
+        form = VendasPedidoForm(initial={
+            "forma_pagamento": "PIX",
+            "valor_pago": 0,
+            "desconto_ajuste": 0,
+            "canal_atendimento": operador.canal_atendimento_padrao,
+        })
 
     contexto = _contexto_base(request)
     contexto.update(
         {
             "form": form,
             "active": "novo",
-            "clientes_autocomplete": Cliente.objects.order_by("nome")[:400],
+            "clientes_autocomplete": Cliente.objects.filter(
+                status_cadastro=StatusCadastroCliente.CADASTRADO
+            ).order_by("nome")[:400],
             "produtos": ProdutoServico.objects.select_related("categoria_servico").filter(ativo=True).order_by("nome"),
             "categorias_servico": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
         }

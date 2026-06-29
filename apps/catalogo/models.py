@@ -90,6 +90,11 @@ class PapelOperador(models.TextChoices):
     TEMPORARIO = "TEMPORARIO", "Usuario temporario"
 
 
+class CanalAtendimento(models.TextChoices):
+    PRESENCIAL = "PRESENCIAL", "Presencial"
+    ONLINE = "ONLINE", "Online"
+
+
 class CategoriaUsuario(models.Model):
     nome = models.CharField(max_length=80, unique=True)
     descricao = models.CharField(max_length=180, blank=True)
@@ -121,6 +126,11 @@ class OperadorGestor(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
+    )
+    canal_atendimento_padrao = models.CharField(
+        max_length=16,
+        choices=CanalAtendimento.choices,
+        default=CanalAtendimento.PRESENCIAL,
     )
     observacoes = models.TextField(blank=True)
     ativo = models.BooleanField(default=True)

@@ -33,6 +33,7 @@
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Data do pedido</p><strong class="mt-1 block">{{ pedido.data_pedido|date:"d/m/Y"|default:"—" }}</strong></div>
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Cadastrado em</p><strong class="mt-1 block">{{ pedido.criado_em|date:"d/m/Y H:i" }}</strong></div>
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Usuário</p><strong class="mt-1 block">{{ pedido.usuario_cadastro|default:"Não informado" }}</strong></div>
+          <div><p class="text-xs uppercase text-[var(--text-secondary)]">Canal</p><strong class="mt-1 block">{{ pedido.get_canal_atendimento_display }}</strong></div>
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Entrega</p><strong class="mt-1 block">{{ pedido.data_entrega|date:"d/m/Y"|default:"—" }} {{ pedido.hora_entrega|time:"H:i" }}</strong></div>
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Telefones</p><strong class="mt-1 block">{{ pedido.cliente.telefone_principal|default:"—" }}{% if pedido.cliente.telefone_secundario %} / {{ pedido.cliente.telefone_secundario }}{% endif %}</strong></div>
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Total</p><strong class="mt-1 block text-[#00c896]">R$ {{ pedido.valor_total|floatformat:2 }}</strong></div>

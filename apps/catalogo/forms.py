@@ -53,7 +53,7 @@ class OperadorGestorForm(forms.ModelForm):
 
     class Meta:
         model = OperadorGestor
-        fields = ["nome", "foto", "senha", "papel", "categoria_usuario", "observacoes", "ativo"]
+        fields = ["nome", "foto", "senha", "papel", "categoria_usuario", "canal_atendimento_padrao", "observacoes", "ativo"]
         widgets = {
             "foto": forms.FileInput(attrs={"accept": "image/*"}),
             "senha": forms.PasswordInput(render_value=True),

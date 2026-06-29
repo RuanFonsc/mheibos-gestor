@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 
-from apps.pedidos.models import FormaPagamento, PrioridadePedido
+from apps.pedidos.models import CanalAtendimentoPedido, FormaPagamento, PrioridadePedido
 
 
 class VendasPedidoForm(forms.Form):
@@ -25,6 +25,11 @@ class VendasPedidoForm(forms.Form):
             (PrioridadePedido.URGENTE, "Urgente"),
         ],
         initial=PrioridadePedido.NORMAL,
+    )
+    canal_atendimento = forms.ChoiceField(
+        label="Canal de atendimento",
+        choices=CanalAtendimentoPedido.choices,
+        initial=CanalAtendimentoPedido.PRESENCIAL,
     )
     valor_pago = forms.DecimalField(label="Valor pago", max_digits=12, decimal_places=2, initial=0)
     forma_pagamento = forms.ChoiceField(label="Forma de pagamento", choices=FormaPagamento.choices)

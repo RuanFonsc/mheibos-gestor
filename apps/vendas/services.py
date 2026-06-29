@@ -71,6 +71,7 @@ def criar_pedido_vendas(form, vendedor_nome):
         desconto_ajuste=dados["desconto_ajuste"],
         forma_pagamento_legada=dados["forma_pagamento"],
         prioridade=dados["prioridade"],
+        canal_atendimento=dados["canal_atendimento"],
         status=StatusPedido.EM_ATENDIMENTO,
         origem=OrigemPedido.VENDAS,
         usuario_cadastro=vendedor_nome,

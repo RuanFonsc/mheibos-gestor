@@ -66,6 +66,13 @@ class OrigemPedido(models.TextChoices):
     OUTRO = "OUTRO", "Outro"
 
 
+class CanalAtendimentoPedido(models.TextChoices):
+    PRESENCIAL = "PRESENCIAL", "Presencial"
+    ONLINE = "ONLINE", "Online"
+    INDICACAO = "INDICACAO", "Indicacao"
+    OUTRO = "OUTRO", "Outro"
+
+
 class Pedido(models.Model):
     legado_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
     cliente = models.ForeignKey(
@@ -104,6 +111,11 @@ class Pedido(models.Model):
         max_length=24,
         choices=OrigemPedido.choices,
         default=OrigemPedido.LEGADO,
+    )
+    canal_atendimento = models.CharField(
+        max_length=16,
+        choices=CanalAtendimentoPedido.choices,
+        default=CanalAtendimentoPedido.PRESENCIAL,
     )
     pdf_gerado_por = models.CharField(max_length=120, blank=True)
     usuario_cadastro = models.CharField(max_length=80, blank=True)

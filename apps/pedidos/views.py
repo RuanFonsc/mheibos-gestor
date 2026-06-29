@@ -10,7 +10,7 @@ from apps.catalogo.assistencia import pedido_em_alerta, preparar_categorias_pedi
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
-from apps.clientes.models import Cliente
+from apps.clientes.models import Cliente, StatusCadastroCliente
 from apps.financeiro.services import sincronizar_financeiro_pedido
 from apps.pedidos.forms import PedidoCreateForm, PedidoEditForm, PedidoStatusForm
 from apps.pedidos.models import (
@@ -211,6 +211,7 @@ def pedido_edit(request, pk):
         "forma_pagamento": pedido.forma_pagamento_legada,
         "desconto_ajuste": pedido.desconto_ajuste,
         "prioridade": pedido.prioridade,
+        "canal_atendimento": pedido.canal_atendimento,
         "status": pedido.status,
         "usuario_cadastro": pedido.usuario_cadastro or "",
     }
@@ -420,6 +421,7 @@ def pedido_create(request):
             "valor_pago": Decimal("0.00"),
             "desconto_ajuste": Decimal("0.00"),
             "prioridade": PrioridadePedido.NORMAL,
+            "canal_atendimento": operador.canal_atendimento_padrao,
         }
         if cliente_prefill:
             initial.update(
@@ -436,7 +438,9 @@ def pedido_create(request):
         status__in=STATUS_PRE_PRODUCAO
     ).order_by("data_entrega", "id")[:8]
     produtos = ProdutoServico.objects.select_related("categoria_servico").filter(ativo=True).order_by("nome")
-    clientes_autocomplete = Cliente.objects.order_by("nome")[:400]
+    clientes_autocomplete = Cliente.objects.filter(
+        status_cadastro=StatusCadastroCliente.CADASTRADO
+    ).order_by("nome")[:400]
     return render(
         request,
         "pedidos/create.html",
@@ -493,6 +497,7 @@ def _criar_pedido(form, arquivos):
         desconto_ajuste=dados["desconto_ajuste"],
         forma_pagamento_legada=dados["forma_pagamento"],
         prioridade=dados["prioridade"],
+        canal_atendimento=dados["canal_atendimento"],
         status=status,
         origem="BALCAO",
         usuario_cadastro=(form.data.get("usuario_cadastro") or "").strip() or "Usuario Temporario",
@@ -593,6 +598,7 @@ def _atualizar_pedido(pedido, form, arquivos):
     pedido.observacoes = dados.get("observacoes", "")
     pedido.caminho_arquivo_corel = (dados.get("caminho_arquivo_corel") or "").strip()
     pedido.prioridade = dados["prioridade"]
+    pedido.canal_atendimento = dados["canal_atendimento"]
     pedido.valor_total = subtotal + dados["desconto_ajuste"]
     pedido.valor_pago_legado = dados["valor_pago"]
     pedido.desconto_ajuste = dados["desconto_ajuste"]

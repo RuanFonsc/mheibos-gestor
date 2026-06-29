@@ -1,6 +1,6 @@
 from django import forms
 
-from apps.pedidos.models import FormaPagamento, PrioridadePedido, StatusPedido
+from apps.pedidos.models import CanalAtendimentoPedido, FormaPagamento, PrioridadePedido, StatusPedido
 
 
 class MultipleFileInput(forms.FileInput):
@@ -50,6 +50,11 @@ class PedidoCreateForm(forms.Form):
         ],
         initial=PrioridadePedido.NORMAL,
     )
+    canal_atendimento = forms.ChoiceField(
+        label="Canal de atendimento",
+        choices=CanalAtendimentoPedido.choices,
+        initial=CanalAtendimentoPedido.PRESENCIAL,
+    )
     valor_pago = forms.DecimalField(label="Valor Pago", max_digits=12, decimal_places=2, initial=0)
     forma_pagamento = forms.ChoiceField(label="Forma de Pagamento", choices=FormaPagamento.choices)
     desconto_ajuste = forms.DecimalField(label="Desconto / Acréscimo", max_digits=12, decimal_places=2, initial=0)
@@ -83,6 +88,7 @@ class PedidoEditForm(forms.Form):
         widget=forms.HiddenInput(attrs={"data-corel-input": "1"}),
     )
     prioridade = forms.ChoiceField(label="Prioridade", choices=PrioridadePedido.choices)
+    canal_atendimento = forms.ChoiceField(label="Canal de atendimento", choices=CanalAtendimentoPedido.choices)
     valor_pago = forms.DecimalField(label="Valor Pago", max_digits=12, decimal_places=2, initial=0)
     forma_pagamento = forms.ChoiceField(label="Forma de Pagamento", choices=FormaPagamento.choices)
     desconto_ajuste = forms.DecimalField(label="Desconto / Acréscimo", max_digits=12, decimal_places=2, initial=0)

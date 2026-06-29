@@ -21,8 +21,8 @@ class PagamentoPedidoInline(admin.TabularInline):
 
 @admin.register(Pedido)
 class PedidoAdmin(admin.ModelAdmin):
-    list_display = ("id", "legado_id", "cliente", "status", "designer", "data_pedido", "data_entrega", "valor_total")
-    list_filter = ("status", "origem", "designer", "data_pedido")
+    list_display = ("id", "legado_id", "cliente", "status", "canal_atendimento", "designer", "data_pedido", "data_entrega", "valor_total")
+    list_filter = ("status", "origem", "canal_atendimento", "designer", "data_pedido")
     search_fields = ("cliente__nome", "tema", "descricao_legada", "legado_id")
     inlines = [PedidoItemInline, PagamentoPedidoInline, ArtePedidoInline]
 
