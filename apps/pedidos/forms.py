@@ -7,6 +7,14 @@ class MultipleFileInput(forms.FileInput):
     allow_multiple_selected = True
 
 
+class MultipleFileField(forms.FileField):
+    def clean(self, data, initial=None):
+        if not data:
+            return []
+        files = data if isinstance(data, (list, tuple)) else [data]
+        return [super(MultipleFileField, self).clean(file, initial) for file in files]
+
+
 def caminho_corel_valido(valor):
     valor = (valor or "").strip()
     if not valor:
@@ -58,6 +66,7 @@ class PedidoCreateForm(forms.Form):
     valor_pago = forms.DecimalField(label="Valor Pago", max_digits=12, decimal_places=2, initial=0)
     forma_pagamento = forms.ChoiceField(label="Forma de Pagamento", choices=FormaPagamento.choices)
     desconto_ajuste = forms.DecimalField(label="Desconto / Acréscimo", max_digits=12, decimal_places=2, initial=0)
+    aguardar_arte = forms.BooleanField(label="Aguardando arte", required=False)
     marcar_pronto = forms.BooleanField(label="Marcar como pronto imediatamente", required=False)
 
     def clean_caminho_arquivo_corel(self):
@@ -70,14 +79,14 @@ class PedidoStatusForm(forms.Form):
 
 class PedidoEditForm(forms.Form):
     nome_cliente = forms.CharField(label="Nome do Cliente", max_length=180)
-    data_pedido = forms.DateField(label="Data do Pedido", widget=forms.DateInput(attrs={"type": "date"}))
+    data_pedido = forms.DateField(label="Data do Pedido", widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
     tema = forms.CharField(label="Tema", max_length=180)
     telefone_1 = forms.CharField(label="Telefone 1", max_length=32, required=False)
     telefone_2 = forms.CharField(label="Telefone 2", max_length=32, required=False)
     data_entrega = forms.DateField(
         label="Data de Entrega",
         required=False,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
     )
     hora_entrega = forms.TimeField(label="Hora da Entrega", required=False, widget=forms.TimeInput(attrs={"type": "time"}))
     observacoes = forms.CharField(label="Observações", required=False, widget=forms.Textarea(attrs={"rows": 3}))
@@ -98,7 +107,7 @@ class PedidoEditForm(forms.Form):
         max_length=80,
         widget=forms.TextInput(attrs={"list": "usuarios-list", "autocomplete": "off"}),
     )
-    artes = forms.FileField(
+    artes = MultipleFileField(
         label="Adicionar artes",
         required=False,
         widget=MultipleFileInput(attrs={
@@ -108,7 +117,7 @@ class PedidoEditForm(forms.Form):
     )
 
     def clean_artes(self):
-        return None
+        return self.cleaned_data.get("artes", [])
 
     def clean_caminho_arquivo_corel(self):
         return caminho_corel_valido(self.cleaned_data.get("caminho_arquivo_corel"))

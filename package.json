@@ -10,6 +10,7 @@
     "build:backend": "powershell -ExecutionPolicy Bypass -File tools/build_backend.ps1",
     "dist:suite": "electron-builder --config electron-builder.suite.yml",
     "dist:all": "powershell -ExecutionPolicy Bypass -File tools/build_suite.ps1",
+    "dist:cliente": "electron-builder --config electron-builder.cliente.yml",
     "dist:gestor": "electron-builder --config electron-builder.gestor.yml",
     "dist:producao": "electron-builder --config electron-builder.producao.yml"
   },

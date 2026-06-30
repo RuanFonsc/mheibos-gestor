@@ -165,7 +165,8 @@ def pedido_ordem_servico(request, pk):
     )
     perfil_empresa, _ = PerfilEmpresa.objects.get_or_create(chave="global")
     campos = normalizar_campos_os(perfil_empresa.os_campos)
-    arte = pedido.artes.first()
+    artes = list(pedido.artes.all().order_by("ordem", "id"))
+    arte = artes[0] if artes else None
     itens = list(pedido.itens.all())
     descricao = pedido.descricao_legada or " | ".join(str(item) for item in itens)
     designer_nome = (pedido.designer or pedido.usuario_cadastro or "").strip()
@@ -179,6 +180,7 @@ def pedido_ordem_servico(request, pk):
         "perfil_empresa": perfil_empresa,
         "campos": campos,
         "arte": arte,
+        "artes": artes,
         "itens": itens,
         "descricao_os": descricao,
         "designer_foto": designer_foto,
@@ -483,7 +485,12 @@ def _criar_pedido(form, arquivos):
         itens.append((index, nome, quantidade, preco, descricao, produto, categoria))
 
     valor_total = subtotal + dados["desconto_ajuste"]
-    status = StatusPedido.PRONTO if dados["marcar_pronto"] else StatusPedido.AGUARDANDO_ARTE
+    if dados["marcar_pronto"]:
+        status = StatusPedido.PRONTO
+    elif dados["aguardar_arte"]:
+        status = StatusPedido.AGUARDANDO_ARTE
+    else:
+        status = StatusPedido.ARTE_EM_PREPARO
     pedido = Pedido.objects.create(
         cliente=cliente,
         tema=dados["tema"].upper(),

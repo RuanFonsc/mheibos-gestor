@@ -45,8 +45,12 @@
   </div>
 
   <div class="art-space">
-    {% if arte %}
-      <img src="{{ arte.arquivo.url }}" alt="{{ arte.nome_original }}">
+    {% if artes %}
+      <div class="art-gallery {% if artes|length == 1 %}single{% endif %}">
+        {% for arte_item in artes %}
+          <img src="{{ arte_item.arquivo.url }}" alt="{{ arte_item.nome_original }}">
+        {% endfor %}
+      </div>
     {% else %}
       <div class="art-placeholder">Espaco reservado para a arte</div>
     {% endif %}

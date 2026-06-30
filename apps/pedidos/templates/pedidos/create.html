@@ -9,7 +9,6 @@
 </style>
 {% endblock %}
 {% block top_tabs %}
-  <a href="{% url 'atendimento_list' %}" class="top-tab"><i data-lucide="headphones" class="h-5 w-5"></i> Atendimento</a>
   <a href="{% url 'pedido_create' %}" class="top-tab active"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
   <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
@@ -109,7 +108,7 @@
     <button type="button" id="btnArtePaste" class="btn-secondary"><i data-lucide="clipboard" class="h-4 w-4"></i> Colar (Ctrl+V)</button>
     <button type="button" id="btnArteClear" class="btn-danger"><i data-lucide="trash-2" class="h-4 w-4"></i> Limpar tudo</button>
   </div>
-  <div id="arteDropZone" class="relative flex min-h-[153px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#3d4275] bg-[#22253a] p-3 text-[11px] text-[#9aa7d3] transition-colors">
+  <div id="arteDropZone" tabindex="0" class="relative flex min-h-[153px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#3d4275] bg-[#22253a] p-3 text-[11px] text-[#9aa7d3] transition-colors">
     <p id="arteHint" class="pointer-events-none text-center">Arraste imagens aqui (PNG, JPG, WEBP, JFIF) ou use os botões acima</p>
     <div id="artePreview" class="flex w-full flex-wrap gap-2"></div>
   </div>
@@ -138,7 +137,10 @@
     <div><label>{{ form.desconto_ajuste.label }}</label>{{ form.desconto_ajuste }}</div>
   </div>
 
-  <label class="mt-4 flex items-center gap-3 text-sm">{{ form.marcar_pronto }} {{ form.marcar_pronto.label }}</label>
+  <div class="mt-4 flex flex-wrap gap-4">
+    <label class="flex items-center gap-3 text-sm">{{ form.aguardar_arte }} {{ form.aguardar_arte.label }}</label>
+    <label class="flex items-center gap-3 text-sm">{{ form.marcar_pronto }} {{ form.marcar_pronto.label }}</label>
+  </div>
 
   <div class="mt-5 flex flex-wrap gap-3">
     <button class="btn-primary flex-1" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Gerar pedido e salvar</button>
@@ -311,6 +313,17 @@
     renderArtePreview();
   }
 
+  function fileFromDataUrl(dataUrl, nomeBase = "arte-colada") {
+    const partes = String(dataUrl || "").match(/^data:(image\/[^;]+);base64,(.+)$/);
+    if (!partes) return null;
+    const type = partes[1];
+    const binario = atob(partes[2]);
+    const bytes = new Uint8Array(binario.length);
+    for (let i = 0; i < binario.length; i += 1) bytes[i] = binario.charCodeAt(i);
+    const ext = (type.split("/")[1] || "png").replace("jpeg", "jpg");
+    return new File([bytes], `${nomeBase}.${ext}`, { type });
+  }
+
   arteInput.addEventListener("change", () => {
     if (!arteInput.files?.length) return;
     adicionarArteFiles(arteInput.files);
@@ -356,7 +369,18 @@
   }
 
   document.getElementById("btnArtePaste").addEventListener("click", async () => {
-    if (!navigator.clipboard?.read) return;
+    try {
+      const dataUrl = await window.mheibosClipboard?.lerImagem?.();
+      const file = fileFromDataUrl(dataUrl);
+      if (file) {
+        adicionarArteFiles([file]);
+        return;
+      }
+    } catch (_) {}
+    if (!navigator.clipboard?.read) {
+      arteDropZone.focus();
+      return;
+    }
     try {
       const items = await navigator.clipboard.read();
       const imagens = [];
@@ -369,7 +393,9 @@
         }
       }
       adicionarArteFiles(imagens);
-    } catch (_) {}
+    } catch (_) {
+      arteDropZone.focus();
+    }
   });
   document.addEventListener("paste", colarArteClipboard);
   document.getElementById("btnArteClear").addEventListener("click", () => {

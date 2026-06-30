@@ -3,7 +3,6 @@
 {% block title %}Editar Pedido #{{ pedido.pk }}{% endblock %}
 {% block page_title %}Gestor de Pedidos{% endblock %}
 {% block top_tabs %}
-  <a href="{% url 'atendimento_list' %}" class="top-tab {% if pedido.status == 'EM_ATENDIMENTO' %}active{% endif %}"><i data-lucide="headphones" class="h-5 w-5"></i> Atendimento</a>
   <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
   <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
@@ -91,7 +90,25 @@
   </div>
   <div class="mb-3">
     <label>{{ form.artes.label }}</label>
-    <span class="block">{{ form.artes }}</span>
+    <div class="mb-3 flex flex-wrap gap-2">
+      <label class="btn-secondary cursor-pointer">
+        <i data-lucide="folder-open" class="h-4 w-4"></i> Carregar imagem
+        <input
+          id="arteInput"
+          type="file"
+          name="artes"
+          class="hidden"
+          multiple
+          accept="image/png,image/jpeg,image/webp,image/jfif,.jfif,.bmp"
+        >
+      </label>
+      <button type="button" id="btnArtePaste" class="btn-secondary"><i data-lucide="clipboard" class="h-4 w-4"></i> Colar (Ctrl+V)</button>
+      <button type="button" id="btnArteClear" class="btn-danger"><i data-lucide="trash-2" class="h-4 w-4"></i> Limpar novas</button>
+    </div>
+    <div id="arteDropZone" tabindex="0" class="relative flex min-h-[120px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#3d4275] bg-[#22253a] p-3 text-[11px] text-[#9aa7d3] transition-colors">
+      <p id="arteHint" class="pointer-events-none text-center">Arraste novas imagens aqui (PNG, JPG, WEBP, JFIF) ou use os botoes acima</p>
+      <div id="artePreview" class="flex w-full flex-wrap gap-2"></div>
+    </div>
     <p class="mt-1 text-xs text-[#8892b0]">Selecione novas imagens para adicionar às artes existentes.</p>
   </div>
 
@@ -188,6 +205,167 @@
   document.querySelectorAll("[name^=item_nome_]").forEach(input => {
     input.addEventListener("input", () => applyProductData(input));
     input.addEventListener("change", () => applyProductData(input));
+  });
+
+  const arteInput = document.getElementById("arteInput");
+  const arteForm = document.getElementById("formEditarPedido");
+  const arteDropZone = document.getElementById("arteDropZone");
+  const artePreview = document.getElementById("artePreview");
+  const arteHint = document.getElementById("arteHint");
+  const arteFiles = [];
+  const extensoesArte = [".png", ".jpg", ".jpeg", ".webp", ".jfif", ".bmp"];
+
+  function isImagemValida(file) {
+    if (!file) return false;
+    if (file.type && file.type.startsWith("image/")) return true;
+    const nome = (file.name || "").toLowerCase();
+    return extensoesArte.some(ext => nome.endsWith(ext));
+  }
+
+  function syncArteInput() {
+    if (!arteInput) return;
+    const dt = new DataTransfer();
+    arteFiles.forEach(file => dt.items.add(file));
+    arteInput.files = dt.files;
+  }
+
+  function atualizarArteHint() {
+    if (!arteHint || !arteDropZone) return;
+    arteHint.classList.toggle("hidden", arteFiles.length > 0);
+    arteDropZone.classList.toggle("items-start", arteFiles.length > 0);
+    arteDropZone.classList.toggle("justify-start", arteFiles.length > 0);
+  }
+
+  function renderArtePreview() {
+    if (!artePreview) return;
+    artePreview.innerHTML = "";
+    arteFiles.forEach((file, index) => {
+      const card = document.createElement("div");
+      card.className = "relative overflow-hidden rounded-lg border border-[#2d3154] bg-[#171a29]";
+      const img = document.createElement("img");
+      img.className = "h-28 w-28 object-contain";
+      img.alt = file.name || "Arte";
+      img.src = URL.createObjectURL(file);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      const nome = document.createElement("div");
+      nome.className = "max-w-[112px] truncate px-2 py-1 text-[10px] text-[#8892b0]";
+      nome.textContent = file.name || "imagem-colada.png";
+      const remover = document.createElement("button");
+      remover.type = "button";
+      remover.className = "absolute right-1 top-1 rounded bg-[#ff4b4b]/90 px-1.5 py-0.5 text-[10px] text-white";
+      remover.textContent = "x";
+      remover.title = "Remover";
+      remover.addEventListener("click", () => {
+        arteFiles.splice(index, 1);
+        syncArteInput();
+        renderArtePreview();
+        atualizarArteHint();
+      });
+      card.append(img, nome, remover);
+      artePreview.appendChild(card);
+    });
+    atualizarArteHint();
+  }
+
+  function adicionarArteFiles(fileList) {
+    const novos = [...fileList].filter(isImagemValida);
+    if (!novos.length) return;
+    arteFiles.push(...novos);
+    syncArteInput();
+    renderArtePreview();
+  }
+
+  function fileFromDataUrl(dataUrl, nomeBase = "arte-colada") {
+    const partes = String(dataUrl || "").match(/^data:(image\/[^;]+);base64,(.+)$/);
+    if (!partes) return null;
+    const type = partes[1];
+    const binario = atob(partes[2]);
+    const bytes = new Uint8Array(binario.length);
+    for (let i = 0; i < binario.length; i += 1) bytes[i] = binario.charCodeAt(i);
+    const ext = (type.split("/")[1] || "png").replace("jpeg", "jpg");
+    return new File([bytes], `${nomeBase}.${ext}`, { type });
+  }
+
+  arteInput?.addEventListener("change", () => {
+    if (!arteInput.files?.length) return;
+    adicionarArteFiles(arteInput.files);
+  });
+
+  arteForm?.addEventListener("submit", () => {
+    syncArteInput();
+  });
+
+  ["dragenter", "dragover"].forEach(eventName => {
+    arteDropZone?.addEventListener(eventName, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      arteDropZone.classList.add("border-[#4b66ff]", "bg-[#2a2f4a]");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(eventName => {
+    arteDropZone?.addEventListener(eventName, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      arteDropZone.classList.remove("border-[#4b66ff]", "bg-[#2a2f4a]");
+    });
+  });
+
+  arteDropZone?.addEventListener("drop", event => {
+    adicionarArteFiles(event.dataTransfer.files);
+  });
+
+  function colarArteClipboard(event) {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    const imagens = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) imagens.push(file);
+      }
+    }
+    if (!imagens.length) return;
+    event.preventDefault();
+    adicionarArteFiles(imagens);
+  }
+
+  document.getElementById("btnArtePaste")?.addEventListener("click", async () => {
+    try {
+      const dataUrl = await window.mheibosClipboard?.lerImagem?.();
+      const file = fileFromDataUrl(dataUrl);
+      if (file) {
+        adicionarArteFiles([file]);
+        return;
+      }
+    } catch (_) {}
+    if (!navigator.clipboard?.read) {
+      arteDropZone?.focus();
+      return;
+    }
+    try {
+      const items = await navigator.clipboard.read();
+      const imagens = [];
+      for (const item of items) {
+        for (const type of item.types) {
+          if (!type.startsWith("image/")) continue;
+          const blob = await item.getType(type);
+          const ext = type.split("/")[1] || "png";
+          imagens.push(new File([blob], `arte-colada.${ext}`, { type }));
+        }
+      }
+      adicionarArteFiles(imagens);
+    } catch (_) {
+      arteDropZone?.focus();
+    }
+  });
+
+  document.addEventListener("paste", colarArteClipboard);
+  document.getElementById("btnArteClear")?.addEventListener("click", () => {
+    arteFiles.length = 0;
+    syncArteInput();
+    renderArtePreview();
+    atualizarArteHint();
   });
 </script>
 {% endblock %}

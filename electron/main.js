@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, shell } = require("electron");
 const { execFileSync, spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
@@ -7,9 +7,27 @@ const { fileURLToPath } = require("url");
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.MHEIBOS_PORT || 8765);
-const BASE_URL = (process.env.MHEIBOS_BASE_URL || `http://${HOST}:${PORT}`).replace(/\/$/, "");
 const DEV_PROJECT_ROOT = path.resolve(process.env.MHEIBOS_PROJECT_ROOT || path.join(__dirname, ".."));
+function readClientConfig() {
+  const candidates = [
+    path.join(__dirname, "client-config.json"),
+    path.join(process.resourcesPath || "", "client-config.json"),
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) return JSON.parse(fs.readFileSync(candidate, "utf8"));
+    } catch {
+      // Configuracao cliente invalida: usa o fallback local.
+    }
+  }
+  return {};
+}
+const CLIENT_CONFIG = readClientConfig();
+const REMOTE_BASE_URL = process.env.MHEIBOS_BASE_URL || CLIENT_CONFIG.serverUrl || "";
+const BASE_URL = (REMOTE_BASE_URL || `http://${HOST}:${PORT}`).replace(/\/$/, "");
+const REMOTE_CLIENT = Boolean(REMOTE_BASE_URL);
 let djangoProcess = null;
+let mainWindow = null;
 
 function modoAtual() {
   const args = process.argv.join(" ").toLowerCase();
@@ -155,7 +173,7 @@ function openSetupWindow() {
 }
 
 async function ensureConfig() {
-  if (process.env.MHEIBOS_BASE_URL) return readConfig() || { mode: "postgres" };
+  if (REMOTE_CLIENT) return readConfig() || { mode: "remote" };
   const existing = readConfig();
   if (existing) return existing;
   return await openSetupWindow();
@@ -163,7 +181,7 @@ async function ensureConfig() {
 
 async function ensureDjango(config) {
   if (await serverOnline()) return true;
-  if (process.env.MHEIBOS_BASE_URL) {
+  if (REMOTE_CLIENT) {
     dialog.showErrorBox("Mheibos", `Nao foi possivel acessar ${BASE_URL}. Verifique se o servidor esta aberto.`);
     return false;
   }
@@ -265,6 +283,7 @@ function createWindow() {
       sandbox: false,
     },
   });
+  mainWindow = win;
 
   win.once("ready-to-show", () => win.show());
   win.setMenuBarVisibility(false);
@@ -307,6 +326,27 @@ app.whenReady().then(async () => {
     if (!normalized.path || !normalized.isNetwork) return normalized;
     shell.openPath(normalized.path);
     return normalized;
+  });
+  ipcMain.handle("clipboard:read-image", () => {
+    const image = clipboard.readImage();
+    if (image.isEmpty()) return null;
+    return image.toDataURL();
+  });
+  ipcMain.handle("desktop:notify", (_event, payload = {}) => {
+    if (!Notification.isSupported()) return false;
+    const title = String(payload.title || "Mheibos Gestor").slice(0, 80);
+    const body = String(payload.body || "").slice(0, 240);
+    const targetUrl = String(payload.url || "");
+    const notification = new Notification({ title, body, silent: false });
+    notification.on("click", () => {
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.focus();
+        if (targetUrl.startsWith("/")) mainWindow.loadURL(`${BASE_URL}${targetUrl}`);
+      }
+    });
+    notification.show();
+    return true;
   });
   const config = await ensureConfig();
   if (!config) {

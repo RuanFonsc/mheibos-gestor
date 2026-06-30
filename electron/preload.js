@@ -12,6 +12,14 @@ contextBridge.exposeInMainWorld("mheibosArquivos", {
   caminhoArquivo: (file) => webUtils.getPathForFile(file),
 });
 
+contextBridge.exposeInMainWorld("mheibosDesktop", {
+  notificar: (payload) => ipcRenderer.invoke("desktop:notify", payload),
+});
+
+contextBridge.exposeInMainWorld("mheibosClipboard", {
+  lerImagem: () => ipcRenderer.invoke("clipboard:read-image"),
+});
+
 window.addEventListener("DOMContentLoaded", () => {
   document.documentElement.dataset.desktop = "electron";
 });
