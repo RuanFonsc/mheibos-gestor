@@ -153,7 +153,7 @@ class Pedido(models.Model):
         return max(total, self.valor_pago_legado or Decimal("0.00"))
 
     def status_assistencia(self):
-        from apps.catalogo.assistencia import categorias_do_pedido, pedido_entrou_na_regra, regra_categoria, dias_uteis_restantes
+        from apps.catalogo.assistencia import categorias_do_pedido, pedido_deve_aparecer_assistencia, regra_categoria, dias_uteis_restantes
         from django.utils import timezone
 
         if self.status not in STATUS_ASSISTENCIA:
@@ -165,10 +165,12 @@ class Pedido(models.Model):
         if not categorias:
             return {"na_assistencia": False, "mensagem": "Sem categoria definida"}
             
-        # Verifica se entrou na regra para qualquer uma das categorias do pedido
-        na_assistencia = any(pedido_entrou_na_regra(self, cat, agora) for cat in categorias)
+        # Aguardando arte sempre entra na assistencia; os outros status seguem prazo/categoria.
+        na_assistencia = any(pedido_deve_aparecer_assistencia(self, cat, agora) for cat in categorias)
         
         if na_assistencia:
+            if self.status == StatusPedido.AGUARDANDO_ARTE:
+                return {"na_assistencia": True, "mensagem": "Aguardando arte para seguir para produção"}
             return {"na_assistencia": True, "mensagem": "Está na assistência de envio"}
             
         # Se não está, calcula quanto tempo falta (menor limite entre as categorias)

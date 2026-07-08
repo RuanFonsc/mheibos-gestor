@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Mheibos Aprendizado{% endblock %}
+{% block page_title %}Mheibos Aprendizado{% endblock %}
+{% block page_icon %}brain-circuit{% endblock %}
+{% block head %}
+{{ block.super }}
+<style>
+  .learning-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(0, 229, 255, .28);
+    border-radius: 10px;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(0, 229, 255, .18), transparent 34%),
+      radial-gradient(circle at 90% 15%, rgba(75, 102, 255, .22), transparent 30%),
+      linear-gradient(145deg, rgba(34, 37, 58, .98), rgba(23, 26, 41, .98));
+    box-shadow: 0 18px 54px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .04);
+  }
+  .learning-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto 28px 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 229, 255, .75), transparent);
+  }
+  .learning-hero > * { position: relative; z-index: 1; }
+  .learning-metric {
+    border-color: rgba(0, 229, 255, .20);
+    background: linear-gradient(145deg, rgba(34, 37, 58, .98), rgba(23, 26, 41, .96));
+  }
+  .learning-metric strong { text-shadow: 0 0 18px rgba(0, 229, 255, .18); }
+  .learning-panel {
+    border-color: rgba(0, 229, 255, .24);
+    background:
+      radial-gradient(circle at 0% 0%, rgba(0, 229, 255, .14), transparent 30%),
+      linear-gradient(145deg, rgba(34, 37, 58, .98), rgba(24, 31, 52, .98));
+    box-shadow: 0 16px 48px rgba(0, 0, 0, .18);
+  }
+  .learning-progress-track {
+    height: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(61, 66, 117, .9);
+    border-radius: 999px;
+    background: #151827;
+  }
+  .learning-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #00e5ff, #4b66ff);
+    box-shadow: 0 0 22px rgba(0, 229, 255, .45);
+  }
+  .learning-mini-stat {
+    border: 1px solid rgba(61, 66, 117, .75);
+    border-radius: 8px;
+    background: rgba(23, 26, 41, .82);
+    padding: 12px;
+  }
+  .learning-chart {
+    border: 1px solid rgba(0, 229, 255, .18);
+    border-radius: 10px;
+    background: rgba(23, 26, 41, .74);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+  }
+  .learning-side-card {
+    border-color: rgba(75, 102, 255, .28);
+    background: linear-gradient(145deg, rgba(34, 37, 58, .98), rgba(23, 26, 41, .98));
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-content space-y-5">
+  <section class="learning-hero p-5">
+    <div class="page-heading mb-0">
+    <div>
+      <span class="kicker"><i data-lucide="brain-circuit" class="h-4 w-4"></i> WhatsApp + IA</span>
+      <h2 class="section-title">Mheibos Aprendizado</h2>
+      <p>Coleta conversas reais do WhatsApp, mede qualidade do dataset e prepara JSONs para treinar a IA de atendimento.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn-secondary" href="{% url 'aprendizado_exportar_json' %}" target="_blank"><i data-lucide="file-json" class="h-4 w-4"></i> Exportar JSON</a>
+    </div>
+    </div>
+  </section>
+
+  <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div class="card metric-card learning-metric"><p>Conversas coletadas</p><strong>{{ total }}</strong><span>recebidas pelo webhook</span></div>
+    <div class="card metric-card learning-metric"><p>Uteis para treino</p><strong class="text-[#00e5ff]">{{ uteis }}</strong><span>meta: {{ meta_treinamento }}</span></div>
+    <div class="card metric-card learning-metric"><p>Leads detectados</p><strong class="text-[#00c896]">{{ leads }}</strong><span>interesse/orcamento</span></div>
+    <div class="card metric-card learning-metric"><p>Reclamacoes</p><strong class="text-[#ff4b4b]">{{ reclamacoes }}</strong><span>risco de atendimento</span></div>
+  </section>
+
+  <section class="card learning-panel p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h3 class="text-lg font-semibold">Maturidade do treinamento</h3>
+        <p class="mt-1 text-sm text-[#8892b0]">
+          {% if pronto_treino %}
+            Meta de 1000 conversas uteis atingida. Ja da para planejar treinamento/testes assistidos.
+          {% else %}
+            Faltam {{ faltantes }} conversa(s) uteis para o bot estar pronto para treinamento.
+          {% endif %}
+        </p>
+      </div>
+      <span class="status-pill {% if pronto_treino %}is-ok{% else %}is-work{% endif %}">
+        {% if pronto_treino %}Pronto para teste{% else %}Coletando dados{% endif %}
+      </span>
+    </div>
+    <div class="mt-5 grid gap-5">
+      <div>
+        <div class="mb-2 flex justify-between text-xs font-bold uppercase text-[#8892b0]"><span>Progresso do treinamento</span><span>{{ progresso_treinamento }}%</span></div>
+        <div class="learning-progress-track"><div class="learning-progress-fill" style="width: {{ progresso_treinamento }}%"></div></div>
+        <div class="mt-4 grid gap-3 text-sm md:grid-cols-3">
+          <div class="learning-mini-stat"><span class="block text-[#8892b0]">Coletadas</span><strong>{{ uteis }}</strong></div>
+          <div class="learning-mini-stat"><span class="block text-[#8892b0]">Faltam</span><strong>{{ faltantes }}</strong></div>
+          <div class="learning-mini-stat"><span class="block text-[#8892b0]">Meta</span><strong>{{ meta_treinamento }}</strong></div>
+        </div>
+        <p class="mt-4 text-xs text-[#8892b0]">JSON automatico: <code class="text-[#00e5ff]">{{ arquivo_export }}</code></p>
+      </div>
+      <div class="learning-chart h-[180px] p-4">
+        <canvas id="graficoTreinamento"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-4 xl:grid-cols-[1fr_360px]">
+    <div class="card learning-side-card p-5">
+      <h3 class="mb-4 text-lg font-semibold">Ultimas conversas</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th class="p-3">Contato</th><th class="p-3">Sinais</th><th class="p-3">Mensagens</th><th class="p-3">Ultima</th></tr>
+          </thead>
+          <tbody class="divide-y divide-[#2d3154]">
+            {% for conversa in conversas %}
+              <tr>
+                <td class="p-3">
+                  <strong>{{ conversa.nome_contato|default:conversa.telefone|default:"Sem nome" }}</strong>
+                  <p class="text-xs text-[#8892b0]">{{ conversa.telefone|default:conversa.contato_id }}</p>
+                </td>
+                <td class="p-3">
+                  <div class="flex flex-wrap gap-2">
+                    {% if conversa.tem_lead %}<span class="status-pill is-ok">Lead</span>{% endif %}
+                    {% if conversa.tem_reclamacao %}<span class="status-pill is-danger">Reclamacao</span>{% endif %}
+                    {% if conversa.tem_sinal_pedido %}<span class="status-pill is-info">Pedido</span>{% endif %}
+                    {% if not conversa.tem_lead and not conversa.tem_reclamacao and not conversa.tem_sinal_pedido %}<span class="text-xs text-[#8892b0]">Sem sinal ainda</span>{% endif %}
+                  </div>
+                </td>
+                <td class="p-3">{{ conversa.total_mensagens }}</td>
+                <td class="p-3 text-sm text-[#8892b0]">{{ conversa.ultima_mensagem_em|date:"d/m/Y H:i"|default:"-" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td class="p-4 text-[#8892b0]" colspan="4">Nenhuma conversa recebida ainda.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <aside class="space-y-4">
+      <div class="card learning-side-card p-5">
+        <h3 class="text-lg font-semibold">Resumo extraido</h3>
+        <div class="mt-4 grid gap-3 text-sm">
+          <div class="flex justify-between"><span>Amostras prontas</span><strong>{{ amostras }}</strong></div>
+          <div class="flex justify-between"><span>Sinais de pedido</span><strong>{{ pedidos }}</strong></div>
+          {% for item in por_tipo %}
+            <div class="flex justify-between"><span>{{ item.tipo }}</span><strong>{{ item.total }}</strong></div>
+          {% empty %}
+            <p class="text-[#8892b0]">As categorias aparecem quando houver conversas uteis.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card learning-side-card p-5">
+        <h3 class="text-lg font-semibold">Webhook</h3>
+        <p class="mt-2 text-sm text-[#8892b0]">Configure a Evolution API para enviar eventos de mensagens para:</p>
+        <code class="mt-3 block rounded-lg bg-[#171a29] p-3 text-xs text-[#00e5ff]">http://host.docker.internal:8001/webhook</code>
+      </div>
+    </aside>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ block.super }}
+<script>
+  const treinamentoCtx = document.getElementById("graficoTreinamento");
+  if (treinamentoCtx && window.Chart) {
+    new Chart(treinamentoCtx, {
+      type: "bar",
+      data: {
+        labels: ["Conversas úteis"],
+        datasets: [{
+          label: "Coletadas",
+          data: [{{ uteis }}],
+          backgroundColor: "#00e5ff",
+          borderColor: "#00e5ff",
+          borderWidth: 1,
+          borderRadius: 8,
+          barThickness: 28
+        }, {
+          label: "Faltam",
+          data: [{{ faltantes }}],
+          backgroundColor: "#2d3154",
+          borderColor: "#3d4275",
+          borderWidth: 1,
+          borderRadius: 8,
+          barThickness: 28
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            stacked: true,
+            max: {{ meta_treinamento }},
+            grid: { color: "rgba(61, 66, 117, .55)" },
+            ticks: { color: "#8892b0" }
+          },
+          y: {
+            stacked: true,
+            grid: { display: false },
+            ticks: { color: "#c6cce0", font: { weight: "700" } }
+          }
+        },
+        plugins: {
+          legend: { position: "bottom", labels: { color: "#8892b0", boxWidth: 14, usePointStyle: true } },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw}` } }
+        }
+      }
+    });
+  }
+</script>
+{% endblock %}

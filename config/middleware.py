@@ -11,6 +11,7 @@ from apps.catalogo.licensing import enforced, verify_license
 def caminho_liberado_licenca(caminho):
     return (
         caminho.startswith("/licenca/")
+        or caminho.startswith("/webhook")
         or caminho.startswith("/static/")
         or caminho.startswith("/media/")
         or caminho.startswith("/admin/")
@@ -60,6 +61,7 @@ class PrimeiroAdminMiddleware:
         caminho = request.path_info
         liberado = (
             caminho.startswith("/primeiro-admin/")
+            or caminho.startswith("/webhook")
             or caminho.startswith("/licenca/")
             or caminho.startswith("/static/")
             or caminho.startswith("/media/")
@@ -83,6 +85,7 @@ class OperadorLoginMiddleware:
             or caminho.startswith("/producao/login/")
             or caminho.startswith("/vendas/login/")
             or caminho.startswith("/primeiro-admin/")
+            or caminho.startswith("/webhook")
             or caminho.startswith("/static/")
             or caminho.startswith("/media/")
             or caminho.startswith("/admin/")

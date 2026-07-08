@@ -232,7 +232,7 @@ def vendas_configuracoes(request):
             elif perfil_form.is_valid():
                 perfil_form.save()
                 if operador.nome != nome_anterior:
-                    salvar_preferencias({"usuario": operador.nome})
+                    salvar_preferencias({"usuario": operador.nome}, request=request)
                     request.session["operador_nome"] = operador.nome
                 messages.success(request, "Perfil salvo.")
                 return redirect("vendas_configuracoes")

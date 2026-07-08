@@ -487,7 +487,19 @@
     {% if pode_gerenciar_usuarios %}
     <section id="tab-banco" class="config-panel hidden">
       <div class="card p-5">
-        <h3 class="mb-4 text-lg font-semibold">Banco de dados</h3>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-semibold">Banco de dados</h3>
+            <p class="mt-1 text-sm text-[#8892b0]">Teste a conexao com o banco local configurado no sistema.</p>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="testar_banco">
+            <button class="btn-primary min-h-[44px]" type="submit">
+              <i data-lucide="plug-zap" class="h-4 w-4"></i> Conectar
+            </button>
+          </form>
+        </div>
         <div class="grid gap-3 md:grid-cols-[160px_1fr]">
           <label>Tipo de banco</label><input value="PostgreSQL (rede)" readonly>
           <label>Nome do banco</label><input value="{{ db.NAME }}" readonly>

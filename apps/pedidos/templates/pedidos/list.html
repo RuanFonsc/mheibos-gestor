@@ -2,7 +2,6 @@
 {% block title %}Gestor de Pedidos{% endblock %}
 {% block page_title %}Gestor de Pedidos{% endblock %}
 {% block top_tabs %}
-  <a href="{% url 'atendimento_list' %}" class="top-tab"><i data-lucide="headphones" class="h-5 w-5"></i> Atendimento</a>
   <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab {% if status_atual == 'EM_PRODUCAO' or status_atual == 'AGUARDANDO_ARTE' %}active{% endif %}"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
   <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab {% if status_atual == 'PRONTO' %}active{% endif %}"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
@@ -61,11 +60,11 @@
   {% endif %}
   {% if pode_acoes_admin %}
     {% if status_atual != 'CANCELADO' %}
-      <button class="btn-danger min-h-[40px]" type="submit" name="acao" value="cancelar" data-bulk-action disabled onclick="return confirm('Cancelar os pedidos selecionados?')">
+      <button class="btn-danger min-h-[40px]" type="submit" name="acao" value="cancelar" data-bulk-action data-confirm-kind="cancelar-pedido" data-confirm-message="Deseja cancelar os pedidos selecionados?" disabled>
         <i data-lucide="x" class="h-4 w-4"></i> Cancelar
       </button>
     {% endif %}
-    <button class="btn-danger min-h-[40px]" type="submit" name="acao" value="excluir" data-bulk-action disabled onclick="return confirm('Excluir definitivamente os pedidos selecionados?')">
+    <button class="btn-danger min-h-[40px]" type="submit" name="acao" value="excluir" data-bulk-action data-confirm-kind="excluir" data-confirm-message="Excluir definitivamente os pedidos selecionados?" disabled>
       <i data-lucide="trash-2" class="h-4 w-4"></i> Excluir
     </button>
   {% endif %}
@@ -98,7 +97,7 @@
           <p class="mt-1 text-xs text-[#8892b0]">{{ pedido.data_entrega|date:"d/m/Y"|default:"Sem entrega" }}</p>
         </div>
       </div>
-      <div class="mt-4 flex items-center justify-between gap-3 border-t border-[#2d3154] pt-4 text-sm text-[#8892b0]">
+      <div class="mt-4 grid gap-3 border-t border-[#2d3154] pt-4 text-sm text-[#8892b0]">
         <div class="flex min-w-0 items-center gap-3">
           <div class="flex h-16 w-20 flex-none items-center justify-center overflow-hidden rounded-lg border border-[#2d3154] bg-[#10131f]">
             {% with arte=pedido.artes.first %}
@@ -116,9 +115,9 @@
         </div>
         {% if pedido.status != 'PRONTO' and pedido.status != 'CANCELADO' %}
           {% with assistencia=pedido.status_assistencia %}
-            <div class="flex shrink-0 items-center gap-1.5 text-xs font-medium {% if assistencia.na_assistencia %}text-red-400{% else %}text-blue-400{% endif %}">
-              <i data-lucide="{% if assistencia.na_assistencia %}alert-circle{% else %}clock{% endif %}" class="h-3.5 w-3.5"></i>
-              {{ assistencia.mensagem }}
+            <div class="flex max-w-full items-start justify-end gap-1.5 justify-self-end text-right text-xs font-medium leading-snug {% if assistencia.na_assistencia %}text-red-400{% else %}text-blue-400{% endif %}">
+              <i data-lucide="{% if assistencia.na_assistencia %}alert-circle{% else %}clock{% endif %}" class="mt-0.5 h-3.5 w-3.5 flex-none"></i>
+              <span class="max-w-[250px] whitespace-normal break-words">{{ assistencia.mensagem }}</span>
             </div>
           {% endwith %}
         {% endif %}

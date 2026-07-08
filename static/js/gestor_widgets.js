@@ -13,6 +13,7 @@
   let timers = { prazos: null, assistencia: null };
   let ocultoManualPrazos = false;
   let ocultoManualAssistencia = false;
+  let ultimaNotificacaoAssistencia = "";
 
   function prefs() {
     return GestorPrefs.load();
@@ -139,13 +140,24 @@
     if (!toastText || !toastLink) return;
     if (!resumo.total) {
       esconderToast();
+      ultimaNotificacaoAssistencia = "";
       return;
     }
     const partes = resumo.por_categoria.map((item) => `${item.nome}: ${item.count}`);
-    toastText.textContent = `${resumo.total} pedido(s) na assistência de envio${partes.length ? ` (${partes.join(" · ")})` : ""}`;
+    const texto = `${resumo.total} pedido(s) na assistência de envio${partes.length ? ` (${partes.join(" · ")})` : ""}`;
+    toastText.textContent = texto;
     toastLink.href = resumo.url || "/assistencia-envio/";
     toast?.classList.toggle("is-alert", Boolean(resumo.alerta));
     mostrarToast();
+    const assinatura = `${resumo.total}|${partes.join("|")}|${resumo.alerta ? "1" : "0"}`;
+    if (window.mheibosDesktop?.notificar && assinatura !== ultimaNotificacaoAssistencia) {
+      ultimaNotificacaoAssistencia = assinatura;
+      window.mheibosDesktop.notificar({
+        title: "Assistência de envio",
+        body: texto,
+        url: resumo.url || "/assistencia-envio/",
+      }).catch(() => {});
+    }
   }
 
   function agendarPrazos(cfg, atrasoMs) {

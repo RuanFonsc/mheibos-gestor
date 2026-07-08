@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from django.contrib import messages
 from django.conf import settings
+from django.db import connections
 from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -95,7 +96,7 @@ def login_operador(request):
         operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
         if operador and operador.senha == senha:
             request.session["operador_nome"] = operador.nome
-            salvar_preferencias({"usuario": operador.nome})
+            salvar_preferencias({"usuario": operador.nome}, request=request)
             return redirect(_destino_seguro(request, "home"))
         messages.error(request, "Usuario ou senha invalidos.")
     return render(
@@ -121,7 +122,7 @@ def login_producao(request):
         operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
         if operador and operador.senha == senha:
             request.session["operador_nome"] = operador.nome
-            salvar_preferencias({"usuario": operador.nome})
+            salvar_preferencias({"usuario": operador.nome}, request=request)
             return redirect(_destino_seguro(request, "producao_home"))
         messages.error(request, "Usuario ou senha invalidos.")
     return render(
@@ -147,7 +148,7 @@ def login_vendas(request):
         operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
         if operador and operador.senha == senha:
             request.session["operador_nome"] = operador.nome
-            salvar_preferencias({"usuario": operador.nome})
+            salvar_preferencias({"usuario": operador.nome}, request=request)
             return redirect(_destino_seguro(request, "vendas_home"))
         messages.error(request, "Usuario ou senha invalidos.")
     return render(
@@ -194,7 +195,7 @@ def primeiro_admin(request):
                 papel=PapelOperador.ADMIN_GERAL,
                 ativo=True,
             )
-            salvar_preferencias({"usuario": operador.nome})
+            salvar_preferencias({"usuario": operador.nome}, request=request)
             messages.success(request, "Administrador geral criado. Faca login no launcher.")
             return redirect("home")
     return render(request, "catalogo/primeiro_admin.html")
@@ -347,6 +348,18 @@ def configuracoes(request):
 
     if request.method == "POST":
         acao = request.POST.get("acao")
+        if acao == "testar_banco":
+            if not operador.pode_gerenciar_usuarios:
+                messages.error(request, "Somente administradores podem testar a conexao com o banco.")
+                return redirect("configuracoes")
+            try:
+                with connections["default"].cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                    cursor.fetchone()
+                messages.success(request, "Conexao com o banco local realizada com sucesso.")
+            except Exception as exc:
+                messages.error(request, f"Nao foi possivel conectar ao banco: {exc}")
+            return redirect(f"{reverse('configuracoes')}?aba=banco")
         if acao == "salvar_perfil":
             nome_anterior = operador.nome
             perfil_form = OperadorPerfilForm(request.POST, request.FILES, prefix="perfil", instance=operador)
@@ -356,7 +369,7 @@ def configuracoes(request):
             elif perfil_form.is_valid():
                 perfil_form.save()
                 if operador.nome != nome_anterior:
-                    salvar_preferencias({"usuario": operador.nome})
+                    salvar_preferencias({"usuario": operador.nome}, request=request)
                 messages.success(request, "Perfil salvo.")
                 return redirect("configuracoes")
             else:
@@ -499,7 +512,8 @@ def configuracoes(request):
                 return redirect("configuracoes")
             alvo = request.POST.get("usuario_ativo", "").strip()
             if OperadorGestor.objects.filter(nome=alvo, ativo=True).exists():
-                salvar_preferencias({"usuario": alvo})
+                request.session["operador_nome"] = alvo
+                salvar_preferencias({"usuario": alvo}, request=request)
                 messages.success(request, f"Usuário ativo: {alvo}.")
             return redirect("configuracoes")
 
@@ -528,7 +542,7 @@ def configuracoes(request):
         "pode_gerenciar_usuarios": operador.pode_gerenciar_usuarios,
         "pode_gerenciar_usuarios_geral": operador.is_admin_geral,
         "operador_editando": operador_editando,
-        "preferencias": carregar_preferencias(),
+        "preferencias": carregar_preferencias(operador=operador, request=request),
         "db": db,
         "legacy_db": legacy_db,
         "zoom_opcoes": [85, 90, 95, 100, 110, 125, 150, 175],
@@ -554,7 +568,7 @@ def configuracoes(request):
         "active": "configuracoes",
         "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
         "operadores": OperadorGestor.objects.filter(ativo=True),
-        "preferencias": carregar_preferencias(),
+        "preferencias": carregar_preferencias(operador=operador, request=request),
         "db": db,
         "legacy_db": legacy_db,
         "zoom_opcoes": [85, 90, 95, 100, 110, 125, 150, 175],
@@ -646,7 +660,7 @@ def producao_configuracoes(request):
     contexto = {
         "active": "producao_configuracoes",
         "modo_producao": True,
-        "preferencias": carregar_preferencias(),
+        "preferencias": carregar_preferencias(operador=operador, request=request),
         "db": settings.DATABASES["default"],
         "pode_ver_banco": bool(operador and operador.is_admin_geral),
         "zoom_opcoes": [85, 90, 95, 100, 110, 125, 150, 175],
@@ -688,12 +702,12 @@ def api_notificacao_assistencia(request):
 @require_http_methods(["GET", "POST"])
 def api_preferencias(request):
     if request.method == "GET":
-        return JsonResponse(carregar_preferencias())
+        return JsonResponse(carregar_preferencias(request=request))
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"erro": "JSON inválido"}, status=400)
-    return JsonResponse(salvar_preferencias(payload))
+    return JsonResponse(salvar_preferencias(payload, request=request))
 
 
 def _json_body(request):
@@ -720,7 +734,7 @@ def api_launcher_login(request):
     if not operador or operador.senha != senha:
         return JsonResponse({"ok": False, "erro": "Usuario ou senha invalidos."}, status=403)
     request.session["operador_nome"] = operador.nome
-    salvar_preferencias({"usuario": operador.nome})
+    salvar_preferencias({"usuario": operador.nome}, request=request)
     return JsonResponse(
         {
             "ok": True,

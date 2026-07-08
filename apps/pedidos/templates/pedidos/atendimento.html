@@ -2,21 +2,15 @@
 {% block title %}Atendimento{% endblock %}
 {% block page_title %}Atendimento{% endblock %}
 {% block page_icon %}headphones{% endblock %}
-{% block top_tabs %}
-  <a href="{% url 'atendimento_list' %}" class="top-tab active"><i data-lucide="headphones" class="h-5 w-5"></i> Atendimento</a>
-  <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
-  <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
-  <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
-{% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
-  <section class="page-heading">
+  <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
       <span class="kicker"><i data-lucide="headphones" class="h-4 w-4"></i> Entrada de vendas</span>
       <h2 class="section-title">Atendimento</h2>
-      <p>Pedidos criados pelo Mheibos Vendas aguardando conferência, arte e finalização pelo designer.</p>
+      <p class="text-sm text-[#8892b0]">Pedidos criados pelo Mheibos Vendas aguardando conferência, arte e finalização pelo designer.</p>
     </div>
-    <a class="btn-primary" href="{% url 'vendas_home' %}"><i data-lucide="shopping-bag" class="h-4 w-4"></i> Abrir Vendas</a>
+    <a class="btn-secondary" href="{% url 'atendimento_list' %}"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Atualizar</a>
   </section>
 
   <section class="grid gap-3 md:grid-cols-2">
@@ -24,8 +18,13 @@
     <div class="card metric-card"><p>Meus captados</p><strong>{{ meus_atendimento }}</strong><span>com seu usuario</span></div>
   </section>
 
-  <form class="card grid gap-3 p-4 md:grid-cols-[1fr_auto]" method="get">
+  <form class="card grid gap-3 p-4 md:grid-cols-[1fr_auto_auto]" method="get">
     <input name="q" value="{{ busca }}" placeholder="Buscar cliente, item, vendedor ou ID">
+    {% if busca %}
+      <a class="btn-secondary min-h-[53px]" href="{% url 'atendimento_list' %}">
+        <i data-lucide="x" class="h-4 w-4"></i> Limpar
+      </a>
+    {% endif %}
     <button class="btn-primary min-w-[53px] px-0" type="submit" title="Filtrar"><i data-lucide="search" class="h-5 w-5"></i></button>
   </form>
 

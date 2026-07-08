@@ -1,7 +1,8 @@
 from copy import deepcopy
+from hashlib import sha1
 from decouple import config
 
-from apps.catalogo.models import PreferenciaUI
+from apps.catalogo.models import OperadorGestor, PreferenciaUI
 
 PREFERENCIAS_PADRAO = {
     "tema": "dark",
@@ -66,20 +67,39 @@ def normalizar_preferencias(dados):
     return merged
 
 
-def carregar_preferencias():
-    registro = PreferenciaUI.objects.filter(chave="global").first()
+def _chave_usuario(operador=None, request=None):
+    if operador and getattr(operador, "pk", None):
+        return f"operador:{operador.pk}"
+    nome = ""
+    if request is not None:
+        nome = (request.session.get("operador_nome") or "").strip()
+    if nome:
+        operador = OperadorGestor.objects.filter(nome__iexact=nome, ativo=True).first()
+        if operador:
+            return f"operador:{operador.pk}"
+        digest = sha1(nome.casefold().encode("utf-8")).hexdigest()[:16]
+        return f"usuario:{digest}"
+    return "global"
+
+
+def carregar_preferencias(operador=None, request=None):
+    chave = _chave_usuario(operador=operador, request=request)
+    registro = PreferenciaUI.objects.filter(chave=chave).first()
+    if not registro and chave != "global":
+        registro = PreferenciaUI.objects.filter(chave="global").first()
     if not registro:
         return normalizar_preferencias(PREFERENCIAS_PADRAO)
     return normalizar_preferencias(registro.dados)
 
 
-def salvar_preferencias(patch):
+def salvar_preferencias(patch, operador=None, request=None):
+    chave = _chave_usuario(operador=operador, request=request)
     if isinstance(patch, dict) and {"tema", "zoom", "usuario", "widgets"}.issubset(patch.keys()):
         merged = normalizar_preferencias(patch)
     else:
-        atual = carregar_preferencias()
+        atual = carregar_preferencias(operador=operador, request=request)
         merged = normalizar_preferencias(_merge_dict(atual, patch or {}))
-    PreferenciaUI.objects.update_or_create(chave="global", defaults={"dados": merged})
+    PreferenciaUI.objects.update_or_create(chave=chave, defaults={"dados": merged})
     return merged
 
 

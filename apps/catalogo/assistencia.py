@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.catalogo.models import CategoriaServico, ProdutoServico
-from apps.pedidos.models import Pedido, PedidoItem, STATUS_ASSISTENCIA
+from apps.pedidos.models import Pedido, PedidoItem, STATUS_ASSISTENCIA, StatusPedido
 
 
 def normalizar(texto):
@@ -114,6 +114,12 @@ def pedido_em_alerta(pedido, agora=None):
     return any(pedido_entrou_na_regra(pedido, categoria, agora) for categoria in categorias_do_pedido(pedido))
 
 
+def pedido_deve_aparecer_assistencia(pedido, categoria, agora=None):
+    if pedido.status == StatusPedido.AGUARDANDO_ARTE:
+        return True
+    return pedido_entrou_na_regra(pedido, categoria, agora)
+
+
 def preparar_categorias_pedidos(pedidos):
     pedidos_lista = list(pedidos)
     nomes_pendentes = set()
@@ -216,7 +222,7 @@ def pedidos_assistencia(busca="", categorias_ids=None, usuarios=None):
 
     for pedido in preparar_categorias_pedidos(pedidos):
         for categoria in categorias_do_pedido(pedido):
-            if pedido_entrou_na_regra(pedido, categoria, agora):
+            if pedido_deve_aparecer_assistencia(pedido, categoria, agora):
                 if pedido not in agrupados[categoria.id]:
                     agrupados[categoria.id].append(pedido)
 
