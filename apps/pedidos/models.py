@@ -307,6 +307,13 @@ class HistoricoStatusPedido(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
     )
+    operador = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="historicos_status_pedido",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:

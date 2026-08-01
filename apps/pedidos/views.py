@@ -27,6 +27,7 @@ from apps.pedidos.models import (
     StatusPagamento,
     StatusPedido,
 )
+from apps.pedidos.use_cases import AlteracaoStatusNegada, alterar_status_pedido
 
 
 def pedido_list(request):
@@ -269,19 +270,18 @@ def pedido_update_status(request, pk):
     if form.is_valid():
         novo_status = form.cleaned_data["status"]
         origem_producao = bool(retorno and retorno.startswith("/producao/"))
-        if novo_status == StatusPedido.CANCELADO and not operador.pode_cancelar_pedido:
-            messages.error(request, "Seu perfil não tem permissão para cancelar pedidos.")
-            if retorno:
-                return redirect(retorno)
-            return redirect("pedido_detail", pk=pedido.pk)
-        if not origem_producao and not pode_editar_pedido(pedido, operador) and novo_status != pedido.status:
+        try:
+            alterar_status_pedido(
+                pedido=pedido,
+                novo_status=novo_status,
+                operador=operador,
+                origem_operacional=origem_producao,
+            )
+        except AlteracaoStatusNegada:
             messages.error(request, "Seu perfil não tem permissão para alterar este pedido.")
             if retorno:
                 return redirect(retorno)
             return redirect("pedido_detail", pk=pedido.pk)
-        pedido.status = novo_status
-        pedido.save(update_fields=["status", "atualizado_em"])
-        sincronizar_financeiro_pedido(pedido)
         messages.success(request, "Status atualizado.")
     if retorno:
         return redirect(retorno)
@@ -337,10 +337,6 @@ def pedido_bulk_action(request):
         messages.error(request, "Acao em massa invalida.")
         return redirect(retorno or "pedido_list")
 
-    if novo_status == StatusPedido.CANCELADO and not operador.pode_cancelar_pedido:
-        messages.error(request, "Somente administradores podem cancelar pedidos.")
-        return redirect(retorno or "pedido_list")
-
     origem_operacional = bool(
         retorno
         and (
@@ -352,19 +348,17 @@ def pedido_bulk_action(request):
     atualizados = 0
     bloqueados = 0
     for pedido in pedidos:
-        if (
-            novo_status != StatusPedido.CANCELADO
-            and not origem_operacional
-            and not pode_editar_pedido(pedido, operador)
-        ):
+        try:
+            resultado = alterar_status_pedido(
+                pedido=pedido,
+                novo_status=novo_status,
+                operador=operador,
+                origem_operacional=origem_operacional,
+            )
+        except AlteracaoStatusNegada:
             bloqueados += 1
             continue
-        if pedido.status == novo_status:
-            continue
-        pedido.status = novo_status
-        pedido.save(update_fields=["status", "atualizado_em"])
-        sincronizar_financeiro_pedido(pedido)
-        atualizados += 1
+        atualizados += int(resultado.alterado)
 
     if atualizados:
         messages.success(request, f"{atualizados} pedido(s) atualizado(s).")
@@ -389,14 +383,13 @@ def pedido_rejeitar_producao(request, pk):
     if pedido.status != StatusPedido.EM_PRODUCAO:
         messages.error(request, "Somente pedidos em producao podem ser rejeitados.")
         return redirect(retorno)
-    status_anterior = pedido.status
-    pedido.status = StatusPedido.AGUARDANDO_ARTE
-    pedido.save(update_fields=["status", "atualizado_em"])
-    HistoricoStatusPedido.objects.create(
+    operador = operador_atual(request)
+    alterar_status_pedido(
         pedido=pedido,
-        status_anterior=status_anterior,
-        status_novo=pedido.status,
-        observacao=f"Rejeitado pela producao: {motivo}",
+        novo_status=StatusPedido.AGUARDANDO_ARTE,
+        operador=operador,
+        origem_operacional=True,
+        observacao=f"Rejeitado pela produção: {motivo}",
     )
     messages.warning(request, f"Pedido #{pedido.pk} devolvido para os designers.")
     return redirect(retorno)

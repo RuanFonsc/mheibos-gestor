@@ -64,16 +64,20 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 if config("MHEIBOS_DB_MODE", default="postgres").lower() == "sqlite":
     sqlite_name = config("SQLITE_DB_NAME", default="mheibos_gestor.sqlite3")
-    if not sqlite_name.lower().endswith((".sqlite", ".sqlite3", ".db")):
-        sqlite_name = f"{sqlite_name}.sqlite3"
+    if sqlite_name == ":memory:":
+        sqlite_path = sqlite_name
+    else:
+        if not sqlite_name.lower().endswith((".sqlite", ".sqlite3", ".db")):
+            sqlite_name = f"{sqlite_name}.sqlite3"
+        sqlite_path = str(DATA_DIR / sqlite_name)
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": str(DATA_DIR / sqlite_name),
+            "NAME": sqlite_path,
         },
         "legacy": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": str(DATA_DIR / sqlite_name),
+            "NAME": sqlite_path,
         },
     }
 else:

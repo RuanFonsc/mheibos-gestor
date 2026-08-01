@@ -5,6 +5,9 @@ if (-not (Test-Path -LiteralPath $python)) {
     $python = "python"
 }
 
+$env:MHEIBOS_DB_MODE = "sqlite"
+$env:SQLITE_DB_NAME = ":memory:"
+
 & $python -m ruff check apps config manage.py
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $python -m mypy
