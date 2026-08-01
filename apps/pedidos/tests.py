@@ -10,13 +10,17 @@ from apps.auditoria.models import EventoOperacional
 from apps.clientes.models import Cliente
 
 from .models import (
+    EstadoComercialPedido,
+    EstadoEntregaPedido,
+    EstadoFinanceiroPedido,
+    PagamentoPedido,
     PedidoItem,
     PrioridadePedido,
     StatusPedido,
     arte_upload_to,
 )
 from .models import HistoricoStatusPedido, Pedido
-from .use_cases import AlteracaoStatusNegada, alterar_status_pedido
+from .use_cases import AlteracaoStatusNegada, EntregaComSaldoNegada, alterar_status_pedido
 
 
 class PedidoDomainBaselineTests(SimpleTestCase):
@@ -88,8 +92,10 @@ class AlterarStatusPedidoTests(TestCase):
         evento = EventoOperacional.objects.get(alvo_id=str(self.pedido.pk))
         self.assertEqual(evento.tipo, "PedidoStatusAlterado")
         self.assertEqual(evento.operador, self.operador)
-        self.assertEqual(evento.valores_anteriores, {"status": StatusPedido.AGUARDANDO_ARTE})
-        self.assertEqual(evento.valores_posteriores, {"status": StatusPedido.EM_PRODUCAO})
+        self.assertEqual(
+            evento.valores_anteriores["status_legado"], StatusPedido.AGUARDANDO_ARTE
+        )
+        self.assertEqual(evento.valores_posteriores["status_legado"], StatusPedido.EM_PRODUCAO)
         sync_financeiro.assert_called_once_with(self.pedido)
 
     @patch("apps.pedidos.use_cases.registrar_evento", side_effect=RuntimeError("falha"))
@@ -137,6 +143,61 @@ class AlterarStatusPedidoTests(TestCase):
         self.assertFalse(resultado.alterado)
         self.assertFalse(HistoricoStatusPedido.objects.exists())
         sync_financeiro.assert_not_called()
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_ready_and_paid_delivery_update_independent_states(self, _sync_financeiro):
+        self.pedido.valor_total = Decimal("100.00")
+        self.pedido.status = StatusPedido.PRONTO
+        self.pedido.estado_entrega = EstadoEntregaPedido.PRONTO
+        self.pedido.save(update_fields=["valor_total", "status", "estado_entrega"])
+        PagamentoPedido.objects.create(
+            pedido=self.pedido,
+            valor=Decimal("100.00"),
+            status="CONFIRMADO",
+        )
+
+        alterar_status_pedido(
+            pedido=self.pedido,
+            novo_status=StatusPedido.ENTREGUE,
+            operador=self.operador,
+        )
+
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.estado_entrega, EstadoEntregaPedido.ENTREGUE)
+        self.assertEqual(self.pedido.estado_comercial, EstadoComercialPedido.CONCLUIDO)
+        self.assertEqual(self.pedido.estado_financeiro, EstadoFinanceiroPedido.QUITADO)
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_delivery_with_open_balance_is_refused(self, sync_financeiro):
+        self.pedido.valor_total = Decimal("100.00")
+        self.pedido.status = StatusPedido.PRONTO
+        self.pedido.estado_entrega = EstadoEntregaPedido.PRONTO
+        self.pedido.save(update_fields=["valor_total", "status", "estado_entrega"])
+
+        with self.assertRaises(EntregaComSaldoNegada):
+            alterar_status_pedido(
+                pedido=self.pedido,
+                novo_status=StatusPedido.ENTREGUE,
+                operador=self.operador,
+            )
+
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.status, StatusPedido.PRONTO)
+        self.assertEqual(self.pedido.estado_entrega, EstadoEntregaPedido.PRONTO)
+        self.assertEqual(self.pedido.estado_financeiro, EstadoFinanceiroPedido.SALDO_EM_ABERTO)
+        self.assertFalse(HistoricoStatusPedido.objects.exists())
+        sync_financeiro.assert_not_called()
+
+    def test_financial_state_is_derived_from_confirmed_payments(self):
+        self.pedido.valor_total = Decimal("100.00")
+        self.pedido.save(update_fields=["valor_total"])
+        self.assertEqual(self.pedido.estado_financeiro, EstadoFinanceiroPedido.SALDO_EM_ABERTO)
+        PagamentoPedido.objects.create(
+            pedido=self.pedido,
+            valor=Decimal("40.00"),
+            status="CONFIRMADO",
+        )
+        self.assertEqual(self.pedido.estado_financeiro, EstadoFinanceiroPedido.PAGAMENTO_PARCIAL)
 
 
 class FluxosStatusPedidoIntegrationTests(TestCase):

@@ -1,9 +1,9 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** Fase 4 — modelo comercial estável  
-**Ciclo atual:** IMP-004 — estados comercial, financeiro e entrega do Pedido  
-**Último ciclo concluído:** IMP-003 — eventos e auditoria aditiva  
+**Fase atual:** Fase 5 — Processo, Fluxo e Etapa piloto  
+**Ciclo atual:** IMP-005 — Processo, Fluxo e Etapa piloto  
+**Último ciclo concluído:** IMP-004 — estados independentes do Pedido  
 **Data:** 01/08/2026
 
 ## Contrato do ciclo IMP-003
@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-004 — separar estados comercial, financeiro e entrega sem confundi-los com execução operacional.
+IMP-005 — introduzir Processo, Fluxo instanciado e Etapa em um fluxo piloto de baixo risco.
 
 ## Histórico resumido
 
@@ -75,4 +75,17 @@ IMP-004 — separar estados comercial, financeiro e entrega sem confundi-los com
 - **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS; Segurança PASS; Testes PASS.
 - **Limitações:** eventos offline, evidências e processamento secundário entram nos ciclos proprietários; transporte permanece substituível.
 - **Teste humano:** entrar como administrador, alterar um status, criar pedidos pelo Gestor e Vendas e abrir Auditoria; tentar `/auditoria/` como usuário comum e confirmar a recusa.
+- **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.
+
+### IMP-004 — COMPLETED_WITH_GAPS
+
+- **Capacidade:** estado comercial e de entrega registrados separadamente; estado financeiro derivado deterministicamente de total e pagamentos confirmados.
+- **Compatibilidade:** `Pedido.status` permanece como projeção operacional legada somente até Processo/Etapa no IMP-005.
+- **Migração:** backfill aditivo preserva cancelados, prontos e entregues; entrega antiga só é concluída comercialmente quando a quitação é comprovável.
+- **Segurança:** entrega nova com saldo aberto é recusada; a exceção superior aguarda reautenticação, motivo, auditoria e Pendência.
+- **Interface:** detalhe e assistência de entrega exibem dimensões independentes.
+- **Testes:** 25 aprovados, incluindo derivação financeira, entrega paga, recusa com saldo e migração real de dados legados; Django check, Ruff e mypy aprovados.
+- **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS; Segurança PASS; Migração PASS; Testes PASS.
+- **Teste humano:** abrir pedidos em estados cancelado, pronto, entregue, quitado e parcial; confirmar os rótulos separados e a recusa de entrega com saldo.
+- **Lacuna não bloqueante:** fluxo autorizado de entrega com saldo será implementado junto às permissões e Pendências proprietárias.
 - **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.

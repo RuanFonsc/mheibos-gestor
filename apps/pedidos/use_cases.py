@@ -6,7 +6,13 @@ from apps.catalogo.models import OperadorGestor
 from apps.auditoria.services import registrar_evento
 from apps.catalogo.permissions import pode_editar_pedido
 from apps.financeiro.services import sincronizar_financeiro_pedido
-from apps.pedidos.models import HistoricoStatusPedido, Pedido, StatusPedido
+from apps.pedidos.models import (
+    EstadoComercialPedido,
+    EstadoEntregaPedido,
+    HistoricoStatusPedido,
+    Pedido,
+    StatusPedido,
+)
 
 
 class AlteracaoStatusNegada(Exception):
@@ -15,6 +21,10 @@ class AlteracaoStatusNegada(Exception):
 
 class StatusPedidoInvalido(Exception):
     """O status solicitado não pertence ao contrato vigente do Pedido."""
+
+
+class EntregaComSaldoNegada(Exception):
+    """Entrega com saldo exige autorizacao superior explicita."""
 
 
 @dataclass(frozen=True)
@@ -48,8 +58,22 @@ def alterar_status_pedido(
     if not permitido:
         raise AlteracaoStatusNegada
 
+    if novo_status == StatusPedido.ENTREGUE and pedido.saldo_aberto > 0:
+        raise EntregaComSaldoNegada
+
+    comercial_anterior = pedido.estado_comercial
+    entrega_anterior = pedido.estado_entrega
     pedido.status = novo_status
-    pedido.save(update_fields=["status", "atualizado_em"])
+    if novo_status == StatusPedido.CANCELADO:
+        pedido.estado_comercial = EstadoComercialPedido.CANCELADO
+    elif novo_status == StatusPedido.ENTREGUE:
+        pedido.estado_entrega = EstadoEntregaPedido.ENTREGUE
+        pedido.estado_comercial = EstadoComercialPedido.CONCLUIDO
+    elif novo_status == StatusPedido.PRONTO:
+        pedido.estado_entrega = EstadoEntregaPedido.PRONTO
+    pedido.save(
+        update_fields=["status", "estado_comercial", "estado_entrega", "atualizado_em"]
+    )
     HistoricoStatusPedido.objects.create(
         pedido=pedido,
         status_anterior=status_anterior,
@@ -64,8 +88,16 @@ def alterar_status_pedido(
         alvo_tipo="Pedido",
         alvo_id=str(pedido.pk),
         acao="alterar_status",
-        valores_anteriores={"status": status_anterior},
-        valores_posteriores={"status": novo_status},
+        valores_anteriores={
+            "status_legado": status_anterior,
+            "estado_comercial": comercial_anterior,
+            "estado_entrega": entrega_anterior,
+        },
+        valores_posteriores={
+            "status_legado": novo_status,
+            "estado_comercial": pedido.estado_comercial,
+            "estado_entrega": pedido.estado_entrega,
+        },
         metadados={"observacao": observacao} if observacao else {},
     )
     sincronizar_financeiro_pedido(pedido)

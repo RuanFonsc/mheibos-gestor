@@ -29,7 +29,11 @@ from apps.pedidos.models import (
     StatusPagamento,
     StatusPedido,
 )
-from apps.pedidos.use_cases import AlteracaoStatusNegada, alterar_status_pedido
+from apps.pedidos.use_cases import (
+    AlteracaoStatusNegada,
+    EntregaComSaldoNegada,
+    alterar_status_pedido,
+)
 
 
 def pedido_list(request):
@@ -235,7 +239,16 @@ def pedido_edit(request, pk):
 
         form = PedidoEditForm(request.POST, request.FILES)
         if form.is_valid():
-            _atualizar_pedido(pedido, form, request.FILES.getlist("artes"))
+            try:
+                _atualizar_pedido(
+                    pedido, form, request.FILES.getlist("artes"), operador
+                )
+            except EntregaComSaldoNegada:
+                messages.error(
+                    request,
+                    "A entrega nao pode ser concluida enquanto houver saldo aberto.",
+                )
+                return redirect("pedido_edit", pk=pedido.pk)
             messages.success(request, "Pedido atualizado.")
             return redirect("pedido_detail", pk=pedido.pk)
         messages.error(request, "Não foi possível salvar o pedido. Confira os campos destacados.")
@@ -279,7 +292,7 @@ def pedido_update_status(request, pk):
                 operador=operador,
                 origem_operacional=origem_producao,
             )
-        except AlteracaoStatusNegada:
+        except (AlteracaoStatusNegada, EntregaComSaldoNegada):
             messages.error(request, "Seu perfil não tem permissão para alterar este pedido.")
             if retorno:
                 return redirect(retorno)
@@ -357,7 +370,7 @@ def pedido_bulk_action(request):
                 operador=operador,
                 origem_operacional=origem_operacional,
             )
-        except AlteracaoStatusNegada:
+        except (AlteracaoStatusNegada, EntregaComSaldoNegada):
             bloqueados += 1
             continue
         atualizados += int(resultado.alterado)
@@ -502,6 +515,9 @@ def _criar_pedido(form, arquivos, operador):
         prioridade=dados["prioridade"],
         canal_atendimento=dados["canal_atendimento"],
         status=status,
+        estado_entrega=(
+            "PRONTO" if status == StatusPedido.PRONTO else "PENDENTE"
+        ),
         origem="BALCAO",
         usuario_cadastro=(form.data.get("usuario_cadastro") or "").strip() or "Usuario Temporario",
         data_registro=timezone.now(),
@@ -532,7 +548,7 @@ def _criar_pedido(form, arquivos, operador):
         )
 
     sincronizar_financeiro_pedido(pedido)
-    registrar_evento(tipo="PedidoCriado", operador=operador, origem="gestor_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status": pedido.status, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
+    registrar_evento(tipo="PedidoCriado", operador=operador, origem="gestor_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status_legado": pedido.status, "estado_comercial": pedido.estado_comercial, "estado_entrega": pedido.estado_entrega, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
     return pedido
 
 
@@ -563,7 +579,8 @@ def _sincronizar_pagamento_informado(pedido, valor_pago, forma_pagamento, data_p
         PagamentoPedido.objects.create(pedido=pedido, **dados)
 
 
-def _atualizar_pedido(pedido, form, arquivos):
+@transaction.atomic
+def _atualizar_pedido(pedido, form, arquivos, operador):
     dados = form.cleaned_data
     cliente = pedido.cliente
     cliente.nome = dados["nome_cliente"].upper()
@@ -607,10 +624,17 @@ def _atualizar_pedido(pedido, form, arquivos):
     pedido.valor_pago_legado = dados["valor_pago"]
     pedido.desconto_ajuste = dados["desconto_ajuste"]
     pedido.forma_pagamento_legada = dados["forma_pagamento"]
-    pedido.status = dados["status"]
+    novo_status = dados["status"]
     pedido.usuario_cadastro = dados.get("usuario_cadastro", "").strip()
     pedido.save()
     _sincronizar_pagamento_informado(pedido, dados["valor_pago"], dados["forma_pagamento"], dados["data_pedido"])
+
+    if novo_status != pedido.status:
+        alterar_status_pedido(
+            pedido=pedido,
+            novo_status=novo_status,
+            operador=operador,
+        )
 
     ordem_base = pedido.artes.count()
     for offset, arquivo in enumerate(arquivos):

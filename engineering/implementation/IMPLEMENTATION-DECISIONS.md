@@ -1,5 +1,16 @@
 # Decisões da Implementação
 
+## DEC-IMP-005 — Estados registrados e derivados do Pedido
+
+- **Decisão:** persistir estado comercial e estado de entrega; derivar o estado financeiro do total e dos pagamentos confirmados.
+- **Motivo:** mantém as dimensões independentes sem criar uma segunda fonte da verdade financeira.
+- **Fontes:** RFC-0005 §§10, 16, 17 e 26; RFC-0013 §2; INV-096 a INV-099; ENG-0006 §7.
+- **Compatibilidade:** `Pedido.status` permanece temporariamente como projeção operacional legada até Processo/Etapa no IMP-005.
+- **Migração:** cancelado, pronto e entregue são mapeados; entregue somente vira comercialmente concluído quando os pagamentos comprovam quitação.
+- **Segurança:** entrega com saldo é recusada até existir autorização superior com reautenticação, motivo, auditoria e pendência.
+- **Reversibilidade:** campos são aditivos; o backfill não altera nem exclui o status legado.
+- **Situação:** definitiva para a separação; vocabulário poderá ser ampliado somente por fonte normativa.
+
 ## DEC-IMP-004 — Evento aditivo na mesma transação do caso de uso
 
 - **Decisão:** persistir o evento oficial na mesma transação da mudança primária; consequências secundárias serão desacopladas posteriormente.

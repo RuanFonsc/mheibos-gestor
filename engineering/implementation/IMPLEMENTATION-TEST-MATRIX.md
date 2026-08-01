@@ -9,3 +9,4 @@
 | Credencial do operador | senha nova persistida como hash | senha incorreta; valor legado | criação, validação, recusa e upgrade | criar usuário, trocar senha e entrar novamente | PASS |
 | Sessão do operador | login registra identificador técnico | senha incorreta; renomeação | web, launcher, recusa e renomeação | entrar, renomear perfil e navegar | PASS |
 | Eventos e auditoria | status, login e criação geram eventos consultáveis | falha reverte; repetição não duplica; usuário comum recusado | imutabilidade, idempotência, rollback, dois canais e autorização | executar ações e abrir `/auditoria/` como admin | PASS |
+| Estados independentes do Pedido | comercial, entrega e financeiro coexistem | entrega com saldo é recusada | estados derivados/registrados, evento e backfill legado | abrir Pedido quitado, parcial, pronto, entregue e cancelado | PASS |

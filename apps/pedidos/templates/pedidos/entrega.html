@@ -46,6 +46,7 @@
           <div class="flex justify-between gap-3"><span>Total</span><strong class="text-[#00c896]">R$ {{ pedido.valor_total|floatformat:2 }}</strong></div>
           <div class="mt-2 flex justify-between gap-3"><span>Pago</span><strong>R$ {{ pedido.total_pago|floatformat:2 }}</strong></div>
           <div class="mt-2 flex justify-between gap-3"><span>Saldo</span><strong class="{% if pedido.saldo_aberto > 0 %}text-[#ffb347]{% else %}text-[#00c896]{% endif %}">R$ {{ pedido.saldo_aberto|floatformat:2 }}</strong></div>
+          <div class="mt-2 flex justify-between gap-3"><span>Financeiro</span><strong>{{ pedido.estado_financeiro_display }}</strong></div>
         </div>
 
         <div class="flex flex-wrap gap-2 lg:justify-end">

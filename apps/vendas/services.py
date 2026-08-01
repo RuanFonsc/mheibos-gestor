@@ -105,5 +105,5 @@ def criar_pedido_vendas(form, operador):
         )
 
     sincronizar_financeiro_pedido(pedido)
-    registrar_evento(tipo="PedidoCriado", operador=operador, origem="vendas_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status": pedido.status, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
+    registrar_evento(tipo="PedidoCriado", operador=operador, origem="vendas_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status_legado": pedido.status, "estado_comercial": pedido.estado_comercial, "estado_entrega": pedido.estado_entrega, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
     return pedido

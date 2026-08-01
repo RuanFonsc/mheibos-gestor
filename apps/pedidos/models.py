@@ -16,6 +16,25 @@ class StatusPedido(models.TextChoices):
     CANCELADO = "CANCELADO", "Cancelado"
 
 
+class EstadoComercialPedido(models.TextChoices):
+    RASCUNHO = "RASCUNHO", "Rascunho"
+    CONFIRMADO = "CONFIRMADO", "Confirmado"
+    CANCELADO = "CANCELADO", "Cancelado"
+    CONCLUIDO = "CONCLUIDO", "Concluido"
+
+
+class EstadoEntregaPedido(models.TextChoices):
+    PENDENTE = "PENDENTE", "Pendente"
+    PRONTO = "PRONTO", "Pronto para entrega"
+    ENTREGUE = "ENTREGUE", "Entregue"
+
+
+class EstadoFinanceiroPedido(models.TextChoices):
+    SALDO_EM_ABERTO = "SALDO_EM_ABERTO", "Saldo em aberto"
+    PAGAMENTO_PARCIAL = "PAGAMENTO_PARCIAL", "Pagamento parcial"
+    QUITADO = "QUITADO", "Quitado"
+
+
 class PrioridadePedido(models.TextChoices):
     BAIXA = "BAIXA", "Baixa"
     NORMAL = "NORMAL", "Normal"
@@ -107,6 +126,16 @@ class Pedido(models.Model):
         choices=StatusPedido.choices,
         default=StatusPedido.AGUARDANDO_ARTE,
     )
+    estado_comercial = models.CharField(
+        max_length=16,
+        choices=EstadoComercialPedido.choices,
+        default=EstadoComercialPedido.CONFIRMADO,
+    )
+    estado_entrega = models.CharField(
+        max_length=16,
+        choices=EstadoEntregaPedido.choices,
+        default=EstadoEntregaPedido.PENDENTE,
+    )
     origem = models.CharField(
         max_length=24,
         choices=OrigemPedido.choices,
@@ -151,6 +180,20 @@ class Pedido(models.Model):
         )["soma"]
         total = total or Decimal("0.00")
         return max(total, self.valor_pago_legado or Decimal("0.00"))
+
+    @property
+    def estado_financeiro(self):
+        """Dimensao derivada: pagamentos confirmados sao a fonte da verdade."""
+        total_pago = self.total_pago
+        if total_pago >= self.valor_total:
+            return EstadoFinanceiroPedido.QUITADO
+        if total_pago > Decimal("0.00"):
+            return EstadoFinanceiroPedido.PAGAMENTO_PARCIAL
+        return EstadoFinanceiroPedido.SALDO_EM_ABERTO
+
+    @property
+    def estado_financeiro_display(self):
+        return EstadoFinanceiroPedido(self.estado_financeiro).label
 
     def status_assistencia(self):
         from apps.catalogo.assistencia import categorias_do_pedido, pedido_deve_aparecer_assistencia, regra_categoria, dias_uteis_restantes
