@@ -199,6 +199,10 @@ Mheibos Vendas, Mheibos Produção e outras aplicações poderão existir separa
 
 Na fase atual não será instalado modelo de IA local nem integração com IA por API. A estrutura deverá funcionar integralmente com a IA desligada. Qualquer provedor futuro será opcional e substituível, sem perda do conhecimento do Mheibos e sem autoridade sobre o estado oficial.
 
+A IA é parte obrigatória da arquitetura final e será implementada na última fase. As fases anteriores deverão criar contratos, pontos de extensão, dados e fluxos correspondentes às funções cognitivas previstas, usando execução determinística ou humana enquanto a IA estiver desligada.
+
+A ausência de IA não poderá parar, bloquear, adiar ou degradar processos operacionais nem travar partes independentes do desenvolvimento. Se existir lacuna lógica incontornável, impossível de resolver pelas fontes oficiais ou por alternativa determinística ou humana sem inventar regra, somente a parte afetada será interrompida; fontes e alternativas serão registradas como `DECISAO_HUMANA_NECESSARIA`, e o responsável humano será consultado.
+
 **RFC proprietário:** RFC-0003 — Arquitetura Técnica da Plataforma.
 
 ---

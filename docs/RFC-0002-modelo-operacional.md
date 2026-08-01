@@ -56,6 +56,10 @@ Na fase atual não será instalado modelo de IA local nem integração com IA po
 
 A futura camada cognitiva poderá interpretar contexto, explicar situações e sugerir ações por uma interface substituível. Ela não poderá alterar diretamente estados oficiais, executar decisões gerenciais ou financeiras, nem se tornar dependência para o funcionamento determinístico.
 
+A IA é parte obrigatória do Mheibos final e será implementada na última fase. Antes dela, deverão existir os contratos, pontos de extensão, dados e fluxos necessários às funções cognitivas previstas. Enquanto a IA estiver desligada, essas funções deverão usar execução determinística, permitir decisão humana ou manter indisponível somente a assistência cognitiva opcional, sem impedir o processo principal.
+
+A ausência de IA nunca poderá parar, bloquear, adiar ou degradar um processo operacional nem travar o restante do desenvolvimento. Se surgir uma lacuna lógica realmente incontornável, impossível de resolver pelas fontes oficiais ou por alternativa determinística ou humana sem inventar regra, somente a parte afetada será interrompida. As fontes e alternativas serão registradas como `DECISAO_HUMANA_NECESSARIA`, e o responsável humano será consultado antes de prosseguir.
+
 ## Encerramento
 
 O fechamento valida pendências, consolida indicadores, atualiza métricas e registra auditoria. Alimentar memória cognitiva é opcional e somente ocorrerá quando essa capacidade futura estiver habilitada.

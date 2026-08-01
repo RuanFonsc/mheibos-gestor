@@ -31,6 +31,10 @@ Nunca inventar regra de produto. Distinguir hipótese, decisão pendente e fato 
 - Pedido não substitui Processo; um status único não representa toda a operação.
 - Interface não contém autoridade de negócio.
 - IA não é fonte da verdade e não substitui validação ou autorização determinística.
+- IA é obrigatória na arquitetura final, mas sua implementação é a última fase.
+- Criar nas fases anteriores os contratos, pontos de extensão, dados e fluxos das funções cognitivas, mantendo execução determinística ou humana com a IA desligada.
+- Ausência de modelo local ou API nunca pode parar processos operacionais nem bloquear o restante do desenvolvimento.
+- Somente uma lacuna lógica incontornável, após esgotar fontes e alternativas determinísticas ou humanas, autoriza `DECISAO_HUMANA_NECESSARIA` e pergunta ao responsável humano.
 - Cliente comercial não é Cliente Mheibos.
 - Não correlacionar automaticamente mensagens de fornecedor terceirizado; exigir registro humano explícito.
 - Manter a aplicação principal integrada; clientes móveis ou especializados usam contratos da mesma Central.

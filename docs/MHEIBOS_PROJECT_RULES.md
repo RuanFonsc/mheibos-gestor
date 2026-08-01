@@ -22,6 +22,24 @@ Todo arquivo Markdown (`.md`) criado para o projeto deve passar a integrar a doc
 - Quando a plataforma não permitir inserir automaticamente o arquivo na base de fontes pesquisáveis, essa limitação deve ser informada claramente ao usuário.
 
 **Status:** Ativa  
+**Versão:** 1.1
+
+---
+
+## Regra 002 — IA obrigatória, implementada por último
+
+A IA é parte obrigatória da arquitetura final do Mheibos e suas funções previstas devem existir no desenho, nos contratos, nos dados e nos fluxos do sistema. A implementação e instalação do modelo de IA, local ou via API, ocorrerá somente na última fase, depois da fundação determinística.
+
+### Aplicação
+
+- Nenhum processo operacional pode parar, bloquear, ser adiado ou degradado porque a IA ainda não foi instalada ou está desligada.
+- A ausência de IA não pode travar outras fases do desenvolvimento.
+- As fases anteriores devem preparar contratos e pontos de extensão das funções cognitivas, sem acoplar o produto a um provedor.
+- Enquanto a IA estiver desligada, a função deve usar execução determinística, permitir decisão humana ou omitir somente a assistência cognitiva opcional.
+- Se uma lacuna lógica for realmente incontornável e não houver solução normativa, determinística ou humana sem inventar regra, interromper somente a parte afetada, registrar fontes e alternativas como `DECISAO_HUMANA_NECESSARIA` e perguntar ao responsável humano como proceder.
+- A lacuna não autoriza instalar antecipadamente uma IA, inventar regra de negócio ou bloquear partes independentes.
+
+**Status:** Ativa  
 **Versão:** 1.0
 
 ---
@@ -40,4 +58,4 @@ Quando uma nova regra for definida:
 
 ---
 
-**Última atualização:** 29 de julho de 2026
+**Última atualização:** 1º de agosto de 2026

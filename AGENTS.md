@@ -40,6 +40,8 @@ python .agents/skills/mheibos-engineering/scripts/validate_eng_series.py --root 
 
 Parar a parte afetada por ausência de fonte, conflito, risco de dados, validação impossível, escopo explosivo, repetição sem progresso ou decisão humana. Registrar `DECISAO_HUMANA_NECESSARIA`; continuar somente partes independentes e seguras.
 
+A IA é parte obrigatória da arquitetura final, porém sua implementação pertence à última fase. Sua ausência durante as fases anteriores não é condição de parada: implementar desde já os contratos, pontos de extensão, dados e fluxos correspondentes, com execução determinística ou humana enquanto a IA estiver desligada. Nenhum processo operacional nem o restante do desenvolvimento pode parar, bloquear ou depender da instalação de modelo local ou integração por API. Somente uma lacuna lógica realmente incontornável, após esgotar as fontes e alternativas determinísticas ou humanas, autoriza interromper a parte afetada, registrar `DECISAO_HUMANA_NECESSARIA` e perguntar ao responsável humano como prosseguir.
+
 ## Operação existente do repositório
 
 Before working on this repository, check whether the project skill is installed:

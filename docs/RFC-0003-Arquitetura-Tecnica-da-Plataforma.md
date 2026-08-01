@@ -50,7 +50,7 @@ A arquitetura técnica da primeira versão adota as seguintes decisões:
 6. A indisponibilidade temporária da Máquina Principal será uma condição prevista.
 7. O Mheibos Gestor será uma aplicação integrada, com módulos visíveis e utilizáveis sem interação obrigatória com a IA.
 8. Aplicações especializadas futuras deverão obedecer à mesma Central.
-9. O modelo de IA inicial será único, pequeno, local e substituível.
+9. A IA integra a arquitetura final, mas será implementada na última fase; até lá não haverá modelo local nem integração por API.
 10. A evolução para nuvem e múltiplas empresas será posterior e exigirá revisão arquitetural própria.
 
 ---
@@ -498,7 +498,11 @@ Operações locais não sincronizadas deverão ser preservadas conforme a RFC-00
 
 ### 14.3 Falha do modelo de IA
 
-A indisponibilidade da IA não deverá impedir o uso normal dos módulos essenciais do Gestor.
+A ausência ou indisponibilidade da IA não deverá impedir, bloquear, pausar ou degradar processos operacionais nem o restante do desenvolvimento. Os módulos essenciais e seus caminhos determinísticos deverão funcionar integralmente sem modelo instalado.
+
+As fases anteriores deverão construir contratos, pontos de extensão, dados e fluxos das funções cognitivas previstas. Enquanto a IA estiver desligada, cada função deverá usar alternativa determinística, permitir execução ou decisão humana, ou omitir apenas a assistência cognitiva opcional.
+
+Se uma lacuna lógica incontornável exigir comportamento cognitivo ainda não normatizado e não houver alternativa determinística ou humana válida, somente a parte afetada será interrompida. A implementação registrará `DECISAO_HUMANA_NECESSARIA`, fontes e alternativas e perguntará ao responsável humano como prosseguir.
 
 Funções determinísticas, consultas, pedidos, processos e demais operações autorizadas deverão continuar disponíveis, ainda que recursos cognitivos e sugestões fiquem temporariamente indisponíveis.
 
@@ -682,7 +686,7 @@ Essas escolhas deverão respeitar as fronteiras e requisitos definidos nesta RFC
 
 A primeira versão do Mheibos será uma plataforma desktop distribuída e local, formada por uma Central executada na Máquina Principal e por Clientes instalados nas estações de trabalho.
 
-A Central será a autoridade global. Os Clientes fornecerão a experiência operacional e autonomia local limitada. O Mheibos Gestor permanecerá utilizável por seus módulos, independentemente de interação direta com a IA. O modelo de IA será local, único na primeira versão e substituível por arquitetura.
+A Central será a autoridade global. Os Clientes fornecerão a experiência operacional e autonomia local limitada. O Mheibos Gestor permanecerá integralmente utilizável por seus módulos com a IA desligada. A IA é componente obrigatório da arquitetura final, será implementada na última fase e permanecerá substituível por arquitetura.
 
 A evolução para nuvem, múltiplas empresas, aplicações especializadas e múltiplos modelos será posterior e não deverá ampliar prematuramente o escopo da primeira implementação.
 
