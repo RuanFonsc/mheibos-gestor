@@ -1,0 +1,7 @@
+interface:
+  display_name: "Mheibos Engineering"
+  short_description: "Governanca tecnica e documental do Mheibos"
+  default_prompt: "Use $mheibos-engineering para planejar e validar esta alteracao do Mheibos contra as RFCs."
+
+policy:
+  allow_implicit_invocation: true

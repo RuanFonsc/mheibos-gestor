@@ -1,0 +1,20 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [".local-tools", ".venv", "migrations"]
+
+[tool.ruff.lint]
+# Baseline conservador: erros de sintaxe, nomes inválidos e imports realmente quebrados.
+select = ["E4", "E7", "E9", "F63", "F7", "F82"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+files = ["apps/pedidos/models.py", "apps/pedidos/tests.py"]
+check_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_unused_ignores = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"

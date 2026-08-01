@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "documents": {
+    "ENG-0000": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:16:10.420474+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0000-Programa-de-Engenharia-e-Governanca.md; GAP: RFC-0015/0016 ausentes e RFCs draft; CONFLICT: responsabilidade RFC-0012"
+        }
+      ]
+    },
+    "ENG-0001": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:17:26.373522+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0001-Manifesto-de-Engenharia.md; herda gaps normativos do ENG-0000"
+        }
+      ]
+    },
+    "ENG-0002": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:18:25.073168+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0002-Constituicao-Operacional-dos-Agentes.md; constituição operacional; herda gaps do ENG-0000"
+        }
+      ]
+    },
+    "ENG-0003": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:19:19.908717+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0003-Skill-Oficial-do-Codex.md; implementação da Skill validada; herda gaps normativos"
+        }
+      ]
+    },
+    "ENG-0004": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:20:41.158131+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0004-Development-Protocol.md; GAP: lint/type checking não configurados; herda gaps normativos"
+        }
+      ]
+    },
+    "ENG-0005": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:21:42.215449+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0005-Architecture-Guide.md; GAP: roteamento RFC-0012 e RFC-0015/0016 ausentes"
+        }
+      ]
+    },
+    "ENG-0006": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:22:49.562909+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0006-Implementation-Guide.md; fases dependentes de RFC-0012/0015/0016 mantidas com gaps"
+        }
+      ]
+    },
+    "ENG-0007": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:24:44.307922+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0007-Migration-Strategy.md; mappings físicos e políticas adiadas registrados como gaps"
+        }
+      ]
+    },
+    "ENG-0008": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:26:52.026464+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0008-Architectural-Checklist.md; checklist cobre 12 gates; herda gaps centrais"
+        }
+      ]
+    },
+    "ENG-0009": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:32:35.123685+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0009-Code-Review-Guide.md; revisão manual não substitui lint/type checking ausentes"
+        }
+      ]
+    },
+    "ENG-0010": {
+      "status": "COMPLETED_WITH_GAPS",
+      "history": [
+        {
+          "at": "2026-08-01T21:35:31.300684+00:00",
+          "from": "PENDING",
+          "to": "COMPLETED_WITH_GAPS",
+          "note": "docs/engineering/ENG-0010-Glossario-Oficial.md; termos ambíguos e RFCs ausentes registrados"
+        }
+      ]
+    }
+  }
+}

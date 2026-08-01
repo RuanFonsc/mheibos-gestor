@@ -1,4 +1,46 @@
-# Codex Project Instructions
+# AGENTS.md — Constituição operacional resumida do Mheibos
+
+**Escopo:** todo o repositório. **Idioma:** português do Brasil.
+
+Para implementação, correção, refatoração, revisão, planejamento, migração, modelos, banco, processos, eventos, segurança, offline, interface, IA, integrações, RFCs ou ENG, ativar obrigatoriamente `$mheibos-engineering` em `.agents/skills/mheibos-engineering/`. O procedimento integral e a versão histórica estão na Skill.
+
+## Hierarquia das fontes
+
+1. RFC-0000 e RFC-0001.
+2. RFCs normativas.
+3. Inventário Oficial, regras e contexto oficiais.
+4. ENG e ADRs aprovados.
+5. Diagnóstico e relatório funcional.
+6. Código, testes, comentários e inferências.
+
+RFC define o futuro; diagnóstico/código descrevem o presente; ENG planeja a transição. Fonte inferior não revoga superior. Conflito exige registro e parada da parte afetada.
+
+## Invariantes e proibições
+
+- Pedido não substitui Processo; um status único não representa toda a operação.
+- Domínio e autorização determinística precedem persistência e interface.
+- IA não é fonte da verdade, não autoriza e não substitui validações determinísticas.
+- Cliente comercial não é Cliente Mheibos.
+- Não correlacionar automaticamente mensagens de fornecedores terceirizados; exigir registro humano.
+- A aplicação principal é integrada; clientes especializados usam a mesma Central.
+- Mudanças relevantes geram eventos/auditoria; histórico não é apagado silenciosamente.
+- Compatibilidade temporária exige plano de remoção.
+- Código atual nunca prevalece sobre RFC. Não inventar regra de produto nem alterar RFC silenciosamente.
+
+## Validação essencial
+
+Descobrir os comandos reais. Executar testes aplicáveis, lint, type checking, checks de framework/migração, validações de segurança, eventos/auditoria e inspeção do diff. O baseline oficial executa `tools/quality.ps1`, reunindo lint, type checking, checks Django e testes.
+
+```powershell
+python .agents/skills/mheibos-engineering/scripts/validate_skill.py --root .
+python .agents/skills/mheibos-engineering/scripts/validate_eng_series.py --root .
+```
+
+## Parada obrigatória
+
+Parar a parte afetada por ausência de fonte, conflito, risco de dados, validação impossível, escopo explosivo, repetição sem progresso ou decisão humana. Registrar `DECISAO_HUMANA_NECESSARIA`; continuar somente partes independentes e seguras.
+
+## Operação existente do repositório
 
 Before working on this repository, check whether the project skill is installed:
 

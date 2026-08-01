@@ -1,0 +1,7 @@
+# Markdown usa dois espaços finais como quebra de linha intencional.
+*.md -whitespace
+
+*.py text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.ps1 text eol=crlf

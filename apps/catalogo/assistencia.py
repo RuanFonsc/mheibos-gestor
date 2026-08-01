@@ -46,10 +46,10 @@ def _pascoa(ano):
     h = (19 * a + b - d - g + 15) % 30
     i = c // 4
     k = c % 4
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    mes = (h + l - 7 * m + 114) // 31
-    dia = ((h + l - 7 * m + 114) % 31) + 1
+    ajuste = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * ajuste) // 451
+    mes = (h + ajuste - 7 * m + 114) // 31
+    dia = ((h + ajuste - 7 * m + 114) % 31) + 1
     return date(ano, mes, dia)
 
 
@@ -134,10 +134,10 @@ def preparar_categorias_pedidos(pedidos):
             nomes_pendentes.add(normalizar(item.nome))
     if nomes_pendentes:
         produtos_por_nome = {}
-        for produto in ProdutoServico.objects.select_related("categoria_servico").filter(ativo=True):
-            chave = normalizar(produto.nome)
+        for produto_catalogo in ProdutoServico.objects.select_related("categoria_servico").filter(ativo=True):
+            chave = normalizar(produto_catalogo.nome)
             if chave in nomes_pendentes and chave not in produtos_por_nome:
-                produtos_por_nome[chave] = produto
+                produtos_por_nome[chave] = produto_catalogo
         for pedido in pedidos_lista:
             for item in pedido.itens.all():
                 if item.categoria_servico:
@@ -164,11 +164,11 @@ def categorias_do_pedido(pedido):
             item.categoria_servico = categoria
             itens_atualizar.append(item)
         elif not categorias_preparadas:
-            produto = ProdutoServico.objects.filter(nome__iexact=item.nome).select_related("categoria_servico").first()
-            if produto:
+            produto_encontrado = ProdutoServico.objects.filter(nome__iexact=item.nome).select_related("categoria_servico").first()
+            if produto_encontrado:
                 if not item.produto_id:
-                    item.produto = produto
-                categoria = produto.categoria_servico
+                    item.produto = produto_encontrado
+                categoria = produto_encontrado.categoria_servico
                 if categoria:
                     item.categoria_servico = categoria
                 itens_atualizar.append(item)
@@ -217,7 +217,7 @@ def pedidos_assistencia(busca="", categorias_ids=None, usuarios=None):
             for nome in nomes:
                 filtros_usuarios |= Q(usuario_cadastro__iexact=nome) | Q(designer__iexact=nome)
             pedidos = pedidos.filter(filtros_usuarios).distinct()
-    agrupados = defaultdict(list)
+    agrupados: defaultdict[int, list[Pedido]] = defaultdict(list)
     agora = timezone.localtime()
 
     for pedido in preparar_categorias_pedidos(pedidos):
