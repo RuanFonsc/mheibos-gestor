@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from django.db import transaction
 
 from apps.catalogo.models import OperadorGestor
+from apps.auditoria.services import registrar_evento
 from apps.catalogo.permissions import pode_editar_pedido
 from apps.financeiro.services import sincronizar_financeiro_pedido
 from apps.pedidos.models import HistoricoStatusPedido, Pedido, StatusPedido
@@ -55,6 +56,17 @@ def alterar_status_pedido(
         status_novo=novo_status,
         observacao=observacao,
         operador=operador,
+    )
+    registrar_evento(
+        tipo="PedidoStatusAlterado",
+        operador=operador,
+        origem="pedidos",
+        alvo_tipo="Pedido",
+        alvo_id=str(pedido.pk),
+        acao="alterar_status",
+        valores_anteriores={"status": status_anterior},
+        valores_posteriores={"status": novo_status},
+        metadados={"observacao": observacao} if observacao else {},
     )
     sincronizar_financeiro_pedido(pedido)
     return ResultadoAlteracaoStatus(True, status_anterior, novo_status)

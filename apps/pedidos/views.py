@@ -1,12 +1,14 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.catalogo.assistencia import pedido_em_alerta, preparar_categorias_pedidos
+from apps.auditoria.services import registrar_evento
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
@@ -404,7 +406,7 @@ def pedido_create(request):
         dados_post["data_pedido"] = hoje.isoformat()
         form = PedidoCreateForm(dados_post, request.FILES)
         if form.is_valid():
-            pedido = _criar_pedido(form, request.FILES.getlist("artes"))
+            pedido = _criar_pedido(form, request.FILES.getlist("artes"), operador)
             messages.success(request, f"Pedido #{pedido.pk} criado com sucesso.")
             return redirect("pedido_detail", pk=pedido.pk)
         messages.error(request, "Não foi possível criar o pedido. Confira os campos destacados.")
@@ -453,7 +455,8 @@ def pedido_create(request):
     )
 
 
-def _criar_pedido(form, arquivos):
+@transaction.atomic
+def _criar_pedido(form, arquivos, operador):
     dados = form.cleaned_data
     cliente, _ = Cliente.objects.get_or_create(
         nome=dados["nome_cliente"].upper(),
@@ -529,6 +532,7 @@ def _criar_pedido(form, arquivos):
         )
 
     sincronizar_financeiro_pedido(pedido)
+    registrar_evento(tipo="PedidoCriado", operador=operador, origem="gestor_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status": pedido.status, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
     return pedido
 
 

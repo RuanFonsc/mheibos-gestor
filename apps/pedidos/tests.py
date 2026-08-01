@@ -6,6 +6,7 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, TestCase
 
 from apps.catalogo.models import OperadorGestor, PapelOperador
+from apps.auditoria.models import EventoOperacional
 from apps.clientes.models import Cliente
 
 from .models import (
@@ -84,7 +85,26 @@ class AlterarStatusPedidoTests(TestCase):
         self.assertEqual(historico.status_anterior, StatusPedido.AGUARDANDO_ARTE)
         self.assertEqual(historico.status_novo, StatusPedido.EM_PRODUCAO)
         self.assertEqual(historico.operador, self.operador)
+        evento = EventoOperacional.objects.get(alvo_id=str(self.pedido.pk))
+        self.assertEqual(evento.tipo, "PedidoStatusAlterado")
+        self.assertEqual(evento.operador, self.operador)
+        self.assertEqual(evento.valores_anteriores, {"status": StatusPedido.AGUARDANDO_ARTE})
+        self.assertEqual(evento.valores_posteriores, {"status": StatusPedido.EM_PRODUCAO})
         sync_financeiro.assert_called_once_with(self.pedido)
+
+    @patch("apps.pedidos.use_cases.registrar_evento", side_effect=RuntimeError("falha"))
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_event_failure_rolls_back_status_and_history(self, _sync_financeiro, _evento):
+        with self.assertRaises(RuntimeError):
+            alterar_status_pedido(
+                pedido=self.pedido,
+                novo_status=StatusPedido.EM_PRODUCAO,
+                operador=self.operador,
+            )
+
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.status, StatusPedido.AGUARDANDO_ARTE)
+        self.assertFalse(HistoricoStatusPedido.objects.exists())
 
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
     def test_unauthorized_transition_changes_nothing(self, sync_financeiro):

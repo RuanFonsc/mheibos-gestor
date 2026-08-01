@@ -267,7 +267,7 @@ def vendas_pedido_novo(request):
     if request.method == "POST":
         form = VendasPedidoForm(request.POST)
         if form.is_valid():
-            pedido = criar_pedido_vendas(form, operador.nome)
+            pedido = criar_pedido_vendas(form, operador)
             messages.success(request, f"Pedido #{pedido.pk} enviado para Atendimento.")
             return redirect("vendas_home")
         messages.error(request, "Nao foi possivel salvar. Confira os campos.")

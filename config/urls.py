@@ -26,6 +26,7 @@ urlpatterns = [
     path("assistencia-envio/", catalogo_views.assistencia_envio, name="assistencia_envio"),
     path("assistencia-envio/<int:pk>/enviado/", catalogo_views.assistencia_marcar_enviado, name="assistencia_marcar_enviado"),
     path("aprendizado/", include("apps.aprendizado.urls")),
+    path("auditoria/", include("apps.auditoria.urls")),
     path("webhook", aprendizado_views.evolution_webhook, name="aprendizado_webhook_alias"),
     path("configuracoes/", catalogo_views.configuracoes, name="configuracoes"),
     path("producao/login/", catalogo_views.login_producao, name="producao_login"),

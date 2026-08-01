@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "apps.vendas",
     "apps.financeiro",
     "apps.aprendizado",
+    "apps.auditoria",
     "apps.legacy_migration",
 ]
 

@@ -1,7 +1,9 @@
 from decimal import Decimal
 
 from django.utils import timezone
+from django.db import transaction
 
+from apps.auditoria.services import registrar_evento
 from apps.catalogo.models import CategoriaServico, ProdutoServico
 from apps.clientes.models import Cliente
 from apps.financeiro.services import sincronizar_financeiro_pedido
@@ -19,7 +21,8 @@ def _decimal(valor, padrao="0"):
     return Decimal(str(valor or padrao).replace(",", "."))
 
 
-def criar_pedido_vendas(form, vendedor_nome):
+@transaction.atomic
+def criar_pedido_vendas(form, operador):
     dados = form.cleaned_data
     cliente, criado = Cliente.objects.get_or_create(
         nome=dados["nome_cliente"].strip().upper(),
@@ -74,7 +77,7 @@ def criar_pedido_vendas(form, vendedor_nome):
         canal_atendimento=dados["canal_atendimento"],
         status=StatusPedido.EM_ATENDIMENTO,
         origem=OrigemPedido.VENDAS,
-        usuario_cadastro=vendedor_nome,
+        usuario_cadastro=operador.nome,
         data_registro=timezone.now(),
     )
 
@@ -102,4 +105,5 @@ def criar_pedido_vendas(form, vendedor_nome):
         )
 
     sincronizar_financeiro_pedido(pedido)
+    registrar_evento(tipo="PedidoCriado", operador=operador, origem="vendas_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status": pedido.status, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
     return pedido

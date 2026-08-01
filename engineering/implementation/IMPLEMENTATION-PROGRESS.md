@@ -1,12 +1,21 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** Fase 3 — eventos, evidências e auditoria  
-**Ciclo atual:** IMP-003 — eventos e auditoria aditiva  
-**Último ciclo concluído:** IMP-002 — credenciais protegidas e sessão por identidade técnica  
+**Fase atual:** Fase 4 — modelo comercial estável  
+**Ciclo atual:** IMP-004 — estados comercial, financeiro e entrega do Pedido  
+**Último ciclo concluído:** IMP-003 — eventos e auditoria aditiva  
 **Data:** 01/08/2026
 
-## Contrato do ciclo IMP-002
+## Contrato do ciclo IMP-003
+
+- **Objetivo:** introduzir evento operacional imutável e instrumentar os casos de uso já migrados.
+- **Resultado atual:** transição de status produz `PedidoStatusAlterado` com versão, autoria, origem, alvo, correlação e valores anterior/posterior na mesma transação.
+- **Fontes:** RFC-0006 §§5–13 e 18; INV-024 a INV-029; ENG-0006 §6.
+- **Migração:** nova tabela aditiva; nenhum histórico antigo é inventado.
+- **Critério do ciclo:** ampliar para criação de Pedido e autenticação, validar consulta de auditoria e concluir gates.
+- **Fora desta fatia:** fila assíncrona, eventos offline e evidências de arquivo.
+
+## Contrato concluído do ciclo IMP-002
 
 - **Objetivo:** tornar credenciais não legíveis e sessões independentes do nome mutável do operador.
 - **Resultado observável:** login web e launcher usam o mesmo contrato; senhas novas são hash; senha legada válida é atualizada no primeiro uso; renomear operador não perde a sessão.
@@ -30,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-003 — infraestrutura mínima de eventos e auditoria, instrumentando os casos de uso já migrados.
+IMP-004 — separar estados comercial, financeiro e entrega sem confundi-los com execução operacional.
 
 ## Histórico resumido
 
@@ -54,4 +63,16 @@ IMP-003 — infraestrutura mínima de eventos e auditoria, instrumentando os cas
 - **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria NOT_APPLICABLE — infraestrutura entra no IMP-003; Segurança PASS; Testes PASS.
 - **Limitação:** catálogo granular de permissões, reautenticação como evento e bloqueio de edição permanecem em ciclos posteriores da mesma fase arquitetural.
 - **Teste humano:** entrar pelo Gestor e launcher; trocar a senha; sair e entrar com a nova; renomear o próprio perfil e continuar navegando. Senha antiga ou incorreta deve ser recusada.
+- **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.
+
+### IMP-003 — COMPLETED
+
+- **Capacidade:** evento operacional imutável com autoria, origem, alvo, versão, correlação, antes/depois, resultado e chave de idempotência.
+- **Integração:** status, login aceito/recusado e criação de Pedido nos canais Gestor e Vendas.
+- **Interface:** consulta administrativa em `/auditoria/`; usuário comum é recusado no servidor.
+- **Migração:** tabela aditiva; nenhum fato legado foi inferido.
+- **Testes:** 21 aprovados; incluem imutabilidade, idempotência, rollback, canais de criação e autorização da consulta.
+- **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS; Segurança PASS; Testes PASS.
+- **Limitações:** eventos offline, evidências e processamento secundário entram nos ciclos proprietários; transporte permanece substituível.
+- **Teste humano:** entrar como administrador, alterar um status, criar pedidos pelo Gestor e Vendas e abrir Auditoria; tentar `/auditoria/` como usuário comum e confirmar a recusa.
 - **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.

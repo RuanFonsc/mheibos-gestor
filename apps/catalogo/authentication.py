@@ -2,6 +2,8 @@ from django.contrib.auth.hashers import check_password, identify_hasher, make_pa
 from django.utils.crypto import constant_time_compare
 
 from apps.catalogo.models import OperadorGestor
+from apps.auditoria.models import ResultadoEvento
+from apps.auditoria.services import registrar_evento
 
 
 SESSION_OPERATOR_ID = "operador_id"
@@ -38,10 +40,12 @@ def validar_senha_operador(
     return valida
 
 
-def autenticar_operador(nome: str, senha: str) -> OperadorGestor | None:
+def autenticar_operador(nome: str, senha: str, *, origem: str = "autenticacao") -> OperadorGestor | None:
     operador = OperadorGestor.objects.filter(nome=nome.strip(), ativo=True).first()
     if operador and validar_senha_operador(operador, senha):
+        registrar_evento(tipo="LoginRealizado", operador=operador, origem=origem, alvo_tipo="OperadorGestor", alvo_id=str(operador.pk), acao="autenticar", valores_anteriores={}, valores_posteriores={"autenticado": True})
         return operador
+    registrar_evento(tipo="LoginRecusado", operador=operador, origem=origem, alvo_tipo="OperadorGestor", alvo_id=str(operador.pk) if operador else "nao-identificado", acao="autenticar", valores_anteriores={}, valores_posteriores={"autenticado": False}, resultado=ResultadoEvento.REJEITADO)
     return None
 
 

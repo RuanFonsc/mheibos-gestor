@@ -1,5 +1,16 @@
 # Decisões da Implementação
 
+## DEC-IMP-004 — Evento aditivo na mesma transação do caso de uso
+
+- **Decisão:** persistir o evento oficial na mesma transação da mudança primária; consequências secundárias serão desacopladas posteriormente.
+- **Motivo:** impede estado alterado sem auditoria e entrega valor funcional antes de escolher barramento ou outbox.
+- **Fontes:** RFC-0006 §§6, 13, 17, 18 e 23.
+- **Alternativas rejeitadas:** log técnico; sinal Django implícito; infraestrutura assíncrona sem consumidor.
+- **Impacto:** falha ao registrar o evento reverte a transição.
+- **Migração:** tabela exclusivamente aditiva; não converter histórico antigo por inferência.
+- **Reversibilidade:** migration reversível enquanto não houver consumidores externos.
+- **Situação:** definitiva para atomicidade; transporte secundário permanece substituível.
+
 ## DEC-IMP-002 — Migração oportunista de senhas legadas
 
 - **Decisão:** senhas novas usam o hasher do Django; credenciais antigas em texto são aceitas uma única vez e convertidas somente após validação correta.

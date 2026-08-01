@@ -100,7 +100,7 @@ def login_operador(request):
     if request.method == "POST":
         nome = request.POST.get("usuario", "").strip()
         senha = request.POST.get("senha", "")
-        operador = autenticar_operador(nome, senha)
+        operador = autenticar_operador(nome, senha, origem="gestor_web")
         if operador:
             iniciar_sessao_operador(request, operador)
             salvar_preferencias({"usuario": operador.nome}, request=request)
@@ -126,7 +126,7 @@ def login_producao(request):
     if request.method == "POST":
         nome = request.POST.get("usuario", "").strip()
         senha = request.POST.get("senha", "")
-        operador = autenticar_operador(nome, senha)
+        operador = autenticar_operador(nome, senha, origem="producao_web")
         if operador:
             iniciar_sessao_operador(request, operador)
             salvar_preferencias({"usuario": operador.nome}, request=request)
@@ -152,7 +152,7 @@ def login_vendas(request):
     if request.method == "POST":
         nome = request.POST.get("usuario", "").strip()
         senha = request.POST.get("senha", "")
-        operador = autenticar_operador(nome, senha)
+        operador = autenticar_operador(nome, senha, origem="vendas_web")
         if operador:
             iniciar_sessao_operador(request, operador)
             salvar_preferencias({"usuario": operador.nome}, request=request)
@@ -738,7 +738,7 @@ def api_launcher_login(request):
         return JsonResponse({"ok": False, "erro": "JSON invalido."}, status=400)
     nome = str(payload.get("usuario") or "").strip()
     senha = str(payload.get("senha") or "")
-    operador = autenticar_operador(nome, senha)
+    operador = autenticar_operador(nome, senha, origem="launcher_api")
     if not operador:
         return JsonResponse({"ok": False, "erro": "Usuario ou senha invalidos."}, status=403)
     iniciar_sessao_operador(request, operador)

@@ -5,8 +5,8 @@
 | IMP-000 | Proteção e caracterização do legado | ENG-0006 §3; ENG-0007 | — | COMPLETED_WITH_GAPS | médio | baseline, gates e mapa inicial existentes | 0 |
 | IMP-001 | Transição auditável de status do Pedido | RFC-0002, 0006, 0007 | IMP-000 | COMPLETED | médio | caso de uso único, autorização, autoria, histórico e testes | 1 |
 | IMP-002 | Identidade, sessão e autorização central | RFC-0005, 0007 | IMP-001 | COMPLETED_WITH_GAPS | alto | identidade estável, senha segura, sessão e ações sensíveis | 2 |
-| IMP-003 | Eventos, evidências e auditoria aditiva | RFC-0006 | IMP-002 | READY | alto | evento versionado, correlação, ator, alvo, mudança e idempotência | 3 |
-| IMP-004 | Pedido comercial com estados independentes | RFC-0005, 0013 | IMP-003 | PENDING | alto | comercial, financeiro e entrega separados com migração | 4 |
+| IMP-003 | Eventos, evidências e auditoria aditiva | RFC-0006 | IMP-002 | COMPLETED | alto | evento versionado, correlação, ator, alvo, mudança e idempotência | 3 |
+| IMP-004 | Pedido comercial com estados independentes | RFC-0005, 0013 | IMP-003 | READY | alto | comercial, financeiro e entrega separados com migração | 4 |
 | IMP-005 | Processo, Fluxo e Etapa piloto | RFC-0002, 0005, 0006 | IMP-004 | PENDING | alto | fluxo versionado e processo piloto ligado ao Pedido | 5 |
 | IMP-006 | Projeções e interface operacional integrada | RFC-0003, 0009 | IMP-005 | PENDING | médio | Gestor/Vendas/Produção como visões da mesma realidade | 6 |
 | IMP-007 | Pendências e intervenções determinísticas | RFC-0009, 0012 | IMP-003 | PENDING | alto | depende da elaboração normativa completa da RFC-0012 | 7 |

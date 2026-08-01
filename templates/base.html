@@ -469,7 +469,10 @@
         </a>
         <a href="{% url 'configuracoes' %}" class="side-link {% if active == 'configuracoes' %}active{% endif %}">
           <i data-lucide="settings" class="h-5 w-5"></i> Configurações
-        </a>{% endif %}
+        </a>
+        {% if operador_atual.is_admin %}<a href="{% url 'auditoria_lista' %}" class="side-link {% if active == 'auditoria' %}active{% endif %}">
+          <i data-lucide="history" class="h-5 w-5"></i> Auditoria
+        </a>{% endif %}{% endif %}
         {% if modo_producao %}
           <a href="{% url 'producao_home' %}" class="side-link {% if active == 'producao' %}active{% endif %}">
             <i data-lucide="factory" class="h-5 w-5"></i> Producao
