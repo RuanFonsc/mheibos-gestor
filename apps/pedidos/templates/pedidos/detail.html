@@ -142,6 +142,29 @@
           {% endfor %}
         </div>
       </div>
+      <div class="card p-5">
+        <h2 class="mb-4 font-semibold">Processos operacionais</h2>
+        <div class="space-y-3">
+          {% for processo in pedido.processos.all %}
+            <div class="rounded-lg bg-[#171a29] p-3 text-sm">
+              <div class="flex justify-between gap-3">
+                <strong>{{ processo.objetivo }}</strong>
+                <span>{{ processo.get_estado_operacional_display }}</span>
+              </div>
+              <p class="mt-1 text-xs text-[var(--text-secondary)]">Fluxo {{ processo.modelo_codigo_snapshot }} v{{ processo.modelo_versao_snapshot }}</p>
+              {% for etapa in processo.etapas.all %}
+                <div class="mt-2 border-t border-[#2d3154] pt-2">
+                  {{ etapa.nome }}: <strong>{{ etapa.get_estado_display }}</strong>
+                  {% if etapa.responsavel %}<span class="text-[var(--text-secondary)]"> · {{ etapa.responsavel.nome }}</span>{% endif %}
+                  {% if etapa.motivo_bloqueio %}<p class="mt-1 text-xs text-[#ffb347]">{{ etapa.motivo_bloqueio }}</p>{% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% empty %}
+            <p class="text-sm text-[var(--text-secondary)]">Nenhum processo formal instanciado. Pedidos legados não são convertidos por inferência.</p>
+          {% endfor %}
+        </div>
+      </div>
       <a href="{% url 'pedido_list' %}" class="btn-secondary block text-center">Voltar para pedidos</a>
     </aside>
   </div>

@@ -1,5 +1,17 @@
 # Decisões da Implementação
 
+## DEC-IMP-006 — Piloto aditivo de Processo de Produção
+
+- **Decisão:** instanciar um Processo nativo `PRODUCAO_PEDIDO`, com snapshot do Modelo de Fluxo versão 1 e Etapa `PRODUZIR`, nas novas transições para produção.
+- **Motivo:** transforma uma operação real existente no primeiro corte observável de Processo/Etapa sem inferir processos históricos nem copiar responsabilidades financeiras do Pedido.
+- **Fontes:** RFC-0002 §§Processo Operacional, Conceitos e Quebra de Fluxo; RFC-0005 §§12–16 e 27; RFC-0006 §§7, 11 e 13; ENG-0006 §8.
+- **Migração:** schema exclusivamente aditivo e sem backfill; Pedidos antigos continuam legíveis e recebem Processo somente numa nova transição explícita.
+- **Histórico:** Modelo de Fluxo usado torna-se imutável; nova definição exige nova versão, enquanto Processo preserva código e versão em snapshot.
+- **Transições:** entrar em produção inicia; pronto conclui; rejeição bloqueia com motivo; retomada desbloqueia; cancelamento cancela; processo final não reabre pelo status legado.
+- **Auditoria:** `ProcessoConfirmado`, `EtapaConcluida`, `ProcessoBloqueado`, `ProcessoDesbloqueado` e `ProcessoCancelado` compartilham a transação da mudança.
+- **Compatibilidade:** `Pedido.status` ainda dispara o piloto até as projeções consumirem Processo/Etapa no IMP-006.
+- **Situação:** piloto definitivo como fronteira; catálogo completo de fluxos, dependências e evidências entra em ciclos posteriores.
+
 ## DEC-IMP-005 — Estados registrados e derivados do Pedido
 
 - **Decisão:** persistir estado comercial e estado de entrega; derivar o estado financeiro do total e dos pagamentos confirmados.

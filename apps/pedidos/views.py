@@ -34,6 +34,7 @@ from apps.pedidos.use_cases import (
     EntregaComSaldoNegada,
     alterar_status_pedido,
 )
+from apps.operacao.services import ProcessoEncerrado
 
 
 def pedido_list(request):
@@ -147,7 +148,9 @@ def entrega_list(request):
 
 def pedido_detail(request, pk):
     pedido = get_object_or_404(
-        Pedido.objects.select_related("cliente").prefetch_related("itens", "artes", "pagamentos"),
+        Pedido.objects.select_related("cliente").prefetch_related(
+            "itens", "artes", "pagamentos", "processos__etapas__responsavel"
+        ),
         pk=pk,
     )
     operador = operador_atual(request)
@@ -243,7 +246,7 @@ def pedido_edit(request, pk):
                 _atualizar_pedido(
                     pedido, form, request.FILES.getlist("artes"), operador
                 )
-            except EntregaComSaldoNegada:
+            except (EntregaComSaldoNegada, ProcessoEncerrado):
                 messages.error(
                     request,
                     "A entrega nao pode ser concluida enquanto houver saldo aberto.",
@@ -292,7 +295,7 @@ def pedido_update_status(request, pk):
                 operador=operador,
                 origem_operacional=origem_producao,
             )
-        except (AlteracaoStatusNegada, EntregaComSaldoNegada):
+        except (AlteracaoStatusNegada, EntregaComSaldoNegada, ProcessoEncerrado):
             messages.error(request, "Seu perfil não tem permissão para alterar este pedido.")
             if retorno:
                 return redirect(retorno)
@@ -370,7 +373,7 @@ def pedido_bulk_action(request):
                 operador=operador,
                 origem_operacional=origem_operacional,
             )
-        except (AlteracaoStatusNegada, EntregaComSaldoNegada):
+        except (AlteracaoStatusNegada, EntregaComSaldoNegada, ProcessoEncerrado):
             bloqueados += 1
             continue
         atualizados += int(resultado.alterado)

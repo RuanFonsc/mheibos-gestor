@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "apps.financeiro",
     "apps.aprendizado",
     "apps.auditoria",
+    "apps.operacao",
     "apps.legacy_migration",
 ]
 

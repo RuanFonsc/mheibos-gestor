@@ -6,6 +6,12 @@ from apps.catalogo.models import OperadorGestor
 from apps.auditoria.services import registrar_evento
 from apps.catalogo.permissions import pode_editar_pedido
 from apps.financeiro.services import sincronizar_financeiro_pedido
+from apps.operacao.services import (
+    bloquear_producao_pedido,
+    cancelar_producao_pedido,
+    concluir_producao_pedido,
+    iniciar_producao_pedido,
+)
 from apps.pedidos.models import (
     EstadoComercialPedido,
     EstadoEntregaPedido,
@@ -100,5 +106,17 @@ def alterar_status_pedido(
         },
         metadados={"observacao": observacao} if observacao else {},
     )
+    if novo_status == StatusPedido.EM_PRODUCAO:
+        iniciar_producao_pedido(pedido=pedido, operador=operador)
+    elif novo_status == StatusPedido.PRONTO:
+        concluir_producao_pedido(pedido=pedido, operador=operador)
+    elif novo_status == StatusPedido.CANCELADO:
+        cancelar_producao_pedido(
+            pedido=pedido, operador=operador, motivo=observacao
+        )
+    elif status_anterior == StatusPedido.EM_PRODUCAO and observacao:
+        bloquear_producao_pedido(
+            pedido=pedido, operador=operador, motivo=observacao
+        )
     sincronizar_financeiro_pedido(pedido)
     return ResultadoAlteracaoStatus(True, status_anterior, novo_status)

@@ -1,9 +1,9 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** Fase 5 — Processo, Fluxo e Etapa piloto  
-**Ciclo atual:** IMP-005 — Processo, Fluxo e Etapa piloto  
-**Último ciclo concluído:** IMP-004 — estados independentes do Pedido  
+**Fase atual:** Fase 6 — projeções e interface operacional integrada  
+**Ciclo atual:** IMP-006 — projeções e interface operacional integrada  
+**Último ciclo concluído:** IMP-005 — Processo, Fluxo e Etapa piloto  
 **Data:** 01/08/2026
 
 ## Contrato do ciclo IMP-003
@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-005 — introduzir Processo, Fluxo instanciado e Etapa em um fluxo piloto de baixo risco.
+IMP-006 — fazer Gestor, Vendas e Produção consumirem projeções da mesma realidade operacional.
 
 ## Histórico resumido
 
@@ -88,4 +88,18 @@ IMP-005 — introduzir Processo, Fluxo instanciado e Etapa em um fluxo piloto de
 - **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS; Segurança PASS; Migração PASS; Testes PASS.
 - **Teste humano:** abrir pedidos em estados cancelado, pronto, entregue, quitado e parcial; confirmar os rótulos separados e a recusa de entrega com saldo.
 - **Lacuna não bloqueante:** fluxo autorizado de entrega com saldo será implementado junto às permissões e Pendências proprietárias.
+- **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.
+
+### IMP-005 — COMPLETED_WITH_GAPS
+
+- **Capacidade:** Modelo de Fluxo versionado, Processo UUID e Etapa UUID formalizam o piloto de Produção do Pedido.
+- **Fluxo vertical:** entrada em produção instancia; pronto conclui; rejeição bloqueia com motivo; nova entrada retoma; cancelamento encerra.
+- **Histórico:** fluxo instanciado preserva snapshot e impede edição silenciosa da versão usada.
+- **Migração:** schema aditivo, sem inferir Processo para Pedido legado.
+- **Eventos:** confirmação, conclusão, bloqueio, desbloqueio e cancelamento são auditáveis na mesma transação.
+- **Interface:** detalhe do Pedido mostra Processo, versão, Etapa, estado, responsável e motivo de bloqueio.
+- **Testes:** 32 aprovados, incluindo idempotência, imutabilidade, rollback e proibição de reabertura de Processo final pelo status legado; Django check, Ruff, mypy e migrations aprovados.
+- **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS; Segurança PASS; Migração PASS; Testes PASS.
+- **Lacunas não bloqueantes:** catálogo amplo de modelos, várias Etapas/dependências, evidências formais e processos independentes entram nos ciclos proprietários.
+- **Teste humano:** mover Pedido para produção, conferir Processo; rejeitar com motivo, retomar e marcar pronto; confirmar estados no detalhe e Auditoria.
 - **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.
