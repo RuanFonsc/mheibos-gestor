@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.hashers import identify_hasher, make_password
 
 
 class CategoriaProduto(models.TextChoices):
@@ -142,6 +143,17 @@ class OperadorGestor(models.Model):
 
     def __str__(self):
         return self.nome
+
+    def save(self, *args, **kwargs):
+        if self.senha:
+            try:
+                identify_hasher(self.senha)
+            except ValueError:
+                self.senha = make_password(self.senha)
+                update_fields = kwargs.get("update_fields")
+                if update_fields is not None:
+                    kwargs["update_fields"] = set(update_fields) | {"senha"}
+        return super().save(*args, **kwargs)
 
     @property
     def is_admin_geral(self):

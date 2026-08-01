@@ -14,6 +14,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from apps.catalogo.forms import OperadorPerfilForm, OperadorSenhaForm, senha_operador_valida
+from apps.catalogo.authentication import definir_senha_operador, iniciar_sessao_operador
 from apps.catalogo.models import CategoriaServico, ProdutoServico
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import salvar_preferencias
@@ -233,7 +234,7 @@ def vendas_configuracoes(request):
                 perfil_form.save()
                 if operador.nome != nome_anterior:
                     salvar_preferencias({"usuario": operador.nome}, request=request)
-                    request.session["operador_nome"] = operador.nome
+                    iniciar_sessao_operador(request, operador)
                 messages.success(request, "Perfil salvo.")
                 return redirect("vendas_configuracoes")
             else:
@@ -245,8 +246,7 @@ def vendas_configuracoes(request):
                 if not senha_operador_valida(operador, dados["senha_atual"]):
                     senha_form.add_error("senha_atual", "Senha atual incorreta.")
                 else:
-                    operador.senha = dados["senha_nova"]
-                    operador.save(update_fields=["senha", "atualizado_em"])
+                    definir_senha_operador(operador, dados["senha_nova"])
                     messages.success(request, "Senha alterada com sucesso.")
                     return redirect("vendas_configuracoes")
             messages.error(request, "Nao foi possivel alterar a senha. Confira os campos.")

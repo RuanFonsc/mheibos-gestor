@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.conf import settings
 
 from apps.catalogo.bootstrap import primeiro_admin_pendente
+from apps.catalogo.authentication import sessao_possui_operador
 from apps.catalogo.integrity import check_integrity
 from apps.catalogo.licensing import enforced, verify_license
 
@@ -91,7 +92,7 @@ class OperadorLoginMiddleware:
             or caminho.startswith("/admin/")
             or caminho.startswith("/api/launcher/")
         )
-        if not liberado and not request.session.get("operador_nome"):
+        if not liberado and not sessao_possui_operador(request):
             if caminho.startswith("/producao/"):
                 login_url = reverse("producao_login")
             elif caminho.startswith("/vendas/"):

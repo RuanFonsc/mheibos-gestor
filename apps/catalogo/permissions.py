@@ -1,4 +1,5 @@
 from apps.catalogo.models import OperadorGestor, PapelOperador
+from apps.catalogo.authentication import operador_da_sessao
 from apps.catalogo.ui_prefs import carregar_preferencias
 
 
@@ -13,9 +14,11 @@ def operador_padrao():
 
 
 def operador_atual(request=None):
-    nome = ""
     if request is not None:
-        nome = (request.session.get("operador_nome") or "").strip()
+        operador = operador_da_sessao(request)
+        if operador:
+            return operador
+    nome = ""
     if not nome:
         nome = (carregar_preferencias().get("usuario") or "").strip()
     if nome:

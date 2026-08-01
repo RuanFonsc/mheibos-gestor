@@ -14,6 +14,13 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.catalogo.assistencia import categorias_do_pedido, dias_uteis_restantes, pedido_em_alerta, pedidos_assistencia, preparar_categorias_pedidos
+from apps.catalogo.authentication import (
+    autenticar_operador,
+    definir_senha_operador,
+    iniciar_sessao_operador,
+    sessao_possui_operador,
+    validar_senha_operador,
+)
 from apps.catalogo.bootstrap import primeiro_admin_pendente
 from apps.catalogo.forms import (
     CategoriaServicoForm,
@@ -88,14 +95,14 @@ def licenca_ativar(request):
 
 def login_operador(request):
     garantir_operadores_padrao()
-    if request.session.get("operador_nome"):
+    if sessao_possui_operador(request):
         return redirect("home")
     if request.method == "POST":
         nome = request.POST.get("usuario", "").strip()
         senha = request.POST.get("senha", "")
-        operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
-        if operador and operador.senha == senha:
-            request.session["operador_nome"] = operador.nome
+        operador = autenticar_operador(nome, senha)
+        if operador:
+            iniciar_sessao_operador(request, operador)
             salvar_preferencias({"usuario": operador.nome}, request=request)
             return redirect(_destino_seguro(request, "home"))
         messages.error(request, "Usuario ou senha invalidos.")
@@ -114,14 +121,14 @@ def login_operador(request):
 
 def login_producao(request):
     garantir_operadores_padrao()
-    if request.session.get("operador_nome"):
+    if sessao_possui_operador(request):
         return redirect("producao_home")
     if request.method == "POST":
         nome = request.POST.get("usuario", "").strip()
         senha = request.POST.get("senha", "")
-        operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
-        if operador and operador.senha == senha:
-            request.session["operador_nome"] = operador.nome
+        operador = autenticar_operador(nome, senha)
+        if operador:
+            iniciar_sessao_operador(request, operador)
             salvar_preferencias({"usuario": operador.nome}, request=request)
             return redirect(_destino_seguro(request, "producao_home"))
         messages.error(request, "Usuario ou senha invalidos.")
@@ -140,14 +147,14 @@ def login_producao(request):
 
 def login_vendas(request):
     garantir_operadores_padrao()
-    if request.session.get("operador_nome"):
+    if sessao_possui_operador(request):
         return redirect("vendas_home")
     if request.method == "POST":
         nome = request.POST.get("usuario", "").strip()
         senha = request.POST.get("senha", "")
-        operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
-        if operador and operador.senha == senha:
-            request.session["operador_nome"] = operador.nome
+        operador = autenticar_operador(nome, senha)
+        if operador:
+            iniciar_sessao_operador(request, operador)
             salvar_preferencias({"usuario": operador.nome}, request=request)
             return redirect(_destino_seguro(request, "vendas_home"))
         messages.error(request, "Usuario ou senha invalidos.")
@@ -189,12 +196,13 @@ def primeiro_admin(request):
         elif senha != confirmar:
             messages.error(request, "As senhas nao conferem.")
         else:
-            operador = OperadorGestor.objects.create(
+            operador = OperadorGestor(
                 nome=nome,
-                senha=senha,
                 papel=PapelOperador.ADMIN_GERAL,
                 ativo=True,
             )
+            definir_senha_operador(operador, senha, salvar=False)
+            operador.save()
             salvar_preferencias({"usuario": operador.nome}, request=request)
             messages.success(request, "Administrador geral criado. Faca login no launcher.")
             return redirect("home")
@@ -381,8 +389,7 @@ def configuracoes(request):
                 if not senha_operador_valida(operador, dados["senha_atual"]):
                     senha_form.add_error("senha_atual", "Senha atual incorreta.")
                 else:
-                    operador.senha = dados["senha_nova"]
-                    operador.save(update_fields=["senha", "atualizado_em"])
+                    definir_senha_operador(operador, dados["senha_nova"])
                     messages.success(request, "Senha alterada com sucesso.")
                     return redirect("configuracoes")
             if not senha_form.errors:
@@ -510,11 +517,12 @@ def configuracoes(request):
             if not operador.is_admin_geral:
                 messages.error(request, "Somente administradores gerais acessam outros usuarios.")
                 return redirect("configuracoes")
-            alvo = request.POST.get("usuario_ativo", "").strip()
-            if OperadorGestor.objects.filter(nome=alvo, ativo=True).exists():
-                request.session["operador_nome"] = alvo
-                salvar_preferencias({"usuario": alvo}, request=request)
-                messages.success(request, f"Usuário ativo: {alvo}.")
+            alvo_nome = request.POST.get("usuario_ativo", "").strip()
+            alvo = OperadorGestor.objects.filter(nome=alvo_nome, ativo=True).first()
+            if alvo:
+                iniciar_sessao_operador(request, alvo)
+                salvar_preferencias({"usuario": alvo.nome}, request=request)
+                messages.success(request, f"Usuário ativo: {alvo.nome}.")
             return redirect("configuracoes")
 
     db = settings.DATABASES["default"]
@@ -730,10 +738,10 @@ def api_launcher_login(request):
         return JsonResponse({"ok": False, "erro": "JSON invalido."}, status=400)
     nome = str(payload.get("usuario") or "").strip()
     senha = str(payload.get("senha") or "")
-    operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
-    if not operador or operador.senha != senha:
+    operador = autenticar_operador(nome, senha)
+    if not operador:
         return JsonResponse({"ok": False, "erro": "Usuario ou senha invalidos."}, status=403)
-    request.session["operador_nome"] = operador.nome
+    iniciar_sessao_operador(request, operador)
     salvar_preferencias({"usuario": operador.nome}, request=request)
     return JsonResponse(
         {
@@ -757,10 +765,9 @@ def api_launcher_trocar_senha(request):
     if len(nova_senha) < 4:
         return JsonResponse({"ok": False, "erro": "A nova senha precisa ter pelo menos 4 caracteres."}, status=400)
     operador = OperadorGestor.objects.filter(nome=nome, ativo=True).first()
-    if not operador or operador.senha != senha_atual:
+    if not operador or not validar_senha_operador(operador, senha_atual):
         return JsonResponse({"ok": False, "erro": "Senha atual invalida."}, status=403)
-    operador.senha = nova_senha
-    operador.save(update_fields=["senha", "atualizado_em"])
+    definir_senha_operador(operador, nova_senha)
     return JsonResponse({"ok": True})
 
 
@@ -782,8 +789,7 @@ def api_launcher_recuperar_senha(request):
     alvo = OperadorGestor.objects.filter(nome=alvo_nome, ativo=True).first()
     if not alvo:
         return JsonResponse({"ok": False, "erro": "Usuario nao encontrado."}, status=404)
-    alvo.senha = nova_senha
-    alvo.save(update_fields=["senha", "atualizado_em"])
+    definir_senha_operador(alvo, nova_senha)
     chave_registro.usada_em = timezone.now()
     chave_registro.save(update_fields=["usada_em"])
     return JsonResponse({"ok": True})

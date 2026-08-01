@@ -104,6 +104,7 @@ def salvar_preferencias(patch, operador=None, request=None):
 
 
 def garantir_operadores_padrao():
+    from apps.catalogo.authentication import definir_senha_operador
     from apps.catalogo.models import OperadorGestor, PapelOperador
 
     if config("GESTOR_FIRST_ADMIN_SETUP", default=False, cast=bool) and not OperadorGestor.objects.exists():
@@ -115,12 +116,10 @@ def garantir_operadores_padrao():
             defaults={"ativo": True, "papel": PapelOperador.ADMIN_GERAL},
         )
         if criado or not operador.senha:
-            operador.senha = "1234"
-            operador.save(update_fields=["senha"])
+            definir_senha_operador(operador, "1234")
     temporario, criado = OperadorGestor.objects.get_or_create(
         nome="Usuario Temporario",
         defaults={"ativo": True, "papel": PapelOperador.TEMPORARIO},
     )
     if criado or not temporario.senha:
-        temporario.senha = "1234"
-        temporario.save(update_fields=["senha"])
+        definir_senha_operador(temporario, "1234")

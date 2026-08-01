@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.hashers import make_password
 
 from apps.catalogo.models import CategoriaServico, CategoriaUsuario, OperadorGestor, PerfilEmpresa, ProdutoServico, UnidadeMedida
 
@@ -49,7 +50,7 @@ class OperadorGestorForm(forms.ModelForm):
         senha = self.cleaned_data.get("senha")
         if self.instance and self.instance.pk and not senha:
             return self.instance.senha
-        return senha
+        return make_password(senha) if senha else senha
 
     class Meta:
         model = OperadorGestor
@@ -94,7 +95,9 @@ class OperadorSenhaForm(forms.Form):
 
 
 def senha_operador_valida(operador, senha):
-    return (senha or "") == (operador.senha or "")
+    from apps.catalogo.authentication import validar_senha_operador
+
+    return validar_senha_operador(operador, senha)
 
 
 class PerfilEmpresaForm(forms.ModelForm):
