@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.db import models
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from PIL import Image, UnidentifiedImageError
 
@@ -24,10 +24,12 @@ from apps.arquivos.services import (
     criar_arquivo_oficial,
     avaliar_alerta_inatividade_arte,
     decidir_alteracao_pos_conclusao,
+    decidir_copia_local_transferida,
     encerrar_vinculo_arquivo_oficial,
     reconhecer_alerta_arquivo,
     responder_alerta_inatividade_arte,
     transferir_responsabilidade_arte,
+    transferir_arquivo_provisorio,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
@@ -345,6 +347,305 @@ class ArquivoOficialArteTests(TestCase):
             criar_arquivo_oficial(
                 pedido=self.pedido, programa="coreldraw", operador=self.operador
             )
+
+    def test_falha_do_compartilhamento_cria_arte_provisoria_controlada(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("nao e uma pasta", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            with override_settings(DATA_DIR=base / "dados-locais"):
+                arquivo = criar_arquivo_oficial(
+                    pedido=self.pedido, programa="coreldraw", operador=self.operador
+                )
+
+            self.assertTrue(arquivo.provisoria_local)
+            self.assertTrue(Path(arquivo.caminho_oficial).is_file())
+            self.assertEqual(arquivo.caminho_local_origem, arquivo.caminho_oficial)
+            self.assertIn("artes_provisorias", arquivo.caminho_oficial)
+            self.assertTrue(arquivo.caminho_destino_pendente.endswith(arquivo.nome_oficial))
+
+    def test_transferencia_valida_integridade_e_preserva_copia_ate_decisao(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("fora", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            with override_settings(DATA_DIR=base / "dados-locais"):
+                arquivo = criar_arquivo_oficial(
+                    pedido=self.pedido, programa="pdf", operador=self.operador
+                )
+                origem = Path(arquivo.caminho_oficial)
+                origem.write_bytes(b"arte pronta")
+                destino = base / "servidor-restaurado" / arquivo.nome_oficial
+                ArquivoOficialArte.objects.filter(pk=arquivo.pk).update(
+                    caminho_destino_pendente=str(destino)
+                )
+                arquivo.refresh_from_db()
+                arquivo = transferir_arquivo_provisorio(
+                    arquivo=arquivo, operador=self.operador
+                )
+
+                self.assertFalse(arquivo.provisoria_local)
+                self.assertEqual(Path(arquivo.caminho_oficial).read_bytes(), b"arte pronta")
+                self.assertTrue(origem.exists())
+                self.assertEqual(arquivo.copia_local_preservada_em, str(origem))
+                self.assertEqual(arquivo.estado_integridade, "INTEGRO")
+
+                decidir_copia_local_transferida(
+                    arquivo=arquivo, operador=self.operador, decisao="REMOVER"
+                )
+                arquivo.refresh_from_db()
+                self.assertFalse(origem.exists())
+                self.assertIsNotNone(arquivo.copia_local_removida_em)
+                self.assertTrue(destino.exists())
+
+    @patch("apps.arquivos.services.registrar_evento", side_effect=RuntimeError)
+    def test_falha_de_auditoria_reverte_transferencia_e_preserva_local(self, _evento):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("fora", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            with override_settings(DATA_DIR=base / "dados-locais"):
+                # A criacao precisa ocorrer antes de ativar a falha causal da transferencia.
+                with patch("apps.arquivos.services.registrar_evento"):
+                    arquivo = criar_arquivo_oficial(
+                        pedido=self.pedido, programa="gimp", operador=self.operador
+                    )
+                origem = Path(arquivo.caminho_oficial)
+                destino = base / "servidor-restaurado" / arquivo.nome_oficial
+                ArquivoOficialArte.objects.filter(pk=arquivo.pk).update(
+                    caminho_destino_pendente=str(destino)
+                )
+                arquivo.refresh_from_db()
+
+                with self.assertRaises(RuntimeError):
+                    transferir_arquivo_provisorio(
+                        arquivo=arquivo, operador=self.operador
+                    )
+
+            arquivo.refresh_from_db()
+            self.assertTrue(arquivo.provisoria_local)
+            self.assertTrue(origem.exists())
+            self.assertFalse(destino.exists())
+
+    def test_dupla_indisponibilidade_recusa_criacao(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("fora", encoding="utf-8")
+            dados_locais_inacessiveis = base / "dados-locais.txt"
+            dados_locais_inacessiveis.write_text("nao e pasta", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            with override_settings(DATA_DIR=dados_locais_inacessiveis):
+                with self.assertRaisesMessage(
+                    ArquivoOficialInvalido,
+                    "Nem a pasta compartilhada nem a area provisoria local estao acessiveis.",
+                ):
+                    criar_arquivo_oficial(
+                        pedido=self.pedido, programa="pdf", operador=self.operador
+                    )
+
+    def test_colisao_no_destino_preserva_provisorio(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("fora", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            with override_settings(DATA_DIR=base / "dados-locais"):
+                arquivo = criar_arquivo_oficial(
+                    pedido=self.pedido, programa="pdf", operador=self.operador
+                )
+                origem = Path(arquivo.caminho_oficial)
+                destino = base / "servidor-restaurado" / arquivo.nome_oficial
+                destino.parent.mkdir(parents=True, exist_ok=True)
+                destino.write_bytes(b"colisao")
+                ArquivoOficialArte.objects.filter(pk=arquivo.pk).update(
+                    caminho_destino_pendente=str(destino)
+                )
+                arquivo.refresh_from_db()
+
+                with self.assertRaisesMessage(
+                    ArquivoOficialInvalido,
+                    "O destino oficial ja contem um arquivo com este nome.",
+                ):
+                    transferir_arquivo_provisorio(
+                        arquivo=arquivo, operador=self.operador
+                    )
+
+            arquivo.refresh_from_db()
+            self.assertTrue(arquivo.provisoria_local)
+            self.assertTrue(origem.exists())
+            self.assertEqual(destino.read_bytes(), b"colisao")
+
+    def test_corrupcao_durante_copia_reverte_transferencia(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("fora", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            with override_settings(DATA_DIR=base / "dados-locais"):
+                arquivo = criar_arquivo_oficial(
+                    pedido=self.pedido, programa="pdf", operador=self.operador
+                )
+                origem = Path(arquivo.caminho_oficial)
+                origem.write_bytes(b"conteudo integro")
+                destino = base / "servidor-restaurado" / arquivo.nome_oficial
+                ArquivoOficialArte.objects.filter(pk=arquivo.pk).update(
+                    caminho_destino_pendente=str(destino)
+                )
+                arquivo.refresh_from_db()
+
+                with patch(
+                    "apps.arquivos.services._sha256_arquivo",
+                    side_effect=["hash-origem", "hash-diferente"],
+                ):
+                    with self.assertRaisesMessage(
+                        ArquivoOficialInvalido,
+                        "A copia para o servidor falhou na validacao de integridade.",
+                    ):
+                        transferir_arquivo_provisorio(
+                            arquivo=arquivo, operador=self.operador
+                        )
+
+            arquivo.refresh_from_db()
+            self.assertTrue(arquivo.provisoria_local)
+            self.assertTrue(origem.exists())
+            self.assertFalse(destino.exists())
+
+    def test_decisao_mover_arquiva_copia_local_sem_afetar_oficial(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("fora", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            with override_settings(DATA_DIR=base / "dados-locais"):
+                arquivo = criar_arquivo_oficial(
+                    pedido=self.pedido, programa="pdf", operador=self.operador
+                )
+                origem = Path(arquivo.caminho_oficial)
+                origem.write_bytes(b"arte pronta")
+                destino = base / "servidor-restaurado" / arquivo.nome_oficial
+                ArquivoOficialArte.objects.filter(pk=arquivo.pk).update(
+                    caminho_destino_pendente=str(destino)
+                )
+                arquivo.refresh_from_db()
+                arquivo = transferir_arquivo_provisorio(
+                    arquivo=arquivo, operador=self.operador
+                )
+                decidir_copia_local_transferida(
+                    arquivo=arquivo, operador=self.operador, decisao="MOVER"
+                )
+                arquivo.refresh_from_db()
+
+                self.assertFalse(origem.exists())
+                self.assertEqual(Path(arquivo.caminho_oficial).read_bytes(), b"arte pronta")
+                self.assertTrue(Path(arquivo.copia_local_preservada_em).is_file())
+                self.assertIn("artes_copias_locais", arquivo.copia_local_preservada_em)
+
+    def test_preferencia_retencao_copias_locais_persiste_sem_scheduler(self):
+        perfil, _ = PerfilEmpresa.objects.update_or_create(
+            chave="global", defaults={"retencao_copias_locais_dias": 45}
+        )
+        self.assertEqual(perfil.retencao_copias_locais_dias, 45)
+        self.assertFalse(
+            EventoOperacional.objects.filter(
+                tipo__icontains="RetencaoCopiaLocal"
+            ).exists()
+        )
+
+    def test_interface_fluxo_provisorio_transferencia_e_decisao(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("fora", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            self.entrar()
+            with override_settings(DATA_DIR=base / "dados-locais"):
+                resposta = self.client.post(
+                    f"/pedidos/{self.pedido.pk}/arquivos-oficiais/criar/",
+                    {"programa_arte": "pdf"},
+                )
+                self.assertEqual(resposta.status_code, 302)
+                arquivo = ArquivoOficialArte.objects.get(pedido=self.pedido)
+                origem = Path(arquivo.caminho_oficial)
+                origem.write_bytes(b"via interface")
+                destino = base / "servidor-restaurado" / arquivo.nome_oficial
+                ArquivoOficialArte.objects.filter(pk=arquivo.pk).update(
+                    caminho_destino_pendente=str(destino)
+                )
+
+                resposta = self.client.get(f"/pedidos/{self.pedido.pk}/")
+                self.assertContains(resposta, "Copia provisoria local")
+                self.assertContains(resposta, "Transferir e validar agora")
+
+                resposta = self.client.post(
+                    f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/transferir-provisorio/"
+                )
+                self.assertEqual(resposta.status_code, 302)
+                resposta = self.client.get(f"/pedidos/{self.pedido.pk}/")
+                self.assertContains(resposta, "Transferencia concluida")
+                self.assertContains(resposta, "Mover para copias locais")
+
+                resposta = self.client.post(
+                    f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/decidir-copia-local/",
+                    {"decisao_copia_local": "REMOVER"},
+                )
+                self.assertEqual(resposta.status_code, 302)
+                arquivo.refresh_from_db()
+                self.assertFalse(origem.exists())
+                self.assertTrue(destino.exists())
+
+    def test_interface_nega_transferencia_sem_autorizacao(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            base = Path(raiz)
+            compartilhamento_inacessivel = base / "servidor-indisponivel"
+            compartilhamento_inacessivel.write_text("fora", encoding="utf-8")
+            PerfilEmpresa.objects.update_or_create(
+                chave="global",
+                defaults={"diretorio_artes_raiz": str(compartilhamento_inacessivel)},
+            )
+            with override_settings(DATA_DIR=base / "dados-locais"):
+                arquivo = criar_arquivo_oficial(
+                    pedido=self.pedido, programa="pdf", operador=self.operador
+                )
+            intruso = OperadorGestor.objects.create(
+                nome="Profissional sem acesso",
+                senha="segura",
+                papel=PapelOperador.USUARIO,
+            )
+            self.entrar(intruso)
+            resposta = self.client.post(
+                f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/transferir-provisorio/"
+            )
+            self.assertEqual(resposta.status_code, 302)
+            arquivo.refresh_from_db()
+            self.assertTrue(arquivo.provisoria_local)
 
     def test_criacao_inicia_agregado_sem_concluir_automaticamente(self):
         with tempfile.TemporaryDirectory() as raiz:

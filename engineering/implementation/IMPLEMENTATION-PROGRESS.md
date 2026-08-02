@@ -1,9 +1,9 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** consolidação das lacunas executáveis antes de IMP-010  
-**Ciclo atual:** revisão de IMP-008 e IMP-009  
-**Último ciclo concluído:** IMP-009L — transferência crítica de responsabilidade  
+**Fase atual:** IMP-010 — Missões e Teamwork  
+**Ciclo atual:** IMP-010  
+**Último ciclo concluído:** IMP-009M — criação provisória de arte oficial, transferência e consolidação de IMP-009  
 **Data:** 02/08/2026
 
 ## Contrato do ciclo IMP-003
@@ -446,4 +446,12 @@ IMP-009M — materializar a criação provisória de Arte Oficial quando o compa
 - **Cadência:** a transferência registra atividade e concede duas horas ao novo responsável antes de outro alerta; o número histórico de alertas não é apagado.
 - **Auditoria:** `ResponsabilidadeArteTransferida` registra responsável anterior, destino, solicitante e gerente autorizador. Falha do evento reverte integralmente a troca.
 - **Validação:** lint, type checking, Django check, migration check, tokens, 37 testes focados e baseline completo de 170 testes aprovados; matriz visual oficial sem overflow. Evidência em `IMP-009L-VISUAL-VALIDATION.md`.
-- **Próxima fatia:** criação provisória offline, transferência posterior e política de cópia local conforme DEC-IMP-033.
+
+### IMP-009M — COMPLETED
+
+- **Criação provisória local:** se o diretório compartilhado oficial estiver indisponível, o Mheibos cria automaticamente o arquivo oficial em área provisória local sob `DATA_DIR/artes_provisorias/<Operador>/<Ano>/<Mês>/<Dia>/`, reservando o destino final pretendido e marcando `provisoria_local=True`.
+- **Transferência e validação:** ao restabelecer o acesso, a ação `transferir_arquivo_provisorio` copia o arquivo via staging temporário `.mheibos-partial`, valida SHA-256 e move para o caminho compartilhado oficial sem sobrescrever colisões existentes.
+- **Retenção e decisão humana:** a cópia local é preservada até decisão humana explícita (`REMOVER` ou `MOVER` para `artes_copias_locais`). A remoção antecipada exige comprovação de integridade do oficial.
+- **Resiliência transacional:** caso ocorra falha de commit ou evento de auditoria, qualquer arquivo em staging ou cópia parcial no sistema de arquivos é desfeito sem deixar órfãos.
+- **Validação:** suíte completa de 180 testes aprovados, `makemigrations --check` sem alterações, lint ruff em `apps/` aprovado e validação visual em 5 combinações de resolução sem overflow. Evidências em `IMP-009M-VISUAL-VALIDATION.md`.
+

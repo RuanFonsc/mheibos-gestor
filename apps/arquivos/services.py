@@ -1,11 +1,13 @@
 import os
 import re
 import hashlib
+import shutil
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from pathlib import PureWindowsPath
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -358,21 +360,43 @@ def criar_arquivo_oficial(*, pedido, programa: str, operador) -> ArquivoOficialA
             _componente_seguro(pedido.tema, padrao="Sem tema"),
         )
     )
+    provisoria_local = False
+    destino_oficial = _proximo_caminho_oficial(pasta=pasta, base=base, extensao=extensao)
+    caminho = destino_oficial
     try:
         pasta.mkdir(parents=True, exist_ok=True)
-        caminho = _proximo_caminho_oficial(pasta=pasta, base=base, extensao=extensao)
         with caminho.open("xb"):
             pass
-    except OSError as exc:
-        raise ArquivoOficialInvalido(
-            "Nao foi possivel criar o arquivo na pasta compartilhada. Verifique acesso e conexao."
-        ) from exc
+    except OSError:
+        pasta_local = (
+            Path(settings.DATA_DIR)
+            / "artes_provisorias"
+            / _componente_seguro(operador.nome, padrao="Usuario")
+            / str(agora.year)
+            / MESES_PT_BR[agora.month]
+            / f"{agora.day:02d}"
+        )
+        try:
+            pasta_local.mkdir(parents=True, exist_ok=True)
+            caminho = _proximo_caminho_oficial(
+                pasta=pasta_local, base=base, extensao=extensao
+            )
+            with caminho.open("xb"):
+                pass
+        except OSError as exc:
+            raise ArquivoOficialInvalido(
+                "Nem a pasta compartilhada nem a area provisoria local estao acessiveis."
+            ) from exc
+        provisoria_local = True
     try:
         arquivo = ArquivoOficialArte.objects.create(
             pedido=pedido,
             caminho_oficial=str(caminho),
             nome_oficial=caminho.name,
             extensao=extensao,
+            provisoria_local=provisoria_local,
+            caminho_destino_pendente=str(destino_oficial) if provisoria_local else "",
+            caminho_local_origem=str(caminho) if provisoria_local else "",
             origem=OrigemArquivoOficial.CRIADO_MHEIBOS,
             criado_por=operador,
             conteudo_sha256=_sha256_arquivo(str(caminho)),
@@ -392,6 +416,8 @@ def criar_arquivo_oficial(*, pedido, programa: str, operador) -> ArquivoOficialA
                 "caminho_oficial": arquivo.caminho_oficial,
                 "programa": programa,
                 "arquivo_vazio": True,
+                "provisoria_local": provisoria_local,
+                "caminho_destino_pendente": str(destino_oficial) if provisoria_local else "",
             },
             chave_idempotencia=f"arquivo-oficial-criar:{arquivo.pk}",
         )
@@ -399,6 +425,131 @@ def criar_arquivo_oficial(*, pedido, programa: str, operador) -> ArquivoOficialA
     except Exception:
         caminho.unlink(missing_ok=True)
         raise
+    return arquivo
+
+
+@transaction.atomic
+def transferir_arquivo_provisorio(
+    *, arquivo: ArquivoOficialArte, operador
+) -> ArquivoOficialArte:
+    arquivo = ArquivoOficialArte.objects.select_for_update().get(pk=arquivo.pk)
+    if not arquivo.provisoria_local or not arquivo.caminho_destino_pendente:
+        raise ArquivoOficialInvalido("Este arquivo nao possui transferencia pendente.")
+    origem = Path(arquivo.caminho_oficial)
+    destino = Path(arquivo.caminho_destino_pendente)
+    if not origem.is_file():
+        raise ArquivoOficialInvalido("A copia provisoria local nao foi encontrada.")
+    if destino.exists():
+        raise ArquivoOficialInvalido(
+            "O destino oficial ja contem um arquivo com este nome. Nenhum arquivo foi substituido."
+        )
+    temporario = destino.with_name(f".{destino.name}.{arquivo.pk}.mheibos-partial")
+    try:
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(origem, temporario)
+        if _sha256_arquivo(str(origem)) != _sha256_arquivo(str(temporario)):
+            raise ArquivoOficialInvalido("A copia para o servidor falhou na validacao de integridade.")
+        temporario.replace(destino)
+        agora = timezone.now()
+        ArquivoOficialArte.objects.filter(pk=arquivo.pk).update(
+            caminho_oficial=str(destino),
+            provisoria_local=False,
+            caminho_destino_pendente="",
+            caminho_local_origem=str(origem),
+            copia_local_preservada_em=str(origem),
+            transferido_em=agora,
+            transferido_por=operador,
+            estado_integridade=EstadoIntegridadeArquivo.INTEGRO,
+            tamanho_bytes=destino.stat().st_size,
+            conteudo_sha256=_sha256_arquivo(str(destino)),
+            modificado_em_ns=destino.stat().st_mtime_ns,
+            verificado_em=agora,
+        )
+        registrar_evento(
+            tipo="ArquivoOficialArteTransferido",
+            operador=operador,
+            origem="gestor_web",
+            alvo_tipo="ArquivoOficialArte",
+            alvo_id=str(arquivo.pk),
+            acao="transferir_arquivo_provisorio",
+            valores_anteriores={"caminho_provisorio": str(origem)},
+            valores_posteriores={
+                "caminho_oficial": str(destino),
+                "integridade_validada": True,
+                "copia_local_aguarda_decisao": True,
+            },
+            chave_idempotencia=f"arquivo-oficial-transferir:{arquivo.pk}",
+        )
+    except Exception:
+        temporario.unlink(missing_ok=True)
+        destino.unlink(missing_ok=True)
+        raise
+    arquivo.refresh_from_db()
+    return arquivo
+
+
+def decidir_copia_local_transferida(
+    *, arquivo: ArquivoOficialArte, operador, decisao: str
+) -> ArquivoOficialArte:
+    destino_copia = None
+    removivel = None
+    copia = None
+    try:
+        with transaction.atomic():
+            arquivo = ArquivoOficialArte.objects.select_for_update().get(pk=arquivo.pk)
+            if not arquivo.transferido_em or not arquivo.copia_local_preservada_em:
+                raise ArquivoOficialInvalido("Este arquivo nao possui copia local aguardando decisao.")
+            if arquivo.estado_integridade != EstadoIntegridadeArquivo.INTEGRO:
+                raise ArquivoOficialInvalido(
+                    "Valide a integridade do arquivo oficial antes de decidir sobre a copia local."
+                )
+            oficial = Path(arquivo.caminho_oficial)
+            copia = Path(arquivo.copia_local_preservada_em)
+            if not oficial.is_file() or _sha256_arquivo(str(oficial)) != arquivo.conteudo_sha256:
+                raise ArquivoOficialInvalido(
+                    "O arquivo oficial nao preserva a integridade validada. A copia local foi mantida."
+                )
+            if not copia.is_file():
+                raise ArquivoOficialInvalido("A copia local que aguardava decisao nao foi encontrada.")
+            if decisao not in {"REMOVER", "MOVER"}:
+                raise ArquivoOficialInvalido("Escolha remover ou mover a copia local.")
+
+            if decisao == "MOVER":
+                destino_copia = Path(settings.DATA_DIR) / "artes_copias_locais" / str(arquivo.pk) / copia.name
+                destino_copia.parent.mkdir(parents=True, exist_ok=True)
+                if destino_copia.exists():
+                    raise ArquivoOficialInvalido("A area de copias locais ja contem este arquivo.")
+                shutil.move(str(copia), str(destino_copia))
+            else:
+                removivel = copia.with_name(f".{copia.name}.{arquivo.pk}.remover")
+                copia.replace(removivel)
+
+            agora = timezone.now()
+            arquivo.copia_local_preservada_em = str(destino_copia) if destino_copia else ""
+            arquivo.copia_local_removida_em = agora if decisao == "REMOVER" else None
+            arquivo.save(update_fields=["copia_local_preservada_em", "copia_local_removida_em", "atualizado_em"])
+            registrar_evento(
+                tipo="CopiaLocalArteDecidida",
+                operador=operador,
+                origem="gestor_web",
+                alvo_tipo="ArquivoOficialArte",
+                alvo_id=str(arquivo.pk),
+                acao="decidir_copia_local_transferida",
+                valores_anteriores={"caminho_local": str(copia)},
+                valores_posteriores={
+                    "decisao": decisao,
+                    "destino_copia": str(destino_copia) if destino_copia else "",
+                },
+                chave_idempotencia=f"arquivo-oficial-copia-local:{arquivo.pk}",
+            )
+    except Exception:
+        if copia and destino_copia and destino_copia.exists() and not copia.exists():
+            shutil.move(str(destino_copia), str(copia))
+        if copia and removivel and removivel.exists() and not copia.exists():
+            removivel.replace(copia)
+        raise
+    if removivel:
+        removivel.unlink(missing_ok=True)
     return arquivo
 
 

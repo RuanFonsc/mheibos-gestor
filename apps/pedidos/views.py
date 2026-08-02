@@ -26,9 +26,11 @@ from apps.arquivos.services import (
     encerrar_vinculo_arquivo_oficial,
     concluir_arte_pedido,
     decidir_alteracao_pos_conclusao,
+    decidir_copia_local_transferida,
     reconhecer_alerta_arquivo,
     responder_alerta_inatividade_arte,
     transferir_responsabilidade_arte,
+    transferir_arquivo_provisorio,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
@@ -588,7 +590,56 @@ def pedido_criar_arquivo_oficial(request, pk):
     except (ArquivoOficialInvalido, PreparacaoArteInvalida) as exc:
         messages.error(request, str(exc))
     else:
-        messages.success(request, f"Arquivo oficial {arquivo.nome_oficial} criado vazio.")
+        if arquivo.provisoria_local:
+            messages.warning(
+                request,
+                f"Servidor indisponivel. {arquivo.nome_oficial} foi criado localmente e aguarda transferencia.",
+            )
+        else:
+            messages.success(request, f"Arquivo oficial {arquivo.nome_oficial} criado vazio.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_transferir_arquivo_provisorio(request, pk, arquivo_id):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    arquivo = get_object_or_404(ArquivoOficialArte, pk=arquivo_id, pedido=pedido)
+    if not pode_operar_preparacao_arte(pedido, operador):
+        messages.error(request, "Seu perfil nao pode transferir arquivos deste Pedido.")
+        return redirect("pedido_detail", pk=pk)
+    try:
+        transferir_arquivo_provisorio(arquivo=arquivo, operador=operador)
+    except ArquivoOficialInvalido as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(
+            request,
+            "Arquivo transferido e validado. Decida agora o destino da copia local.",
+        )
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_decidir_copia_local(request, pk, arquivo_id):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    arquivo = get_object_or_404(ArquivoOficialArte, pk=arquivo_id, pedido=pedido)
+    if not pode_operar_preparacao_arte(pedido, operador):
+        messages.error(request, "Seu perfil nao pode decidir sobre esta copia local.")
+        return redirect("pedido_detail", pk=pk)
+    try:
+        decidir_copia_local_transferida(
+            arquivo=arquivo,
+            operador=operador,
+            decisao=request.POST.get("decisao_copia_local", ""),
+        )
+    except ArquivoOficialInvalido as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Decisao sobre a copia local registrada.")
     return redirect("pedido_detail", pk=pk)
 
 

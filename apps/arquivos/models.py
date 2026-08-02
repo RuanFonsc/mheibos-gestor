@@ -76,6 +76,19 @@ class ArquivoOficialArte(models.Model):
     caminho_oficial = models.CharField(max_length=1000)
     nome_oficial = models.CharField(max_length=255)
     extensao = models.CharField(max_length=32, blank=True)
+    provisoria_local = models.BooleanField(default=False)
+    caminho_destino_pendente = models.CharField(max_length=1000, blank=True)
+    caminho_local_origem = models.CharField(max_length=1000, blank=True)
+    transferido_em = models.DateTimeField(null=True, blank=True)
+    transferido_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="arquivos_oficiais_transferidos",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    copia_local_preservada_em = models.CharField(max_length=1000, blank=True)
+    copia_local_removida_em = models.DateTimeField(null=True, blank=True)
     origem = models.CharField(max_length=24, choices=OrigemArquivoOficial.choices)
     estado_integridade = models.CharField(
         max_length=24,
