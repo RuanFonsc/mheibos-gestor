@@ -22,4 +22,12 @@ contextBridge.exposeInMainWorld("mheibosClipboard", {
 
 window.addEventListener("DOMContentLoaded", () => {
   document.documentElement.dataset.desktop = "electron";
+  document.addEventListener("submit", (event) => {
+    const form = event.target;
+    const usuario = form?.querySelector?.('[name="usuario"]')?.value || "";
+    const senha = form?.querySelector?.('[name="senha"]')?.value || "";
+    if (usuario && senha) {
+      ipcRenderer.invoke("offline-identity:candidate", { usuario, senha });
+    }
+  });
 });

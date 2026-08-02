@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, safeStorage, shell } = require("electron");
+const { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, safeStorage, session, shell } = require("electron");
 const { execFileSync, spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
@@ -29,6 +29,7 @@ const BASE_URL = (REMOTE_BASE_URL || `http://${HOST}:${PORT}`).replace(/\/$/, ""
 const REMOTE_CLIENT = Boolean(REMOTE_BASE_URL);
 let djangoProcess = null;
 let mainWindow = null;
+let offlineIdentityCandidate = null;
 
 function modoAtual() {
   const args = process.argv.join(" ").toLowerCase();
@@ -112,6 +113,50 @@ function envFromConfig(config) {
   env.MHEIBOS_STATION_ID = config?.stationId || "";
   env.MHEIBOS_STATION_SECRET = decryptSecret(config?.stationSecretEncrypted, safeStorage);
   return env;
+}
+
+function stationCredentials(config) {
+  return {
+    id: config?.stationId || "",
+    secret: decryptSecret(config?.stationSecretEncrypted, safeStorage) || config?.stationSecret || "",
+  };
+}
+
+function installStationHeaders(config) {
+  const credentials = stationCredentials(config);
+  if (!REMOTE_CLIENT || !credentials.id || !credentials.secret) return;
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    { urls: [`${BASE_URL}/*`] },
+    (details, callback) => {
+      details.requestHeaders["X-Mheibos-Station-ID"] = credentials.id;
+      details.requestHeaders["X-Mheibos-Station-Secret"] = credentials.secret;
+      callback({ requestHeaders: details.requestHeaders });
+    }
+  );
+}
+
+async function cacheValidatedOfflineIdentity(win, config) {
+  if (!REMOTE_CLIENT || !offlineIdentityCandidate) return;
+  try {
+    const snapshot = await win.webContents.executeJavaScript(
+      `fetch('/sincronizacao/identidade-atual/', {credentials: 'same-origin'})` +
+      `.then(async response => response.ok ? response.json() : null)`
+    );
+    const validatedName = String(snapshot?.operador?.nome || "").trim().toLocaleLowerCase();
+    const candidateName = String(offlineIdentityCandidate.usuario || "").trim().toLocaleLowerCase();
+    if (!snapshot || validatedName !== candidateName) return;
+    const current = readConfig() || config || {};
+    writeConfig({
+      ...current,
+      offlineIdentity: JSON.stringify({
+        ...snapshot,
+        senha: offlineIdentityCandidate.senha,
+      }),
+    });
+    offlineIdentityCandidate = null;
+  } catch {
+    // A identidade anterior permanece protegida; uma falha de cache nao encerra a sessao online.
+  }
 }
 
 function serverOnline() {
@@ -285,7 +330,7 @@ function normalizarCaminhoServidor(filePath) {
   };
 }
 
-function createWindow() {
+function createWindow(config) {
   const win = new BrowserWindow({
     width: modoAtual() === "producao" ? 1360 : 1440,
     height: 860,
@@ -322,6 +367,7 @@ function createWindow() {
     }
   });
   win.loadURL(`${BASE_URL}${destinoInicial()}`);
+  win.webContents.on("did-finish-load", () => cacheValidatedOfflineIdentity(win, config));
 }
 
 app.whenReady().then(async () => {
@@ -366,15 +412,22 @@ app.whenReady().then(async () => {
     notification.show();
     return true;
   });
+  ipcMain.handle("offline-identity:candidate", (_event, payload = {}) => {
+    const usuario = String(payload.usuario || "").slice(0, 80);
+    const senha = String(payload.senha || "").slice(0, 256);
+    offlineIdentityCandidate = usuario && senha ? { usuario, senha } : null;
+    return Boolean(offlineIdentityCandidate);
+  });
   const config = await ensureConfig();
   if (!config) {
     app.quit();
     return;
   }
+  installStationHeaders(config);
   if (!(await ensureDjango(config))) return;
-  createWindow();
+  createWindow(config);
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(config);
   });
 });
 

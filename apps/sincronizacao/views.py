@@ -4,7 +4,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.authentication import validar_senha_operador
@@ -68,10 +68,12 @@ def estacoes(request):
 def _autenticar_estacao(request):
     try:
         estacao_id = request.headers["X-Mheibos-Station-ID"]
-        esquema, segredo = request.headers["Authorization"].split(" ", 1)
+        segredo = request.headers.get("X-Mheibos-Station-Secret", "")
+        if not segredo:
+            esquema, segredo = request.headers["Authorization"].split(" ", 1)
+            if esquema != "Bearer":
+                return None
     except (KeyError, ValueError):
-        return None
-    if esquema != "Bearer":
         return None
     estacao = EstacaoCliente.objects.filter(pk=estacao_id, ativa=True).first()
     if estacao and estacao.verifica_segredo(segredo):
@@ -110,4 +112,34 @@ def incorporar(request):
             "identificador_offline": str(resultado.pedido.identificador_offline),
         },
         status=200 if resultado.repetida else 201,
+    )
+
+
+@csrf_exempt
+@require_GET
+def identidade_atual(request):
+    if settings.MHEIBOS_RUNTIME_ROLE != "central":
+        return JsonResponse({"codigo": "PAPEL_INVALIDO"}, status=409)
+    estacao = _autenticar_estacao(request)
+    if estacao is None:
+        return JsonResponse({"codigo": "ESTACAO_NAO_AUTORIZADA"}, status=401)
+    operador = operador_atual(request)
+    if operador is None:
+        return JsonResponse({"codigo": "SESSAO_NAO_AUTENTICADA"}, status=401)
+    return JsonResponse(
+        {
+            "codigo": "IDENTIDADE_VALIDADA",
+            "estacao_id": str(estacao.pk),
+            "operador": {
+                "nome": operador.nome,
+                "email": operador.email,
+                "papel": operador.papel,
+                "codigo_origem_offline": operador.codigo_origem_offline,
+            },
+            "permissoes": {
+                "pode_criar_pedido": operador.papel != "TEMPORARIO",
+                "pode_cancelar_pedido": operador.pode_cancelar_pedido,
+            },
+            "versao_politica": settings.MHEIBOS_POLICY_VERSION,
+        }
     )

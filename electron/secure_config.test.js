@@ -12,6 +12,7 @@ const original = {
   stationId: "estacao-1",
   stationSecret: "segredo-estacao",
   postgres: { password: "segredo-banco" },
+  offlineIdentity: JSON.stringify({ operador: "Ana", senha: "senha-offline" }),
 };
 const protectedConfig = protectConfigSecrets(original, safeStorage);
 const persisted = JSON.stringify(protectedConfig);
@@ -21,9 +22,14 @@ assert.strictEqual(protectedConfig.stationSecret, undefined);
 assert.strictEqual(protectedConfig.postgres.password, undefined);
 assert.ok(!persisted.includes("segredo-estacao"));
 assert.ok(!persisted.includes("segredo-banco"));
+assert.ok(!persisted.includes("senha-offline"));
 assert.strictEqual(
   decryptSecret(protectedConfig.stationSecretEncrypted, safeStorage),
   "segredo-estacao"
+);
+assert.strictEqual(
+  JSON.parse(decryptSecret(protectedConfig.offlineIdentityEncrypted, safeStorage)).senha,
+  "senha-offline"
 );
 assert.strictEqual(
   decryptSecret(protectedConfig.postgres.passwordEncrypted, safeStorage),

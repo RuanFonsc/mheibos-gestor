@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-008C.2 — armazenar a última identidade validada e suas permissões efetivas, habilitar autenticação offline somente nessa Estação e preparar a comutação Electron.
+IMP-008C.2b — inicializar no banco local somente a identidade protegida da Estação e habilitar login offline com política/permissão registrada.
 
 ## Histórico resumido
 
@@ -178,3 +178,14 @@ IMP-008C.2 — armazenar a última identidade validada e suas permissões efetiv
 - **Setup remoto:** Cliente exige UUID e segredo provisionados antes de abrir; a configuração persistida contém somente conteúdo cifrado pelo sistema operacional.
 - **Testes:** 21 testes Django do módulo, mais teste Node isolado que prova ausência dos dois segredos no JSON, recuperação autorizada e recusa sem cofre disponível.
 - **Fora desta fatia:** última identidade validada, cache autorizado, login offline e envio automático permanecem em IMP-008C.2/8D.
+
+### IMP-008C.2a — COMPLETED
+
+- **Capacidade:** capturar a candidata de login somente em memória, confirmar a identidade pela sessão central e guardar credencial + snapshot no cofre do Windows.
+- **Sem hash exportado:** a Central devolve apenas nome, papel, código de origem e permissões da própria sessão; senha e hash nunca aparecem no endpoint.
+- **Dupla prova:** snapshot exige sessão humana válida e segredo da Estação injetado pelo processo principal do Electron; o renderer não lê o segredo persistido.
+- **Confirmação:** o cache só substitui a identidade anterior quando o nome confirmado pela Central coincide com a candidata que acabou de autenticar.
+- **Falha segura:** login recusado, endpoint indisponível, nome divergente ou falha de cache preservam a última identidade válida e não encerram a operação online.
+- **Persistência:** senha digitada fica em memória até a confirmação e então integra o JSON de identidade cifrado por `safeStorage`; nunca é escrita legível.
+- **Testes:** endpoint prova ausência de senha/hash e recusa segredo de Estação incorreto; teste Node prova que a credencial offline não aparece no JSON persistido.
+- **Fora desta fatia:** materializar a identidade no banco SQLite local e autenticar offline pertencem a IMP-008C.2b.

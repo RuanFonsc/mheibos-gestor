@@ -1,5 +1,14 @@
 # Decisões da Implementação
 
+## DEC-IMP-013 — Cache offline após dupla confirmação, sem exportar hash
+
+- **Decisão:** a senha informada no login permanece apenas na memória do Cliente; após sessão central aceita e Estação autenticada, é cifrada localmente junto ao snapshot não secreto.
+- **Alternativa rejeitada:** transmitir o hash persistido do operador. Esse material seria reutilizável e ampliaria o impacto de interceptação ou vazamento do cache.
+- **Dupla confirmação:** sessão identifica a pessoa; segredo protegido identifica a Estação. Nenhuma das duas provas isolada atualiza a identidade offline.
+- **Escopo:** somente a última identidade validada é mantida; uma nova confirmação substitui conscientemente a anterior.
+- **Falha:** candidato inválido não apaga cache anterior; divergência de nome ou falha de rede mantém estado seguro.
+- **Situação:** definitiva para aquisição do cache; bootstrap e validação local usarão o conteúdo cifrado sem criar catálogo de múltiplas identidades.
+
 ## DEC-IMP-012 — Segredos locais sob proteção do sistema operacional
 
 - **Decisão:** credenciais persistentes do Cliente usam `safeStorage` do Electron/Windows; JSON local contém somente Base64 do conteúdo cifrado.

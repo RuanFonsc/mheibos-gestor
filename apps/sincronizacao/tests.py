@@ -399,6 +399,49 @@ class ProvisionamentoEstacaoTests(TestCase):
         self.assertNotIn(segredo, json.dumps(evento.valores_posteriores))
         self.assertNotIn(segredo, json.dumps(evento.metadados))
 
+    @override_settings(MHEIBOS_POLICY_VERSION="politica-cache")
+    def test_authenticated_session_and_station_receive_only_non_secret_snapshot(self):
+        operador = OperadorGestor.objects.create(
+            nome="Identidade Cache",
+            senha="segura",
+            papel=PapelOperador.USUARIO,
+            codigo_origem_offline="IC",
+        )
+        self.entrar(operador)
+        credencial = criar_estacao(nome="Cache 1")
+
+        response = self.client.get(
+            "/sincronizacao/identidade-atual/",
+            headers={
+                "X-Mheibos-Station-ID": str(credencial.estacao.pk),
+                "X-Mheibos-Station-Secret": credencial.segredo,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["operador"]["nome"], operador.nome)
+        self.assertEqual(payload["versao_politica"], "politica-cache")
+        self.assertNotIn("senha", json.dumps(payload).lower())
+        self.assertNotIn(operador.senha, json.dumps(payload))
+
+    def test_identity_snapshot_rejects_wrong_station_secret(self):
+        operador = OperadorGestor.objects.create(
+            nome="Identidade Negada", senha="segura", papel=PapelOperador.USUARIO
+        )
+        self.entrar(operador)
+        credencial = criar_estacao(nome="Cache Negado")
+
+        response = self.client.get(
+            "/sincronizacao/identidade-atual/",
+            headers={
+                "X-Mheibos-Station-ID": str(credencial.estacao.pk),
+                "X-Mheibos-Station-Secret": "incorreto",
+            },
+        )
+
+        self.assertEqual(response.status_code, 401)
+
 
 @override_settings(
     MHEIBOS_RUNTIME_ROLE="client_offline",

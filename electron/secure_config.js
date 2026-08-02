@@ -31,6 +31,13 @@ function protectConfigSecrets(config, safeStorage) {
     );
     delete protectedConfig.stationSecret;
   }
+  if (protectedConfig.offlineIdentity) {
+    protectedConfig.offlineIdentityEncrypted = encryptSecret(
+      protectedConfig.offlineIdentity,
+      safeStorage
+    );
+    delete protectedConfig.offlineIdentity;
+  }
   return protectedConfig;
 }
 
