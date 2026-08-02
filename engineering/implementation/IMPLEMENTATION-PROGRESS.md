@@ -304,3 +304,14 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Leitura:** pesquisa não altera estado e não gera evento de domínio, em conformidade com a regra de auditoria para consultas comuns.
 - **Testes:** 2 cenários percorrem os dez critérios de busca, metadados JSON e numéricos, evidência visual e exclusão de vínculo encerrado; baseline completo aprovado com 110 testes.
 - **Fora desta fatia:** indexação dedicada e ranking só serão introduzidos mediante evidência de volume/desempenho; a consulta atual preserva semântica idêntica em SQLite e PostgreSQL.
+
+### IMP-009F — COMPLETED
+
+- **Capacidade:** a verificação física extrai automaticamente largura, altura, proporção reduzida, formato, modo de cor, quantidade de quadros e DPI quando disponíveis em raster BMP/GIF/JFIF/JPEG/PNG/TIFF/WEBP.
+- **Limite seguro:** Pillow já era dependência oficial; o extrator abre somente extensões explicitamente suportadas e captura arquivo inválido, inacessível ou excessivo sem derrubar o fluxo.
+- **Discrepância:** arquivo que se declara raster mas não permite leitura técnica recebe `PROPRIEDADES_TECNICAS_INDISPONIVEIS`, explicação e o mesmo aceite consciente auditado do monitoramento.
+- **Compatibilidade:** CDR, AI, SVG e demais formatos não geram falso alerta; metadados existentes são preservados e a leitura raster registra apenas que não é aplicável.
+- **Persistência e auditoria:** a fotografia técnica participa da mesma transação e do evento `ArquivoOficialArteVerificado`, junto de integridade, tamanho e discrepâncias.
+- **Interface:** detalhe do Pedido exibe dimensões, proporção, DPI e formato; formatos não suportados recebem explicação não bloqueante.
+- **Testes:** 3 cenários novos cobrem raster real 1600×900/300 DPI, conteúdo raster inválido e preservação de metadados especializados em CDR; baseline completo aprovado com 113 testes.
+- **Fora desta fatia:** leitura nativa de CDR/AI/SVG exige extratores próprios e será adicionada apenas com dependência segura e contrato determinístico.

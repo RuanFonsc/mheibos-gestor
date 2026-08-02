@@ -225,3 +225,12 @@
 - **Portabilidade:** JSON é convertido para texto pela camada ORM e números técnicos usam igualdade tipada, mantendo o contrato entre SQLite e PostgreSQL.
 - **Alternativas rejeitadas:** pesquisa por IA; índice externo prematuro; pesquisa somente por nome; incluir vínculos encerrados como resultado operacional.
 - **Situação:** definitiva para semântica; estratégia de indexação permanece evolutiva.
+
+## DEC-IMP-024 — Extração técnica é incremental por formato
+
+- **Decisão:** executar leitura automática somente para extensões raster suportadas pela dependência Pillow já instalada; formatos sem extrator permanecem válidos e preservam seus metadados anteriores.
+- **Motivo:** RFC-0014 exige propriedades “quando possível”, sem autorizar dependências inseguras, interpretação aproximada ou bloqueio de CDR/AI/SVG.
+- **Discrepância:** falha em extensão declaradamente suportada é evidência de inconsistência técnica; formato ainda não suportado é capacidade ausente, não erro do arquivo.
+- **Persistência:** propriedades específicas ficam sob `propriedades_tecnicas.leitura_raster`; dimensões e DPI também ocupam campos tipados para consulta.
+- **Alternativas rejeitadas:** tentar abrir todo arquivo; apagar metadados de extrator anterior; tratar formato não suportado como alerta; usar IA para inferir dimensões.
+- **Situação:** definitiva para política incremental; conjunto de extratores pode crescer.

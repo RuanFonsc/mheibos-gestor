@@ -69,6 +69,16 @@
               </div>
               <p class="mt-1 break-all text-xs text-[var(--text-secondary)]">{{ arquivo.caminho_oficial }}</p>
               <p class="mt-1 text-xs text-[var(--text-secondary)]">{{ arquivo.get_origem_display }}{% if arquivo.criado_por %} · {{ arquivo.criado_por.nome }}{% endif %}</p>
+              {% if arquivo.largura_px and arquivo.altura_px %}
+                <p class="mt-2 text-xs text-[var(--text-secondary)]">
+                  {{ arquivo.largura_px }} × {{ arquivo.altura_px }} px
+                  {% if arquivo.propriedades_tecnicas.leitura_raster.proporcao %} · proporção {{ arquivo.propriedades_tecnicas.leitura_raster.proporcao }}{% endif %}
+                  {% if arquivo.resolucao_dpi %} · {{ arquivo.resolucao_dpi }} DPI{% endif %}
+                  {% if arquivo.propriedades_tecnicas.leitura_raster.formato %} · {{ arquivo.propriedades_tecnicas.leitura_raster.formato }}{% endif %}
+                </p>
+              {% elif arquivo.propriedades_tecnicas.leitura_raster and not arquivo.propriedades_tecnicas.leitura_raster.suportado %}
+                <p class="mt-2 text-xs text-[var(--text-secondary)]">Leitura raster automática indisponível para esta extensão; vínculo permanece operacional.</p>
+              {% endif %}
               {% if arquivo.discrepancias %}
                 <div class="mt-3 rounded-md border border-[#ffb347] bg-[#ffb347]/10 p-3 text-sm">
                   {% for discrepancia in arquivo.discrepancias %}<p>{{ discrepancia.mensagem }}</p>{% endfor %}

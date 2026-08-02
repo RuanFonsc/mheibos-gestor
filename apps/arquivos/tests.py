@@ -1,9 +1,12 @@
 from decimal import Decimal
+from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.db import models
 from django.test import TestCase
+from PIL import Image, UnidentifiedImageError
 
 from apps.arquivos.models import ArquivoOficialArte
 from apps.arquivos.services import (
@@ -148,6 +151,66 @@ class ArquivoOficialArteTests(TestCase):
         self.assertEqual(arquivo.tamanho_bytes, 321)
         self.assertEqual(arquivo.discrepancias, [])
         self.assertTrue(EventoOperacional.objects.filter(tipo="ArquivoOficialArteVerificado").exists())
+
+    def test_verificacao_extrai_dimensoes_proporcao_formato_e_dpi(self):
+        with tempfile.TemporaryDirectory() as diretorio:
+            caminho = Path(diretorio) / "arte-raster.png"
+            Image.new("RGB", (1600, 900), color="white").save(caminho, dpi=(300, 300))
+            arquivo = vincular_arquivo_oficial(
+                pedido=self.pedido,
+                caminho=str(caminho),
+                operador=self.operador,
+            )
+            verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+            arquivo.refresh_from_db()
+            self.assertEqual(arquivo.estado_integridade, "INTEGRO")
+            self.assertEqual((arquivo.largura_px, arquivo.altura_px), (1600, 900))
+            self.assertEqual(arquivo.resolucao_dpi, Decimal("300.00"))
+            self.assertEqual(
+                arquivo.propriedades_tecnicas["leitura_raster"]["proporcao"],
+                "16:9",
+            )
+            self.assertEqual(
+                arquivo.propriedades_tecnicas["leitura_raster"]["formato"],
+                "PNG",
+            )
+            self.entrar()
+            response = self.client.get(f"/pedidos/{self.pedido.pk}/")
+            self.assertContains(response, "1600 × 900 px")
+            self.assertContains(response, "16:9")
+
+    @patch("apps.arquivos.services.os.stat", return_value=SimpleNamespace(st_size=12))
+    @patch("apps.arquivos.metadados.Image.open", side_effect=UnidentifiedImageError)
+    def test_raster_invalido_gera_discrepancia_sem_quebrar_verificacao(self, _open, _stat):
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido,
+            caminho=r"C:\Artes\conteudo-invalido.png",
+            operador=self.operador,
+        )
+        verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+        arquivo.refresh_from_db()
+        self.assertEqual(arquivo.estado_integridade, "ALERTA")
+        self.assertEqual(
+            arquivo.discrepancias[0]["codigo"],
+            "PROPRIEDADES_TECNICAS_INDISPONIVEIS",
+        )
+
+    @patch("apps.arquivos.services.os.stat", return_value=SimpleNamespace(st_size=321))
+    def test_formato_nao_suportado_preserva_metadados_existentes(self, _stat):
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido,
+            caminho=r"C:\Artes\oficial.cdr",
+            operador=self.operador,
+        )
+        arquivo.largura_px = 900
+        arquivo.altura_px = 600
+        arquivo.propriedades_tecnicas = {"origem": "leitura_especializada"}
+        arquivo.save()
+        verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+        arquivo.refresh_from_db()
+        self.assertEqual((arquivo.largura_px, arquivo.altura_px), (900, 600))
+        self.assertEqual(arquivo.propriedades_tecnicas["origem"], "leitura_especializada")
+        self.assertFalse(arquivo.propriedades_tecnicas["leitura_raster"]["suportado"])
 
     @patch("apps.arquivos.services.os.stat", side_effect=FileNotFoundError)
     def test_arquivo_ausente_exige_eu_entendi_auditado(self, _stat):

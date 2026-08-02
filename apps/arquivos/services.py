@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from apps.auditoria.services import registrar_evento
 
+from .metadados import extrair_metadados_graficos
 from .models import ArquivoOficialArte, EstadoIntegridadeArquivo, OrigemArquivoOficial
 
 
@@ -83,6 +84,10 @@ def validar_alteracao_tema(*, pedido, novo_tema: str) -> None:
 def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> ArquivoOficialArte:
     discrepancias = []
     tamanho = None
+    largura_px = arquivo.largura_px
+    altura_px = arquivo.altura_px
+    resolucao_dpi = arquivo.resolucao_dpi
+    propriedades_tecnicas = dict(arquivo.propriedades_tecnicas or {})
     try:
         dados = os.stat(arquivo.caminho_oficial)
     except (FileNotFoundError, NotADirectoryError):
@@ -93,20 +98,35 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
         tamanho = dados.st_size
         if os.path.basename(arquivo.caminho_oficial).casefold() != arquivo.nome_oficial.casefold():
             discrepancias.append({"codigo": "NOME_DIVERGENTE", "mensagem": "O nome encontrado diverge da identidade oficial."})
+        leitura = extrair_metadados_graficos(
+            arquivo.caminho_oficial,
+            arquivo.extensao,
+        )
+        propriedades_tecnicas["leitura_raster"] = leitura.propriedades
+        if leitura.aplicavel and leitura.discrepancia is None:
+            largura_px = leitura.largura_px
+            altura_px = leitura.altura_px
+            resolucao_dpi = leitura.resolucao_dpi
+        if leitura.discrepancia:
+            discrepancias.append(leitura.discrepancia)
 
     estado_anterior = arquivo.estado_integridade
     arquivo.estado_integridade = EstadoIntegridadeArquivo.ALERTA if discrepancias else EstadoIntegridadeArquivo.INTEGRO
     arquivo.discrepancias = discrepancias
     arquivo.tamanho_bytes = tamanho
+    arquivo.largura_px = largura_px
+    arquivo.altura_px = altura_px
+    arquivo.resolucao_dpi = resolucao_dpi
+    arquivo.propriedades_tecnicas = propriedades_tecnicas
     arquivo.verificado_em = timezone.now()
     arquivo.alerta_reconhecido_em = None
     arquivo.alerta_reconhecido_por = None
-    arquivo.save(update_fields=["estado_integridade", "discrepancias", "tamanho_bytes", "verificado_em", "alerta_reconhecido_em", "alerta_reconhecido_por", "atualizado_em"])
+    arquivo.save(update_fields=["estado_integridade", "discrepancias", "tamanho_bytes", "largura_px", "altura_px", "resolucao_dpi", "propriedades_tecnicas", "verificado_em", "alerta_reconhecido_em", "alerta_reconhecido_por", "atualizado_em"])
     registrar_evento(
         tipo="ArquivoOficialArteVerificado", operador=operador, origem="gestor_web",
         alvo_tipo="ArquivoOficialArte", alvo_id=str(arquivo.pk), acao="verificar_integridade_arquivo",
         valores_anteriores={"estado_integridade": estado_anterior},
-        valores_posteriores={"estado_integridade": arquivo.estado_integridade, "discrepancias": discrepancias, "tamanho_bytes": tamanho},
+        valores_posteriores={"estado_integridade": arquivo.estado_integridade, "discrepancias": discrepancias, "tamanho_bytes": tamanho, "largura_px": largura_px, "altura_px": altura_px, "resolucao_dpi": str(resolucao_dpi) if resolucao_dpi else None, "propriedades_tecnicas": propriedades_tecnicas},
     )
     return arquivo
 
