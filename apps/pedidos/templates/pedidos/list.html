@@ -13,7 +13,7 @@
     <div>
       <span class="kicker"><i data-lucide="kanban-square" class="h-4 w-4"></i> Pedidos</span>
       <h2 class="section-title">Fila de atendimento</h2>
-      <p>Acompanhe pedidos por status, categoria, prazo e arte anexada.</p>
+      <p>Acompanhe pedidos por status, categoria, prazo e arte de referência.</p>
     </div>
     <div class="page-actions">
       <a href="{% url 'pedido_create' %}" class="btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Novo pedido</a>
@@ -100,7 +100,7 @@
       <div class="mt-4 grid gap-3 border-t border-[#2d3154] pt-4 text-sm text-[#8892b0]">
         <div class="flex min-w-0 items-center gap-3">
           <div class="flex h-16 w-20 flex-none items-center justify-center overflow-hidden rounded-lg border border-[#2d3154] bg-[#10131f]">
-            {% with arte=pedido.artes.first %}
+            {% with arte=pedido.artes_ativas.first %}
               {% if arte %}
                 <img src="{{ arte.arquivo.url }}" alt="{{ arte.nome_original }}" class="h-full w-full object-contain">
               {% else %}
@@ -110,7 +110,7 @@
           </div>
           <div class="flex min-w-0 flex-wrap gap-3">
             <span>{{ pedido.itens.count }} item(ns)</span>
-            <span>{{ pedido.artes.count }} arte(s)</span>
+            <span>{{ pedido.artes_ativas.count }} referência(s)</span>
             <span>Comercial: {{ pedido.projecao.comercial }}</span>
             <span>Financeiro: {{ pedido.projecao.financeiro }}</span>
           </div>

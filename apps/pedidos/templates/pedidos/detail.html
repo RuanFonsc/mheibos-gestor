@@ -146,17 +146,17 @@
 
       <div class="card p-5">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="font-semibold">Artes</h2>
-          <a href="{% url 'pedido_edit' pedido.pk %}" class="text-sm text-[#00e5ff]">Editar artes</a>
+          <h2 class="font-semibold">Artes de referência</h2>
+          <a href="{% url 'pedido_edit' pedido.pk %}" class="text-sm text-[#00e5ff]">Editar referências</a>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {% for arte in pedido.artes.all %}
+          {% for arte in pedido.artes_ativas %}
             <a href="{{ arte.arquivo.url }}" target="_blank" class="overflow-hidden rounded-lg border border-[#2d3154] bg-[#171a29]">
               <img src="{{ arte.arquivo.url }}" alt="{{ arte.nome_original }}" class="h-44 w-full object-contain">
               <div class="truncate px-3 py-2 text-xs text-[var(--text-secondary)]">{{ arte.nome_original }}</div>
             </a>
           {% empty %}
-            <p class="text-sm text-[var(--text-secondary)]">Nenhuma arte anexada.</p>
+            <p class="text-sm text-[var(--text-secondary)]">Nenhuma arte de referência anexada.</p>
           {% endfor %}
         </div>
       </div>

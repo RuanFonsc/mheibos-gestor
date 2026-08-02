@@ -108,7 +108,7 @@ class PedidoEditForm(forms.Form):
         widget=forms.TextInput(attrs={"list": "usuarios-list", "autocomplete": "off"}),
     )
     artes = MultipleFileField(
-        label="Adicionar artes",
+        label="Adicionar artes de referência",
         required=False,
         widget=MultipleFileInput(attrs={
             "multiple": True,

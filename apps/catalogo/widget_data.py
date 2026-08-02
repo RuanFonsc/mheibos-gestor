@@ -85,7 +85,7 @@ def _calcular_quotas(grupos, categorias):
 
 
 def _serializar_pedido(pedido, categoria, tipo):
-    arte = pedido.artes.first()
+    arte = pedido.artes_ativas.first()
     return {
         "id": pedido.pk,
         "legado_id": pedido.legado_id,

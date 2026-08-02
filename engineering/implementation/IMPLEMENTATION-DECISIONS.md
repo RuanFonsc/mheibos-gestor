@@ -197,3 +197,12 @@
 - **Revalidação:** toda verificação substitui a fotografia anterior e limpa o reconhecimento, impedindo que um aceite antigo cubra uma discrepância nova.
 - **Limite:** a leitura inicial cobre propriedades universais do sistema de arquivos; propriedades gráficas específicas serão adicionadas somente com extratores determinísticos por formato.
 - **Situação:** definitiva.
+
+## DEC-IMP-021 — Arte de referência encerra vínculo sem apagar o arquivo
+
+- **Decisão:** adaptar temporariamente `ArtePedido` como representação explícita da arte de referência da Ordem de Produção e trocar exclusão por desvinculação auditada.
+- **Motivo:** a RFC-0014 distingue referência visual de arquivo oficial; a implementação legada misturava linguagem e apagava fisicamente a imagem ao remover ou excluir o Pedido.
+- **Histórico:** vínculos encerrados ficam fora das projeções operacionais, mas preservam arquivo, metadados, hash, autoria e eventos; a proteção do Pedido impede cascata destrutiva.
+- **Compatibilidade:** o nome técnico legado permanece até migração própria; `Pedido.artes_ativas` torna a intenção explícita nos consumidores.
+- **Alternativas rejeitadas:** renomear tabela/modelo na mesma fatia; apagar o arquivo físico; reutilizar `ArquivoOficialArte`; ocultar vínculos encerrados por gerenciador implícito.
+- **Situação:** definitiva para o ciclo de vida; nomenclatura física ainda temporária.

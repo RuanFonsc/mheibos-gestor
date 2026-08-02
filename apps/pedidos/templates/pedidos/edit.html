@@ -76,16 +76,16 @@
   </div>
 
   <div class="section-line"></div>
-  <span class="field-label">Artes</span>
+  <span class="field-label">Artes de referência</span>
   <div class="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    {% for arte in pedido.artes.all %}
+    {% for arte in pedido.artes_ativas %}
       <div class="relative overflow-hidden rounded-lg border border-[#2d3154] bg-[#171a29]">
         <img src="{{ arte.arquivo.url }}" alt="{{ arte.nome_original }}" class="h-36 w-full object-contain">
         <div class="truncate px-3 py-2 text-xs text-[#8892b0]">{{ arte.nome_original }}</div>
         <button form="formRemoverArte{{ arte.pk }}" type="submit" class="absolute right-2 top-2 rounded bg-[#ff4b4b] px-2 py-1 text-xs text-white">Remover</button>
       </div>
     {% empty %}
-      <p class="text-sm text-[#8892b0]">Nenhuma arte anexada.</p>
+      <p class="text-sm text-[#8892b0]">Nenhuma arte de referência anexada.</p>
     {% endfor %}
   </div>
   <div class="mb-3">
@@ -109,7 +109,7 @@
       <p id="arteHint" class="pointer-events-none text-center">Arraste novas imagens aqui (PNG, JPG, WEBP, JFIF) ou use os botoes acima</p>
       <div id="artePreview" class="flex w-full flex-wrap gap-2"></div>
     </div>
-    <p class="mt-1 text-xs text-[#8892b0]">Selecione novas imagens para adicionar às artes existentes.</p>
+    <p class="mt-1 text-xs text-[#8892b0]">Estas imagens servem somente como referência visual na Ordem de Produção e não são sincronizadas com o arquivo oficial.</p>
   </div>
 
   <div class="section-line"></div>
@@ -135,7 +135,7 @@
   </div>
 </form>
 
-{% for arte in pedido.artes.all %}
+{% for arte in pedido.artes_ativas %}
   <form id="formRemoverArte{{ arte.pk }}" method="post" class="hidden">
     {% csrf_token %}
     <input type="hidden" name="acao" value="remover_arte">

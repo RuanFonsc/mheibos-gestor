@@ -20,6 +20,11 @@ from apps.arquivos.services import (
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
 )
+from apps.arquivos.referencias import (
+    ArteReferenciaInvalida,
+    adicionar_arte_referencia,
+    desvincular_arte_referencia,
+)
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
@@ -27,7 +32,6 @@ from apps.clientes.models import Cliente, StatusCadastroCliente
 from apps.financeiro.services import sincronizar_financeiro_pedido
 from apps.pedidos.forms import PedidoCreateForm, PedidoEditForm, PedidoStatusForm
 from apps.pedidos.models import (
-    ArtePedido,
     PagamentoPedido,
     Pedido,
     PedidoItem,
@@ -191,7 +195,7 @@ def pedido_ordem_servico(request, pk):
     )
     perfil_empresa, _ = PerfilEmpresa.objects.get_or_create(chave="global")
     campos = normalizar_campos_os(perfil_empresa.os_campos)
-    artes = list(pedido.artes.all().order_by("ordem", "id"))
+    artes = list(pedido.artes_ativas.order_by("ordem", "id"))
     arte = artes[0] if artes else None
     itens = list(pedido.itens.all())
     descricao = pedido.descricao_legada or " | ".join(str(item) for item in itens)
@@ -250,10 +254,16 @@ def pedido_edit(request, pk):
             if not operador.is_admin:
                 messages.error(request, "Seu perfil não tem permissão para excluir informações do pedido.")
                 return redirect("pedido_edit", pk=pedido.pk)
-            arte = get_object_or_404(ArtePedido, pk=request.POST.get("arte_id"), pedido=pedido)
-            arte.arquivo.delete(save=False)
-            arte.delete()
-            messages.success(request, "Arte removida.")
+            try:
+                desvincular_arte_referencia(
+                    arte_id=request.POST.get("arte_id"),
+                    pedido=pedido,
+                    operador=operador,
+                )
+            except ArteReferenciaInvalida as exc:
+                messages.error(request, str(exc))
+            else:
+                messages.success(request, "Vinculo da arte de referencia removido; arquivo fisico preservado.")
             return redirect("pedido_edit", pk=pedido.pk)
 
         form = PedidoEditForm(request.POST, request.FILES)
@@ -355,11 +365,8 @@ def pedido_bulk_action(request):
         excluidos = 0
         protegidos = 0
         for pedido in pedidos:
-            arquivos_arte = [arte.arquivo for arte in pedido.artes.all()]
             try:
                 pedido.delete()
-                for arquivo in arquivos_arte:
-                    arquivo.delete(save=False)
                 excluidos += 1
             except ProtectedError:
                 protegidos += 1
@@ -650,11 +657,10 @@ def _criar_pedido(form, arquivos, operador, *, origem_offline=False):
     _sincronizar_pagamento_informado(pedido, dados["valor_pago"], dados["forma_pagamento"], dados["data_pedido"])
 
     for ordem, arquivo in enumerate(arquivos):
-        ArtePedido.objects.create(
+        adicionar_arte_referencia(
             pedido=pedido,
-            arquivo=arquivo,
-            nome_original=arquivo.name,
-            tamanho_bytes=arquivo.size,
+            upload=arquivo,
+            operador=operador,
             ordem=ordem,
         )
 
@@ -759,11 +765,10 @@ def _atualizar_pedido(pedido, form, arquivos, operador):
 
     ordem_base = pedido.artes.count()
     for offset, arquivo in enumerate(arquivos):
-        ArtePedido.objects.create(
+        adicionar_arte_referencia(
             pedido=pedido,
-            arquivo=arquivo,
-            nome_original=arquivo.name,
-            tamanho_bytes=arquivo.size,
+            upload=arquivo,
+            operador=operador,
             ordem=ordem_base + offset,
         )
 

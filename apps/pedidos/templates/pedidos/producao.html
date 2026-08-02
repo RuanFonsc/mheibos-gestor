@@ -91,7 +91,7 @@
 
               <div class="mt-4 grid gap-3 md:grid-cols-[96px_1fr]">
                 <div class="rounded-lg border border-[#2d3154] bg-[#10131f] p-2">
-                  {% with arte=pedido.artes.first %}
+                  {% with arte=pedido.artes_ativas.first %}
                     {% if arte %}
                       <img src="{{ arte.arquivo.url }}" alt="{{ arte.nome_original }}" class="h-20 w-full object-contain">
                     {% else %}

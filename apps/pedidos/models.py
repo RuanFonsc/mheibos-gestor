@@ -241,6 +241,10 @@ class Pedido(models.Model):
     def __str__(self):
         return f"Pedido #{self.pk} - {self.cliente}"
 
+    @property
+    def artes_ativas(self):
+        return self.artes.filter(desvinculado_em__isnull=True)
+
 
 class PedidoItem(models.Model):
     pedido = models.ForeignKey(Pedido, related_name="itens", on_delete=models.CASCADE)
@@ -287,19 +291,41 @@ def arte_upload_to(instance, filename):
 
 
 class ArtePedido(models.Model):
-    pedido = models.ForeignKey(Pedido, related_name="artes", on_delete=models.CASCADE)
+    pedido = models.ForeignKey(Pedido, related_name="artes", on_delete=models.PROTECT)
     arquivo = models.ImageField(upload_to=arte_upload_to)
     nome_original = models.CharField(max_length=255, blank=True)
     tamanho_bytes = models.PositiveBigIntegerField(default=0)
     ordem = models.PositiveIntegerField(default=0)
     legado_base64_hash = models.CharField(max_length=64, blank=True)
+    conteudo_sha256 = models.CharField(max_length=64, blank=True)
+    criado_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="artes_referencia_adicionadas",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
+    desvinculado_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="artes_referencia_desvinculadas",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    desvinculado_em = models.DateTimeField(null=True, blank=True)
+
+    objects = models.Manager()
+    todos_vinculos = models.Manager()
 
     class Meta:
         ordering = ["pedido_id", "ordem", "id"]
 
     def __str__(self):
         return self.nome_original or self.arquivo.name
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("A arte de referencia deve ser desvinculada, nunca apagada.")
 
 
 class StatusPagamento(models.TextChoices):

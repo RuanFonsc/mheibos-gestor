@@ -11,7 +11,18 @@ class PedidoItemInline(admin.TabularInline):
 class ArtePedidoInline(admin.TabularInline):
     model = ArtePedido
     extra = 0
-    readonly_fields = ("tamanho_bytes", "legado_base64_hash", "criado_em")
+    can_delete = False
+    readonly_fields = (
+        "arquivo",
+        "nome_original",
+        "tamanho_bytes",
+        "legado_base64_hash",
+        "conteudo_sha256",
+        "criado_por",
+        "criado_em",
+        "desvinculado_por",
+        "desvinculado_em",
+    )
 
 
 class PagamentoPedidoInline(admin.TabularInline):

@@ -270,3 +270,15 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Auditoria:** verificação e reconhecimento são transacionais e geram eventos próprios com estado anterior e posterior.
 - **Testes:** 3 cenários novos cobrem arquivo íntegro, arquivo ausente, persistência do alerta, interface, reconhecimento e auditoria; suíte completa com 97 testes aprovada.
 - **Fora desta fatia:** dimensões, proporção e resolução dependem de leitores técnicos por formato; criação automática depende das preferências normativas de programa, extensão e raiz física.
+
+### IMP-009C — COMPLETED
+
+- **Capacidade:** o upload legado `ArtePedido` passa a representar explicitamente a arte de referência visual usada na Ordem de Produção, separada do arquivo oficial e sem sincronização automática.
+- **Ciclo de vida:** remover encerra apenas o vínculo; o registro, hash, nome, tamanho e arquivo físico permanecem preservados. Consultas operacionais usam `Pedido.artes_ativas`, enquanto o histórico continua disponível.
+- **Integridade histórica:** `Pedido` passa a ser protegido contra exclusão enquanto qualquer vínculo de referência existir, inclusive encerrado.
+- **Autoria e auditoria:** inclusão e desvinculação passam por serviços transacionais e geram `ArteReferenciaVinculada` e `ArteReferenciaDesvinculada`; falha de auditoria reverte o registro e remove somente a cópia órfã que ainda não chegou a constituir vínculo.
+- **Migração:** vínculos legados recebem autoria e hash novos nulos, sem inferência; permanecem ativos até ação humana explícita.
+- **Compatibilidade temporária:** o nome físico `ArtePedido` é mantido para evitar migração destrutiva; dono `apps/pedidos`, remoção após consumidores, importador legado e dados históricos migrarem para nome de domínio próprio.
+- **Interface:** criação, edição, detalhe e listas passam a chamar o conteúdo de “arte de referência” e explicam que ele não substitui o arquivo oficial.
+- **Testes:** 5 cenários novos cobrem autoria/hash/evento, autorização no serviço, preservação física e histórica, proteção do Pedido, rollback de auditoria e rota administrativa de desvinculação; baseline completo aprovado com 102 testes.
+- **Fora desta fatia:** anexos gerais e sua decisão de duplicidade são entidade e fluxo separados; não foram fundidos à referência visual.
