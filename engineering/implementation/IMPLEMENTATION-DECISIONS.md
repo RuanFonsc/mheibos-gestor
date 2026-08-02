@@ -266,3 +266,14 @@
 - **Offline:** a primeira versão é somente consulta; o middleware existente recusa a mutação global sem criar exceção para Missões.
 - **IA:** a origem `IA_ACEITA` reserva vocabulário normativo, mas não cria missão automaticamente nem participa desta fatia.
 - **Situação:** definitiva para a fundação; colaboração e ciclo de vida evoluem por serviços transacionais próprios.
+
+## DEC-IMP-028 — Estado da missão muda por autoridade explícita e preserva obrigações
+
+- **Decisão:** no ciclo individual voluntário, somente o responsável principal inicia, pausa, retoma, bloqueia e conclui; administrador não recebe autoridade apenas por conseguir consultar.
+- **Motivo:** RFC-0010 separa líder/autoridade de permissões administrativas globais e exige menor exposição e autoridade formal.
+- **Transições:** `PLANEJADA → ATIVA`; `ATIVA → PAUSADA`; `PAUSADA → ATIVA`; `ATIVA|PAUSADA → BLOQUEADA`; `BLOQUEADA → ATIVA`; `ATIVA|EM_REVISAO → CONCLUIDA`. Estado final não reabre nesta fatia.
+- **Idempotência:** cada transição relê e bloqueia a missão na transação; repetir comando que já alcançou seu estado-alvo retorna a mesma missão sem novo evento, e demais transições incompatíveis são recusadas.
+- **Bloqueio:** a fotografia atual é estruturada nos cinco elementos normativos; ao retomar, os campos correntes são limpos, mas o evento imutável preserva a evidência.
+- **Conclusão:** texto livre não é destino formal de obrigação. Enquanto tarefas ou pendências remanescentes não puderem ser concluídas, canceladas com autoridade, transferidas ou incorporadas, a missão não deve concluir.
+- **Revisão:** `EM_REVISAO` permanece no vocabulário, porém sua entrada aguarda participante aprovador ou autoridade identificável; não criar revisão sem destinatário.
+- **Situação:** definitiva para missão individual; missões atribuídas e coletivas terão matriz de autoridade própria.

@@ -346,3 +346,15 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Auditoria:** `MissaoCriada` participa da mesma transação; falha do evento reverte a missão.
 - **Testes:** 5 cenários cobrem contrato mínimo, identidade, persistência, auditoria/rollback, privacidade, interface e isolamento offline.
 - **Fora desta fatia:** missão atribuída, participantes, aceite, tarefas, referências, transições, chat, notas e decisões serão adicionados em fatias próprias.
+
+### IMP-010B — COMPLETED
+
+- **Capacidade:** missão individual planejada pode ser iniciada, pausada, retomada, bloqueada e concluída por serviços transacionais com transições explícitas.
+- **Autoridade:** somente o responsável altera a missão voluntária; visibilidade administrativa não concede poder implícito sobre o workspace de outra pessoa.
+- **Pausa e retomada:** instante e tempo acumulado de pausa são persistidos; atualização de retomada e duração entram no evento sem apagar contexto.
+- **Bloqueio:** motivo, dependência, impacto, ajuda necessária e urgência são obrigatórios; a retomada limpa a fotografia atual, enquanto o evento preserva o histórico.
+- **Conclusão:** exige resultado alcançado e confirmação do responsável. Obrigação remanescente não pode ser enterrada em texto livre; até existir destino formal, a missão permanece aberta.
+- **Auditoria e falha segura:** início, pausa, retomada, bloqueio e conclusão bloqueiam concorrentemente o registro e geram eventos na mesma transação; repetição do mesmo comando não duplica evento e falha de auditoria reverte o estado.
+- **Offline:** consulta continua permitida, mas todas as transições globais permanecem bloqueadas no Cliente offline.
+- **Testes:** 7 cenários novos cobrem ciclo completo, contexto de bloqueio, autoridade, transição inválida, obrigação remanescente, idempotência, concorrência transacional, rollback, interface e offline; baseline completo aprovado com 130 testes.
+- **Fora desta fatia:** `EM_REVISAO` depende de participante/aprovador ou autoridade identificável; tarefas, referências e destinação formal de pendências entram nos próximos ciclos.
