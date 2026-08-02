@@ -472,6 +472,16 @@ def configuracoes(request):
                 return redirect("configuracoes")
             else:
                 messages.error(request, "Nao foi possivel salvar seu perfil. Confira os campos.")
+        if acao == "salvar_preferencias_perfil":
+            from apps.catalogo.ui_prefs import PROGRAMAS_ARTE
+
+            programa_arte = request.POST.get("programa_arte", "")
+            if programa_arte not in PROGRAMAS_ARTE:
+                messages.error(request, "Selecione um programa de arte valido.")
+            else:
+                salvar_preferencias({"programa_arte": programa_arte}, operador=operador, request=request)
+                messages.success(request, "Preferencias do perfil salvas.")
+            return redirect(f"{reverse('configuracoes')}?aba=usuarios#preferencias-usuario")
         if acao == "trocar_senha":
             senha_form = OperadorSenhaForm(request.POST, prefix="senha")
             if senha_form.is_valid():
@@ -495,8 +505,8 @@ def configuracoes(request):
             if not senha_operador_valida(operador, senha_admin):
                 messages.error(request, "Senha do administrador incorreta. Informe sua senha para salvar usuarios.")
                 if operador_id:
-                    return redirect(f"{reverse('configuracoes')}?aba=usuarios&operador_id={operador_id}")
-                return redirect(f"{reverse('configuracoes')}?aba=usuarios")
+                    return redirect(f"{reverse('configuracoes')}?aba=usuarios_config&operador_id={operador_id}")
+                return redirect(f"{reverse('configuracoes')}?aba=usuarios_config")
             instance = OperadorGestor.objects.filter(pk=operador_id).first() if operador_id else None
             operador_form = OperadorGestorForm(request.POST, request.FILES, prefix="operador", instance=instance)
             if operador_form.is_valid():
@@ -504,7 +514,7 @@ def configuracoes(request):
                 messages.success(request, f"Usuário {usuario.nome} salvo.")
             else:
                 messages.error(request, "Não foi possível salvar o usuário. Confira os campos.")
-            return redirect("configuracoes")
+            return redirect(f"{reverse('configuracoes')}?aba=usuarios_config")
         if acao == "salvar_categoria_usuario":
             if not operador.is_admin_geral:
                 messages.error(request, "Somente administradores gerais configuram categorias de usuarios.")
@@ -641,6 +651,7 @@ def configuracoes(request):
         "pode_gerenciar_usuarios_geral": operador.is_admin_geral,
         "operador_editando": operador_editando,
         "preferencias": carregar_preferencias(operador=operador, request=request),
+        "programas_arte": __import__("apps.catalogo.ui_prefs", fromlist=["PROGRAMAS_ARTE"]).PROGRAMAS_ARTE,
         "db": db,
         "legacy_db": legacy_db,
         "zoom_opcoes": [85, 90, 95, 100, 110, 125, 150, 175],

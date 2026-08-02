@@ -17,6 +17,7 @@ from apps.arquivos.services import (
     ArquivoOficialInvalido,
     EncerramentoArquivoInvalido,
     TemaPedidoImutavel,
+    criar_arquivo_oficial,
     encerrar_vinculo_arquivo_oficial,
     reconhecer_alerta_arquivo,
     validar_alteracao_tema,
@@ -37,6 +38,7 @@ from apps.arquivos.models import AnexoPedido
 from apps.arquivos.models import ArquivoOficialArte, EstadoVinculoArquivo
 from apps.arquivos.pesquisa import pesquisar_pedidos_por_artes
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
+from apps.catalogo.ui_prefs import PROGRAMAS_ARTE, carregar_preferencias
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
 from apps.clientes.models import Cliente, StatusCadastroCliente
@@ -184,6 +186,7 @@ def pedido_detail(request, pk):
     )
     pedido.projecao = projetar_pedido(pedido)
     operador = operador_atual(request)
+    preferencias = carregar_preferencias(operador=operador, request=request)
     return render(
         request,
         "pedidos/detail.html",
@@ -195,6 +198,8 @@ def pedido_detail(request, pk):
             "pode_desvincular_anexo": operador.is_admin,
             "pode_encerrar_arquivo_oficial": operador.is_admin,
             "arquivos_oficiais": pedido.arquivos_oficiais_arte.all(),
+            "programas_arte": PROGRAMAS_ARTE,
+            "programa_arte_padrao": preferencias["programa_arte"],
             "anexos_ativos": pedido.anexos.filter(desvinculado_em__isnull=True),
             "status_form": PedidoStatusForm(initial={"status": pedido.status}),
             "categorias_tabs": CategoriaServico.objects.filter(ativa=True),
@@ -494,6 +499,27 @@ def pedido_vincular_arquivo_oficial(request, pk):
         messages.error(request, str(exc))
     else:
         messages.success(request, "Arquivo oficial de arte vinculado.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_criar_arquivo_oficial(request, pk):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido.objects.select_related("cliente"), pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode criar arquivos para este Pedido.")
+        return redirect("pedido_detail", pk=pk)
+    try:
+        arquivo = criar_arquivo_oficial(
+            pedido=pedido,
+            programa=request.POST.get("programa_arte", ""),
+            operador=operador,
+        )
+    except ArquivoOficialInvalido as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, f"Arquivo oficial {arquivo.nome_oficial} criado vazio.")
     return redirect("pedido_detail", pk=pk)
 
 

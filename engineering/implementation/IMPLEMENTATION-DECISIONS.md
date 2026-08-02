@@ -315,3 +315,19 @@
 - **Separação:** referência visual não cria, converte, renomeia, move, substitui nem atualiza arquivo oficial de arte; também não herda automaticamente nome, caminho, formato ou integridade do arquivo oficial.
 - **Arquivo oficial:** criação automática por programa gráfico, preferência de formato, nome oficial e estrutura Ano/Mês/Dia permanece fluxo próprio da RFC-0014 e da lacuna registrada no IMP-009.
 - **Interface:** a Preparação de arte apresenta ações separadas para editar referências visuais e consultar/vincular arquivos oficiais, sem sugerir promoção automática entre os dois conceitos.
+
+## DEC-IMP-033 — Ciclo operacional da arte oficial e preferências
+
+- **Decisão humana (02/08/2026):** um arquivo físico só se torna arte oficial quando é criado ou vinculado explicitamente pela interface do Mheibos; presença, nome semelhante ou cópia manual na pasta nunca produz adoção automática.
+- **Criação:** o Mheibos cria arquivo vazio com nome `#Pedido - Cliente - Tema.ext`; colisões recebem ` - 02`, ` - 03` e assim por diante. Programas oferecidos: CorelDRAW, Illustrator, Photoshop, Inkscape, GIMP, Affinity Designer, Affinity Photo e PDF.
+- **Preferência:** o programa/formato padrão é preferência do usuário, visível em Perfil, mas qualquer usuário autorizado à Preparação de Arte pode alterá-lo para cada criação.
+- **Diretório:** a empresa define raiz compartilhada acessível às instâncias. A estrutura criada sob ela é `Usuário/Ano/Mês/Dia`; o caminho pode chegar como UNC ou unidade mapeada e sua apresentação é responsabilidade do Mheibos.
+- **Conclusão:** conteúdo, tamanho ou modificação não concluem a arte. A conclusão pertence ao conjunto da arte do Pedido e exige confirmação humana.
+- **Inatividade:** após duas horas sem alteração e sem conclusão, alertar com `Concluir`, `Ainda estou trabalhando`, `Lembrar depois` (30 minutos) e, apenas nos dois primeiros alertas, `Deixar a arte para amanhã` mediante senha do responsável. O adiamento é proibido dentro do prazo crítico da categoria.
+- **Ajuda e transferência:** prazo crítico oferece solicitação urgente de ajuda; gerente pode transferir responsabilidade imediatamente mediante senha. O arquivo permanece na pasta do criador; autoria e responsabilidade atual são distintas.
+- **Integridade:** renomear arquivo oficial é proibido. Modificação posterior à conclusão exige que o autor escolha manter conclusão ou voltar à preparação. Qualquer profissional de Preparação de Arte pode abrir e modificar; cartão mostra a última alteração e detalhe/auditoria mostram histórico completo.
+- **Ausência:** arquivo desaparecido produz alerta crítico persistente e não dispensável. O usuário deve restaurar o nome oficial e usar `Vincular arquivo restaurado`; divergência de conteúdo exige confirmação e escolha do estado da arte.
+- **Exceção:** operação sem arquivo ausente exige senha e justificativa gerencial por ação ou transição; não remove o alerta.
+- **Offline:** indisponibilidade do compartilhamento permite criação provisória local e transferência posterior. Após validação, o usuário decide remover ou mover a cópia para a área local de cópias; retenção é preferência empresarial e exclusão antecipada exige integridade do oficial.
+- **Configurações:** Perfil lista todas as preferências do usuário, editáveis ou somente leitura; Perfil da Empresa faz o mesmo para preferências empresariais; Aparência lista somente opções permitidas pela norma visual. Cadastro/manutenção de usuários sai do Perfil e permanece na área Usuários.
+- **Entrega incremental:** IMP-009H implementa preferência, raiz, nome, diretório, criação vazia, vínculo e auditoria. Monitoramento temporal, conclusão, exceções gerenciais, restauração e sincronização entram em fatias seguintes sobre o mesmo contrato, sem simular capacidade na interface.

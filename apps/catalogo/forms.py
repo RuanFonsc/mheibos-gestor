@@ -116,6 +116,8 @@ class PerfilEmpresaForm(forms.ModelForm):
             "endereco",
             "logo",
             "observacoes",
+            "diretorio_artes_raiz",
+            "retencao_copias_locais_dias",
         ]
         widgets = {
             "endereco": forms.Textarea(attrs={"rows": 3}),

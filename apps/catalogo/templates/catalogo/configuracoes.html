@@ -65,7 +65,7 @@
     <button class="top-tab" type="button" data-config-tab="aparencia"><i data-lucide="monitor-cog" class="h-5 w-5"></i> Aparencia</button>
     <button class="top-tab" type="button" data-config-tab="widgets"><i data-lucide="bell" class="h-5 w-5"></i> Alertas</button>
     {% if pode_gerenciar_usuarios %}
-      <button class="top-tab" type="button" data-config-tab="empresa"><i data-lucide="building-2" class="h-5 w-5"></i> Empresa</button>
+      <button class="top-tab" type="button" data-config-tab="empresa"><i data-lucide="building-2" class="h-5 w-5"></i> Perfil da Empresa</button>
       {% if pode_gerenciar_usuarios_geral %}
         <button class="top-tab" type="button" data-config-tab="usuarios_config"><i data-lucide="users-round" class="h-5 w-5"></i> Usuarios</button>
       {% endif %}
@@ -129,6 +129,31 @@
           </div>
         </form>
 
+        <form method="post" id="preferencias-usuario" class="profile-card mt-5 p-5">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="salvar_preferencias_perfil">
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold">Preferencias do usuario</h3>
+            <p class="mt-1 text-sm text-[var(--text-secondary)]">Preferencias editaveis e estado atual das definicoes que afetam seu trabalho.</p>
+          </div>
+          <div class="profile-fields">
+            <div class="profile-field">
+              <label for="programaArtePreferido">Programa padrao para arte oficial</label>
+              <select id="programaArtePreferido" name="programa_arte">
+                {% for codigo, programa in programas_arte.items %}
+                  <option value="{{ codigo }}" {% if preferencias.programa_arte == codigo %}selected{% endif %}>{{ programa.0 }} (.{{ programa.1 }})</option>
+                {% endfor %}
+              </select>
+              <p class="mt-1 text-xs text-[var(--text-secondary)]">A selecao podera ser alterada em cada nova arte.</p>
+            </div>
+            <div class="profile-field">
+              <label>Funcao e permissao</label>
+              <div class="readonly">{{ operador_atual.get_papel_display }} · definida pela empresa</div>
+            </div>
+          </div>
+          <div class="mt-5 flex justify-end"><button class="btn-primary" type="submit">Salvar preferencias</button></div>
+        </form>
+
         <div class="modal-backdrop" id="modalSalvarPerfil">
           <div class="modal-card">
             <h3 class="text-lg font-semibold">Confirmar alteracoes do perfil</h3>
@@ -160,6 +185,7 @@
         </div>
 
         {% if pode_gerenciar_usuarios_geral %}
+          <div id="gestaoUsuarios" class="hidden">
           <div class="user-admin-actions flex justify-end">
             <button class="btn-primary" type="button" data-open-modal="modalOperador"><i data-lucide="user-plus" class="h-4 w-4"></i> Novo usuario</button>
           </div>
@@ -216,7 +242,7 @@
                     <span class="permission-chip">{{ usuario.get_papel_display }}</span>
                     <span class="text-sm {% if usuario.ativo %}text-[#00c896]{% else %}text-[#ff4b4b]{% endif %}">{% if usuario.ativo %}Ativo{% else %}Inativo{% endif %}</span>
                     <div class="user-actions">
-                      <a class="btn-secondary min-h-[34px] px-3 text-xs" href="{% url 'configuracoes' %}?aba=usuarios&operador_id={{ usuario.pk }}"><i data-lucide="pencil" class="h-4 w-4"></i> Editar</a>
+                      <a class="btn-secondary min-h-[34px] px-3 text-xs" href="{% url 'configuracoes' %}?aba=usuarios_config&operador_id={{ usuario.pk }}"><i data-lucide="pencil" class="h-4 w-4"></i> Editar</a>
                       {% if usuario.pk != operador_atual.pk %}
                         <form method="post" onsubmit="return confirm('Excluir este usuario?')">
                           {% csrf_token %}
@@ -231,6 +257,7 @@
               </div>
             </div>
           </div>
+          </div>
         {% endif %}
       </div>
     </div>
@@ -238,6 +265,7 @@
 
     {% if pode_gerenciar_usuarios_geral %}
       <section id="tab-usuarios_config" class="config-panel hidden space-y-5">
+        <div id="gestaoUsuariosDestino"></div>
         <div class="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
           <form method="post" class="card p-5">
             {% csrf_token %}
@@ -319,6 +347,8 @@
           <div><label>Telefone secundario</label>{{ perfil_empresa_form.telefone_secundario }}</div>
           <div><label>Telefone adicional</label>{{ perfil_empresa_form.telefone_terciario }}</div>
           <div><label>Email</label>{{ perfil_empresa_form.email }}</div>
+          <div class="md:col-span-2"><label>Pasta compartilhada das artes oficiais</label>{{ perfil_empresa_form.diretorio_artes_raiz }}<p class="mt-1 text-xs text-[var(--text-secondary)]">Aceita caminho direto do servidor ou unidade mapeada. O Mheibos controla como o caminho e exibido.</p></div>
+          <div><label>Retencao de copias locais (dias)</label>{{ perfil_empresa_form.retencao_copias_locais_dias }}</div>
           <div class="md:col-span-2">
             <label>Logo da empresa</label>
             <div class="mt-2 flex flex-wrap items-center gap-4">
@@ -515,6 +545,13 @@
 {% endblock %}
 {% block scripts %}
 <script>
+  const gestaoUsuarios = document.getElementById("gestaoUsuarios");
+  const gestaoUsuariosDestino = document.getElementById("gestaoUsuariosDestino");
+  if (gestaoUsuarios && gestaoUsuariosDestino) {
+    gestaoUsuariosDestino.appendChild(gestaoUsuarios);
+    gestaoUsuarios.classList.remove("hidden");
+  }
+
   const allowedConfigTabs = ["usuarios", "aparencia", "widgets"{% if pode_gerenciar_usuarios %}, "empresa", "banco"{% endif %}{% if pode_gerenciar_usuarios_geral %}, "usuarios_config"{% endif %}];
   function openTab(tab) {
     const alvo = allowedConfigTabs.includes(tab) ? tab : "usuarios";

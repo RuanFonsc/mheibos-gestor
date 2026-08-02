@@ -10,6 +10,7 @@ from apps.catalogo.authentication import (
     validar_senha_operador,
 )
 from apps.catalogo.models import OperadorGestor, PapelOperador
+from apps.catalogo.ui_prefs import carregar_preferencias
 from apps.catalogo.permissions import operador_atual
 
 
@@ -73,6 +74,34 @@ class SessaoOperadorTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self.client.session["operador_id"], self.operador.pk)
         self.assertEqual(self.client.session["operador_nome"], self.operador.nome)
+
+    def test_configuracoes_expoem_preferencias_de_arte_e_perfil_da_empresa(self):
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+
+        response = self.client.get("/configuracoes/")
+
+        self.assertContains(response, "Programa padrao para arte oficial")
+        self.assertContains(response, "Perfil da Empresa")
+        self.assertContains(response, "Pasta compartilhada das artes oficiais")
+        self.assertContains(response, 'id="gestaoUsuariosDestino"')
+
+    def test_usuario_salva_programa_de_arte_preferido(self):
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+
+        response = self.client.post(
+            "/configuracoes/",
+            {"acao": "salvar_preferencias_perfil", "programa_arte": "affinity_photo"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            carregar_preferencias(operador=self.operador)["programa_arte"],
+            "affinity_photo",
+        )
 
     def test_launcher_login_uses_same_authentication_contract(self):
         response = self.client.post(

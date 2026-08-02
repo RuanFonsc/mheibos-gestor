@@ -233,6 +233,12 @@ class PerfilEmpresa(models.Model):
     endereco = models.TextField(blank=True)
     logo = models.ImageField(upload_to="empresa/", blank=True)
     observacoes = models.TextField(blank=True)
+    diretorio_artes_raiz = models.CharField(
+        max_length=1000,
+        blank=True,
+        help_text="Pasta compartilhada usada pelas instancias do Mheibos para as artes oficiais.",
+    )
+    retencao_copias_locais_dias = models.PositiveSmallIntegerField(default=30)
     os_layout = models.CharField(
         max_length=24,
         choices=LayoutOrdemServico.choices,

@@ -391,3 +391,12 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Consistência:** rotas individual, em massa e de compatibilidade usam o mesmo caso de uso; o botão global “Abrir a Produção” foi removido.
 - **Testes e visual:** 38 testes direcionados e 10 combinações visuais aprovados.
 - **Lacuna:** Pendência formal, scheduler, cadência e escalonamento dependem da RFC-0012 completa; não bloqueiam a trava nem a fila atuais.
+
+### IMP-009H — IN_PROGRESS
+
+- **Capacidade:** criação física vazia pela interface, nome oficial numerado, estrutura compartilhada por usuário/ano/mês/dia, escolha de programa/formato e vínculo auditado sem binário no banco.
+- **Preferências:** Perfil recebe programa de arte padrão; Perfil da Empresa recebe raiz compartilhada e retenção de cópias locais; gestão de usuários é apresentada apenas na área Usuários.
+- **Validação parcial:** testes direcionados de arquivos oficiais aprovam criação vazia, numeração, exigência de raiz, vínculos, integridade e auditoria.
+- **Validação:** lint, type checking, Django check, migração e 150 testes aprovados; detalhe, Perfil e Usuários validados em navegador real nas cinco combinações oficiais, sem overflow horizontal. Evidências em `IMP-009H-VISUAL-VALIDATION.md`.
+- **Estado:** COMPLETED para a fatia de criação; as capacidades seguintes permanecem separadas e rastreadas abaixo.
+- **Próximas fatias:** estado agregado da arte, monitoramento de inatividade, confirmação de conclusão, restauração crítica, autorização gerencial, transferência e sincronização offline conforme DEC-IMP-033.

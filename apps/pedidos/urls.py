@@ -13,6 +13,7 @@ urlpatterns = [
     path("<int:pk>/ordem-servico/", views.pedido_ordem_servico, name="pedido_ordem_servico"),
     path("<int:pk>/editar/", views.pedido_edit, name="pedido_edit"),
     path("<int:pk>/arquivos-oficiais/vincular/", views.pedido_vincular_arquivo_oficial, name="pedido_vincular_arquivo_oficial"),
+    path("<int:pk>/arquivos-oficiais/criar/", views.pedido_criar_arquivo_oficial, name="pedido_criar_arquivo_oficial"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/verificar/", views.pedido_verificar_arquivo_oficial, name="pedido_verificar_arquivo_oficial"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/reconhecer-alerta/", views.pedido_reconhecer_alerta_arquivo, name="pedido_reconhecer_alerta_arquivo"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/encerrar/", views.pedido_encerrar_arquivo_oficial, name="pedido_encerrar_arquivo_oficial"),

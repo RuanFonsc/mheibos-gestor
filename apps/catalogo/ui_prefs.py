@@ -8,6 +8,7 @@ PREFERENCIAS_PADRAO = {
     "tema": "dark",
     "zoom": 100,
     "usuario": "Ruan",
+    "programa_arte": "coreldraw",
     "widgets": {
         "prazos": {
             "ativo": True,
@@ -26,6 +27,16 @@ PREFERENCIAS_PADRAO = {
 }
 
 ZOOM_OPCOES = (85, 90, 95, 100, 110, 125, 150, 175)
+PROGRAMAS_ARTE = {
+    "coreldraw": ("CorelDRAW", "cdr"),
+    "illustrator": ("Illustrator", "ai"),
+    "photoshop": ("Photoshop", "psd"),
+    "inkscape": ("Inkscape", "svg"),
+    "gimp": ("GIMP", "xcf"),
+    "affinity_designer": ("Affinity Designer", "afdesign"),
+    "affinity_photo": ("Affinity Photo", "afphoto"),
+    "pdf": ("Formato PDF", "pdf"),
+}
 
 
 def _merge_dict(base, patch):
@@ -56,6 +67,8 @@ def normalizar_preferencias(dados):
     merged["tema"] = "light" if merged.get("tema") == "light" else "dark"
     merged["zoom"] = normalizar_zoom(merged.get("zoom"))
     merged["usuario"] = str(merged.get("usuario") or PREFERENCIAS_PADRAO["usuario"]).strip()[:80]
+    if merged.get("programa_arte") not in PROGRAMAS_ARTE:
+        merged["programa_arte"] = PREFERENCIAS_PADRAO["programa_arte"]
     for chave in ("prazos", "assistencia"):
         widget = merged["widgets"][chave]
         widget["ativo"] = bool(widget.get("ativo", True))

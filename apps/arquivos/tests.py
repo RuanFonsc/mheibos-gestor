@@ -13,6 +13,7 @@ from apps.arquivos.services import (
     ArquivoOficialInvalido,
     EncerramentoArquivoInvalido,
     TemaPedidoImutavel,
+    criar_arquivo_oficial,
     encerrar_vinculo_arquivo_oficial,
     reconhecer_alerta_arquivo,
     validar_alteracao_tema,
@@ -20,7 +21,7 @@ from apps.arquivos.services import (
     vincular_arquivo_oficial,
 )
 from apps.auditoria.models import EventoOperacional
-from apps.catalogo.models import OperadorGestor, PapelOperador
+from apps.catalogo.models import OperadorGestor, PapelOperador, PerfilEmpresa
 from apps.clientes.models import Cliente
 from apps.pedidos.models import Pedido
 
@@ -58,6 +59,50 @@ class ArquivoOficialArteTests(TestCase):
         self.assertEqual(segundo.extensao, "svg")
         campos = ArquivoOficialArte._meta.get_fields()
         self.assertFalse(any(isinstance(campo, (models.FileField, models.BinaryField)) for campo in campos))
+
+    def test_cria_arquivo_vazio_na_estrutura_oficial(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            arquivo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+
+            caminho = Path(arquivo.caminho_oficial)
+            self.assertTrue(caminho.exists())
+            self.assertEqual(caminho.stat().st_size, 0)
+            self.assertEqual(caminho.suffix, ".cdr")
+            self.assertIn(self.operador.nome, caminho.parts)
+            self.assertIn("Cliente Arquivos", caminho.name)
+            self.assertEqual(arquivo.origem, "CRIADO_MHEIBOS")
+            self.assertEqual(
+                EventoOperacional.objects.filter(tipo="ArquivoOficialArteCriado").count(), 1
+            )
+
+    def test_criacoes_repetidas_recebem_numeracao(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            primeiro = criar_arquivo_oficial(
+                pedido=self.pedido, programa="pdf", operador=self.operador
+            )
+            segundo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="pdf", operador=self.operador
+            )
+
+            self.assertTrue(primeiro.nome_oficial.endswith(".pdf"))
+            self.assertTrue(segundo.nome_oficial.endswith(" - 02.pdf"))
+
+    def test_criacao_exige_raiz_compartilhada_configurada(self):
+        PerfilEmpresa.objects.update_or_create(
+            chave="global", defaults={"diretorio_artes_raiz": ""}
+        )
+        with self.assertRaisesMessage(ArquivoOficialInvalido, "pasta compartilhada"):
+            criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
 
     def test_mesmo_caminho_e_idempotente(self):
         primeiro = vincular_arquivo_oficial(
