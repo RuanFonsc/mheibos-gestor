@@ -24,7 +24,46 @@
       <strong>{{ total_aguardando_arte }}</strong>
       <span>bloqueados antes da Produção</span>
     </div>
+    <div class="card metric-card">
+      <p>Artes sem atualizacao</p>
+      <strong>{{ total_alertas_inatividade_arte }}</strong>
+      <span>exigem resposta do responsavel</span>
+    </div>
   </section>
+
+  {% if alertas_inatividade_arte %}
+    <section aria-labelledby="alertasInatividadeTitulo">
+      <div class="page-heading">
+        <div>
+          <span class="kicker">Intervencao deterministica</span>
+          <h3 id="alertasInatividadeTitulo" class="section-title">Artes sem atualizacao ha mais de duas horas</h3>
+          <p>O alerta permanece no Pedido ate o responsavel concluir, confirmar que continua trabalhando, pedir novo lembrete ou adiar quando permitido.</p>
+        </div>
+      </div>
+      <div class="order-grid">
+        {% for pedido in alertas_inatividade_arte %}
+          <article class="card order-card">
+            <div class="order-card-head">
+              <div>
+                <span class="order-id">#{{ pedido.legado_id|default:pedido.pk }}</span>
+                <h3 class="order-card-title">{{ pedido.cliente.nome }}</h3>
+                <p class="order-card-subtitle">{{ pedido.tema|default:"Sem tema" }}</p>
+              </div>
+              <span class="status-pill is-work">Alerta {{ pedido.alerta_inatividade_arte.numero }}</span>
+            </div>
+            <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              <p><span class="text-[var(--text-secondary)]">Responsavel:</span> <strong>{{ pedido.alerta_inatividade_arte.responsavel_nome|default:"Nao definido" }}</strong></p>
+              <p><span class="text-[var(--text-secondary)]">Prazo:</span> <strong>{% if pedido.alerta_inatividade_arte.prazo_critico %}Critico{% else %}Fora do limite critico{% endif %}</strong></p>
+            </div>
+            <div class="order-card-foot">
+              <span>Requer resposta humana; a IA nao participa desta decisao.</span>
+              <a href="{% url 'pedido_detail' pedido.pk %}#arquivos-oficiais" class="btn-primary">Responder alerta</a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 
   <section aria-labelledby="aguardandoArteTitulo">
     <div class="page-heading">

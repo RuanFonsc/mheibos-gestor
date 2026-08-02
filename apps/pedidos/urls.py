@@ -15,6 +15,7 @@ urlpatterns = [
     path("<int:pk>/arquivos-oficiais/vincular/", views.pedido_vincular_arquivo_oficial, name="pedido_vincular_arquivo_oficial"),
     path("<int:pk>/arquivos-oficiais/criar/", views.pedido_criar_arquivo_oficial, name="pedido_criar_arquivo_oficial"),
     path("<int:pk>/arte/concluir/", views.pedido_concluir_arte, name="pedido_concluir_arte"),
+    path("<int:pk>/arte/responder-inatividade/", views.pedido_responder_alerta_inatividade_arte, name="pedido_responder_alerta_inatividade_arte"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/decidir-alteracao/", views.pedido_decidir_alteracao_arte, name="pedido_decidir_alteracao_arte"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/verificar/", views.pedido_verificar_arquivo_oficial, name="pedido_verificar_arquivo_oficial"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/reconhecer-alerta/", views.pedido_reconhecer_alerta_arquivo, name="pedido_reconhecer_alerta_arquivo"),

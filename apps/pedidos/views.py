@@ -13,16 +13,19 @@ from django.utils import timezone
 from apps.catalogo.assistencia import pedido_em_alerta, preparar_categorias_pedidos
 from apps.auditoria.services import registrar_evento
 from apps.arquivos.services import (
+    AcaoInatividadeArteInvalida,
     AlertaArquivoInvalido,
     ArquivoOficialInvalido,
     EncerramentoArquivoInvalido,
     PreparacaoArteInvalida,
     TemaPedidoImutavel,
     criar_arquivo_oficial,
+    avaliar_alerta_inatividade_arte,
     encerrar_vinculo_arquivo_oficial,
     concluir_arte_pedido,
     decidir_alteracao_pos_conclusao,
     reconhecer_alerta_arquivo,
+    responder_alerta_inatividade_arte,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
@@ -204,6 +207,7 @@ def pedido_detail(request, pk):
             "programas_arte": PROGRAMAS_ARTE,
             "programa_arte_padrao": preferencias["programa_arte"],
             "preparacao_arte": PreparacaoArtePedido.objects.filter(pedido=pedido).first(),
+            "alerta_inatividade_arte": avaliar_alerta_inatividade_arte(pedido=pedido),
             "anexos_ativos": pedido.anexos.filter(desvinculado_em__isnull=True),
             "status_form": PedidoStatusForm(initial={"status": pedido.status}),
             "categorias_tabs": CategoriaServico.objects.filter(ativa=True),
@@ -541,6 +545,34 @@ def pedido_concluir_arte(request, pk):
         messages.error(request, str(exc))
     else:
         messages.success(request, "Arte do Pedido marcada como concluida.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_responder_alerta_inatividade_arte(request, pk):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode responder por esta arte.")
+        return redirect("pedido_detail", pk=pk)
+    try:
+        responder_alerta_inatividade_arte(
+            pedido=pedido,
+            operador=operador,
+            acao=request.POST.get("acao", ""),
+            senha=request.POST.get("senha", ""),
+        )
+    except AcaoInatividadeArteInvalida as exc:
+        messages.error(request, str(exc))
+    else:
+        mensagens = {
+            "AINDA_TRABALHANDO": "O Mheibos verificara novamente em duas horas.",
+            "LEMBRAR_DEPOIS": "Lembrete programado para daqui a 30 minutos.",
+            "ADIAR_AMANHA": "Arte adiada para amanha com confirmacao do responsavel.",
+            "AJUDA_URGENTE": "Solicitacao urgente de ajuda registrada.",
+        }
+        messages.success(request, mensagens.get(request.POST.get("acao"), "Resposta registrada."))
     return redirect("pedido_detail", pk=pk)
 
 

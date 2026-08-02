@@ -412,3 +412,15 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Teste real:** criação vazia, conclusão sem verificação prévia, alteração física, alerta persistente e retorno à preparação foram exercitados no Pedido #1. O teste revelou e corrigiu a ausência inicial da linha de base.
 - **Validação:** lint, type checking, Django check, migration check, testes direcionados e gate visual aprovados; evidências em `IMP-009I-VISUAL-VALIDATION.md`.
 - **Próxima fatia:** alerta por duas horas de inatividade, cadência, lembrete, adiamento condicionado e prazo crítico conforme DEC-IMP-033.
+
+### IMP-009J — COMPLETED
+
+- **Detecção determinística:** criar ou vincular arquivo oficial inicia monitoramento; modificação física reinicia o prazo. Após duas horas sem alteração e sem conclusão humana, o alerta torna-se ativo.
+- **Respostas:** `Concluir arte`, `Ainda estou trabalhando` (duas horas), `Lembrar em 30 minutos` e `Deixar a arte para amanhã` são comandos explícitos e auditados.
+- **Adiamento:** disponível apenas nos dois primeiros alertas, exige a senha do responsável e suprime o alerta até a próxima data local. O alerta volta automaticamente quando o novo dia começa se a arte continuar aberta.
+- **Prazo crítico:** usa as regras configuradas da categoria e a data de entrega. Dentro do limite crítico, o adiamento desaparece e o responsável pode solicitar ajuda urgente.
+- **Responsabilidade:** somente o responsável atual responde ao alerta; uma falha na auditoria reverte integralmente lembrete, adiamento ou pedido de ajuda.
+- **Descoberta assistencial:** o alerta persistente aparece no detalhe do Pedido, na fila de Preparação de Arte e na notificação global periódica, sem depender de IA.
+- **Validação real:** alerta normal, lembrete de 30 minutos, segundo alerta, prazo crítico, bloqueio de adiamento, ajuda urgente e fila integrada foram exercitados no banco e navegador locais.
+- **Testes e visual:** 59 testes focados aprovados; lint, type checking, Django, migration check, tokens e matriz visual sem overflow aprovados. Evidências em `IMP-009J-VISUAL-VALIDATION.md`.
+- **Próxima fatia:** ausência crítica do arquivo, restauração vinculada e exceção gerencial por ação conforme DEC-IMP-033.

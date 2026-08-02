@@ -49,6 +49,10 @@ class PreparacaoArtePedido(models.Model):
     )
     iniciado_em = models.DateTimeField(null=True, blank=True)
     ultima_atividade_em = models.DateTimeField(null=True, blank=True)
+    proximo_alerta_em = models.DateTimeField(null=True, blank=True)
+    adiado_para_data = models.DateField(null=True, blank=True)
+    alertas_inatividade_respondidos = models.PositiveIntegerField(default=0)
+    ajuda_urgente_solicitada_em = models.DateTimeField(null=True, blank=True)
     concluido_em = models.DateTimeField(null=True, blank=True)
     concluido_por = models.ForeignKey(
         "catalogo.OperadorGestor",

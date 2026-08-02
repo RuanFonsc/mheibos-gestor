@@ -67,6 +67,51 @@
             <span class="block text-xs text-[var(--text-secondary)]">Somente vinculos e metadados; nenhum binario no banco.</span>
           </div>
         </div>
+        {% if alerta_inatividade_arte.ativo and pode_editar and not runtime_offline %}
+          <section class="mt-4 rounded-lg border border-[#ffb347] bg-[#ffb347]/10 p-4" aria-labelledby="alertaInatividadeArte">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <span class="kicker">Intervencao deterministica · alerta {{ alerta_inatividade_arte.numero }}</span>
+                <h3 id="alertaInatividadeArte" class="mt-1 font-semibold">A arte do Pedido #{{ pedido.pk }} esta sem modificacoes ha mais de duas horas</h3>
+                <p class="mt-1 text-sm text-[var(--text-secondary)]">Voce iniciou esta arte, mas ainda nao informou se concluiu. O conteudo do arquivo nunca conclui a arte automaticamente.</p>
+                {% if alerta_inatividade_arte.prazo_critico %}
+                  <p class="mt-2 text-sm font-semibold text-[#ff6b6b]">Prazo critico da categoria: adiar para amanha esta bloqueado.</p>
+                {% endif %}
+              </div>
+              {% if alerta_inatividade_arte.responsavel_nome %}<span class="status-badge">Responsavel: {{ alerta_inatividade_arte.responsavel_nome }}</span>{% endif %}
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <form method="post" action="{% url 'pedido_concluir_arte' pedido.pk %}">
+                {% csrf_token %}<button type="submit" class="btn-primary">Concluir arte</button>
+              </form>
+              <form method="post" action="{% url 'pedido_responder_alerta_inatividade_arte' pedido.pk %}">
+                {% csrf_token %}<input type="hidden" name="acao" value="AINDA_TRABALHANDO"><button type="submit" class="btn-secondary">Ainda estou trabalhando</button>
+              </form>
+              <form method="post" action="{% url 'pedido_responder_alerta_inatividade_arte' pedido.pk %}">
+                {% csrf_token %}<input type="hidden" name="acao" value="LEMBRAR_DEPOIS"><button type="submit" class="btn-secondary">Lembrar em 30 minutos</button>
+              </form>
+              {% if alerta_inatividade_arte.prazo_critico %}
+                <form method="post" action="{% url 'pedido_responder_alerta_inatividade_arte' pedido.pk %}">
+                  {% csrf_token %}<input type="hidden" name="acao" value="AJUDA_URGENTE"><button type="submit" class="btn-danger">Solicitar ajuda urgente</button>
+                </form>
+              {% endif %}
+            </div>
+            {% if alerta_inatividade_arte.pode_adiar_amanha %}
+              <details class="mt-3 border-t border-[#ffb347]/40 pt-3">
+                <summary class="cursor-pointer text-sm font-semibold">Deixar a arte para amanha</summary>
+                <form method="post" action="{% url 'pedido_responder_alerta_inatividade_arte' pedido.pk %}" class="mt-3 flex max-w-xl flex-wrap items-end gap-3">
+                  {% csrf_token %}
+                  <input type="hidden" name="acao" value="ADIAR_AMANHA">
+                  <div class="min-w-0 flex-1">
+                    <label for="senhaAdiarArte">Senha do responsavel</label>
+                    <input id="senhaAdiarArte" type="password" name="senha" autocomplete="current-password" required>
+                  </div>
+                  <button type="submit" class="btn-danger">Confirmar adiamento</button>
+                </form>
+              </details>
+            {% endif %}
+          </section>
+        {% endif %}
         <div class="mt-4 space-y-3">
           {% for arquivo in arquivos_oficiais %}
             <div class="rounded-lg border border-[#2d3154] bg-[#22253a] p-3">

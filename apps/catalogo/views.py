@@ -46,6 +46,8 @@ from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os,
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
 from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
+from apps.arquivos.models import EstadoPreparacaoArte, PreparacaoArtePedido
+from apps.arquivos.services import avaliar_alerta_inatividade_arte
 from apps.pedidos.models import Pedido, PedidoItem, PrioridadePedido, STATUS_ASSISTENCIA, StatusPedido
 from apps.operacao.projections import projetar_lista, queryset_com_projecao, queryset_fila_producao
 from apps.pedidos.use_cases import (
@@ -357,6 +359,18 @@ def preparacao_arte(request):
         .order_by("data_entrega", "id")[:120]
     )
     aguardando_arte = [_preparar_contexto_operacional(pedido) for pedido in aguardando_arte]
+    preparacoes = (
+        PreparacaoArtePedido.objects.exclude(estado=EstadoPreparacaoArte.CONCLUIDA)
+        .select_related("pedido__cliente", "responsavel")
+        .prefetch_related("pedido__itens__categoria_servico")
+        .order_by("proximo_alerta_em")[:120]
+    )
+    alertas_inatividade = []
+    for preparacao in preparacoes:
+        alerta = avaliar_alerta_inatividade_arte(pedido=preparacao.pedido)
+        if alerta.ativo:
+            preparacao.pedido.alerta_inatividade_arte = alerta
+            alertas_inatividade.append(preparacao.pedido)
     return render(
         request,
         "catalogo/preparacao_arte.html",
@@ -364,6 +378,8 @@ def preparacao_arte(request):
             "active": "preparacao_arte",
             "aguardando_arte": aguardando_arte,
             "total_aguardando_arte": len(aguardando_arte),
+            "alertas_inatividade_arte": alertas_inatividade,
+            "total_alertas_inatividade_arte": len(alertas_inatividade),
         },
     )
 
@@ -812,7 +828,30 @@ def api_widget_prazos(request):
 
 def api_notificacao_assistencia(request):
     resumo = resumo_assistencia_envio(_categorias_da_requisicao(request))
-    resumo["url"] = reverse("assistencia_envio")
+    preparacoes = (
+        PreparacaoArtePedido.objects.exclude(estado=EstadoPreparacaoArte.CONCLUIDA)
+        .select_related("pedido")
+        .prefetch_related("pedido__itens__categoria_servico")[:120]
+    )
+    total_inatividade = sum(
+        1
+        for preparacao in preparacoes
+        if avaliar_alerta_inatividade_arte(pedido=preparacao.pedido).ativo
+    )
+    if total_inatividade:
+        resumo["por_categoria"] = [
+            {
+                "id": "inatividade-arte",
+                "nome": "Arte sem atualizacao",
+                "tipo": "pre_producao",
+                "count": total_inatividade,
+            }
+        ]
+        resumo["total"] = total_inatividade
+        resumo["alerta"] = True
+    resumo["url"] = reverse(
+        "preparacao_arte" if total_inatividade else "assistencia_envio"
+    )
     return JsonResponse(resumo)
 
 

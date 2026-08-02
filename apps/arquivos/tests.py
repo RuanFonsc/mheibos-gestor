@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import timedelta
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -6,27 +7,36 @@ from unittest.mock import patch
 
 from django.db import models
 from django.test import TestCase
+from django.utils import timezone
 from PIL import Image, UnidentifiedImageError
 
 from apps.arquivos.models import ArquivoOficialArte, EstadoPreparacaoArte, PreparacaoArtePedido
 from apps.arquivos.services import (
+    AcaoInatividadeArteInvalida,
     ArquivoOficialInvalido,
     EncerramentoArquivoInvalido,
     PreparacaoArteInvalida,
     TemaPedidoImutavel,
     concluir_arte_pedido,
     criar_arquivo_oficial,
+    avaliar_alerta_inatividade_arte,
     decidir_alteracao_pos_conclusao,
     encerrar_vinculo_arquivo_oficial,
     reconhecer_alerta_arquivo,
+    responder_alerta_inatividade_arte,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
 )
 from apps.auditoria.models import EventoOperacional
-from apps.catalogo.models import OperadorGestor, PapelOperador, PerfilEmpresa
+from apps.catalogo.models import (
+    CategoriaServico,
+    OperadorGestor,
+    PapelOperador,
+    PerfilEmpresa,
+)
 from apps.clientes.models import Cliente
-from apps.pedidos.models import Pedido
+from apps.pedidos.models import Pedido, PedidoItem
 
 
 class ArquivoOficialArteTests(TestCase):
@@ -197,6 +207,196 @@ class ArquivoOficialArteTests(TestCase):
             )
 
             self.assertTrue(arquivo.alteracao_pos_conclusao_pendente)
+
+    def test_alerta_de_duas_horas_lembra_e_limita_adiamento_a_dois_alertas(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            agora = timezone.now()
+            preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+            preparacao.proximo_alerta_em = agora - timedelta(seconds=1)
+            preparacao.save(update_fields=["proximo_alerta_em"])
+
+            alerta = avaliar_alerta_inatividade_arte(
+                pedido=self.pedido, agora=agora
+            )
+            self.assertTrue(alerta.ativo)
+            self.assertEqual(alerta.numero, 1)
+            self.assertTrue(alerta.pode_adiar_amanha)
+
+            preparacao = responder_alerta_inatividade_arte(
+                pedido=self.pedido,
+                operador=self.operador,
+                acao="LEMBRAR_DEPOIS",
+                agora=agora,
+            )
+            self.assertEqual(preparacao.proximo_alerta_em, agora + timedelta(minutes=30))
+            preparacao.proximo_alerta_em = agora - timedelta(seconds=1)
+            preparacao.save(update_fields=["proximo_alerta_em"])
+            responder_alerta_inatividade_arte(
+                pedido=self.pedido,
+                operador=self.operador,
+                acao="AINDA_TRABALHANDO",
+                agora=agora,
+            )
+            preparacao.refresh_from_db()
+            preparacao.proximo_alerta_em = agora - timedelta(seconds=1)
+            preparacao.save(update_fields=["proximo_alerta_em"])
+            terceiro = avaliar_alerta_inatividade_arte(
+                pedido=self.pedido, agora=agora
+            )
+            self.assertEqual(terceiro.numero, 3)
+            self.assertFalse(terceiro.pode_adiar_amanha)
+
+    def test_adiar_para_amanha_exige_senha_do_responsavel(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            agora = timezone.now()
+            preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+            preparacao.proximo_alerta_em = agora - timedelta(seconds=1)
+            preparacao.save(update_fields=["proximo_alerta_em"])
+
+            with self.assertRaisesMessage(AcaoInatividadeArteInvalida, "senha"):
+                responder_alerta_inatividade_arte(
+                    pedido=self.pedido,
+                    operador=self.operador,
+                    acao="ADIAR_AMANHA",
+                    senha="errada",
+                    agora=agora,
+                )
+            preparacao = responder_alerta_inatividade_arte(
+                pedido=self.pedido,
+                operador=self.operador,
+                acao="ADIAR_AMANHA",
+                senha="segura",
+                agora=agora,
+            )
+            self.assertEqual(
+                preparacao.adiado_para_data,
+                timezone.localtime(agora).date() + timedelta(days=1),
+            )
+            self.assertFalse(
+                avaliar_alerta_inatividade_arte(
+                    pedido=self.pedido, agora=agora
+                ).ativo
+            )
+
+    def test_prazo_critico_bloqueia_adiamento_e_oferece_ajuda(self):
+        categoria = CategoriaServico.objects.create(
+            nome="Critica", alerta_dias_uteis=2
+        )
+        self.pedido.data_entrega = timezone.localdate() + timedelta(days=1)
+        self.pedido.save(update_fields=["data_entrega"])
+        PedidoItem.objects.create(
+            pedido=self.pedido, nome="Item critico", categoria_servico=categoria
+        )
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            agora = timezone.now()
+            preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+            preparacao.proximo_alerta_em = agora - timedelta(seconds=1)
+            preparacao.save(update_fields=["proximo_alerta_em"])
+
+            alerta = avaliar_alerta_inatividade_arte(
+                pedido=self.pedido, agora=agora
+            )
+            self.assertTrue(alerta.prazo_critico)
+            self.assertFalse(alerta.pode_adiar_amanha)
+            with self.assertRaisesMessage(AcaoInatividadeArteInvalida, "prazo critico"):
+                responder_alerta_inatividade_arte(
+                    pedido=self.pedido,
+                    operador=self.operador,
+                    acao="ADIAR_AMANHA",
+                    senha="segura",
+                    agora=agora,
+                )
+            preparacao = responder_alerta_inatividade_arte(
+                pedido=self.pedido,
+                operador=self.operador,
+                acao="AJUDA_URGENTE",
+                agora=agora,
+            )
+            self.assertEqual(preparacao.ajuda_urgente_solicitada_em, agora)
+            self.assertTrue(
+                EventoOperacional.objects.filter(
+                    tipo="AlertaInatividadeArteRespondido"
+                ).exists()
+            )
+
+    def test_alerta_aparece_no_detalhe_e_lembrete_persiste(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+            preparacao.proximo_alerta_em = timezone.now() - timedelta(seconds=1)
+            preparacao.save(update_fields=["proximo_alerta_em"])
+            self.entrar()
+
+            resposta = self.client.get(f"/pedidos/{self.pedido.pk}/")
+            self.assertContains(resposta, "sem modificacoes ha mais de duas horas")
+            self.assertContains(resposta, "Ainda estou trabalhando")
+            self.assertContains(resposta, "Deixar a arte para amanha")
+
+            fila = self.client.get("/preparacao-arte/")
+            self.assertContains(fila, "Artes sem atualizacao ha mais de duas horas")
+            self.assertContains(fila, self.pedido.cliente.nome)
+            notificacao = self.client.get("/api/notificacoes/assistencia/").json()
+            self.assertEqual(notificacao["total"], 1)
+            self.assertEqual(notificacao["url"], "/preparacao-arte/")
+
+            resposta = self.client.post(
+                f"/pedidos/{self.pedido.pk}/arte/responder-inatividade/",
+                {"acao": "LEMBRAR_DEPOIS"},
+            )
+            self.assertEqual(resposta.status_code, 302)
+            preparacao.refresh_from_db()
+            self.assertEqual(preparacao.alertas_inatividade_respondidos, 1)
+            self.assertGreater(preparacao.proximo_alerta_em, timezone.now())
+
+    def test_falha_de_auditoria_reverte_resposta_de_inatividade(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            arquivo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            self.assertIsNotNone(arquivo.pk)
+            preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+            preparacao.proximo_alerta_em = timezone.now() - timedelta(seconds=1)
+            preparacao.save(update_fields=["proximo_alerta_em"])
+            anterior = preparacao.proximo_alerta_em
+
+            with patch(
+                "apps.arquivos.services.registrar_evento", side_effect=RuntimeError
+            ):
+                with self.assertRaises(RuntimeError):
+                    responder_alerta_inatividade_arte(
+                        pedido=self.pedido,
+                        operador=self.operador,
+                        acao="LEMBRAR_DEPOIS",
+                    )
+            preparacao.refresh_from_db()
+            self.assertEqual(preparacao.proximo_alerta_em, anterior)
+            self.assertEqual(preparacao.alertas_inatividade_respondidos, 0)
 
     def test_mesmo_caminho_e_idempotente(self):
         primeiro = vincular_arquivo_oficial(

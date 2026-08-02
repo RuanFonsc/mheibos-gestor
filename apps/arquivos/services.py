@@ -1,5 +1,7 @@
 import os
 import re
+from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from pathlib import PureWindowsPath
 
@@ -19,6 +21,8 @@ from .models import (
 )
 
 from apps.catalogo.models import PerfilEmpresa
+from apps.catalogo.assistencia import pedido_em_alerta
+from apps.catalogo.authentication import validar_senha_operador
 from apps.catalogo.ui_prefs import PROGRAMAS_ARTE
 
 
@@ -48,6 +52,135 @@ class PreparacaoArteInvalida(Exception):
     pass
 
 
+class AcaoInatividadeArteInvalida(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class AlertaInatividadeArte:
+    ativo: bool
+    numero: int = 0
+    prazo_critico: bool = False
+    pode_adiar_amanha: bool = False
+    responsavel_nome: str = ""
+
+
+def avaliar_alerta_inatividade_arte(*, pedido, agora=None) -> AlertaInatividadeArte:
+    agora = agora or timezone.now()
+    preparacao = PreparacaoArtePedido.objects.select_related("responsavel").filter(
+        pedido=pedido
+    ).first()
+    if preparacao is None or preparacao.estado == EstadoPreparacaoArte.CONCLUIDA:
+        return AlertaInatividadeArte(ativo=False)
+    if not ArquivoOficialArte.objects.filter(
+        pedido=pedido, estado_vinculo=EstadoVinculoArquivo.ATIVO
+    ).exists():
+        return AlertaInatividadeArte(ativo=False)
+    hoje = timezone.localtime(agora).date()
+    if preparacao.adiado_para_data and hoje < preparacao.adiado_para_data:
+        return AlertaInatividadeArte(ativo=False)
+    referencia = (
+        preparacao.proximo_alerta_em
+        or preparacao.ultima_atividade_em
+        or preparacao.iniciado_em
+        or preparacao.criado_em
+    )
+    if preparacao.proximo_alerta_em is None:
+        referencia += timedelta(hours=2)
+    if agora < referencia:
+        return AlertaInatividadeArte(ativo=False)
+    prazo_critico = bool(
+        pedido.data_entrega
+        and pedido_em_alerta(pedido, timezone.localtime(agora))
+    )
+    numero = preparacao.alertas_inatividade_respondidos + 1
+    return AlertaInatividadeArte(
+        ativo=True,
+        numero=numero,
+        prazo_critico=prazo_critico,
+        pode_adiar_amanha=numero <= 2 and not prazo_critico,
+        responsavel_nome=preparacao.responsavel.nome if preparacao.responsavel else "",
+    )
+
+
+@transaction.atomic
+def responder_alerta_inatividade_arte(
+    *, pedido, operador, acao: str, senha: str = "", agora=None
+) -> PreparacaoArtePedido:
+    agora = agora or timezone.now()
+    preparacao = PreparacaoArtePedido.objects.select_for_update().select_related(
+        "responsavel"
+    ).get(pedido=pedido)
+    alerta = avaliar_alerta_inatividade_arte(pedido=pedido, agora=agora)
+    if not alerta.ativo:
+        raise AcaoInatividadeArteInvalida("O alerta de inatividade nao esta ativo.")
+    if preparacao.responsavel_id and preparacao.responsavel_id != operador.pk:
+        raise AcaoInatividadeArteInvalida(
+            "Somente o responsavel atual pode responder ao alerta de inatividade."
+        )
+    acoes = {"AINDA_TRABALHANDO", "LEMBRAR_DEPOIS", "ADIAR_AMANHA", "AJUDA_URGENTE"}
+    if acao not in acoes:
+        raise AcaoInatividadeArteInvalida("Selecione uma resposta valida.")
+    if acao == "ADIAR_AMANHA":
+        if not alerta.pode_adiar_amanha:
+            raise AcaoInatividadeArteInvalida(
+                "A arte nao pode ser adiada neste alerta ou dentro do prazo critico."
+            )
+        responsavel = preparacao.responsavel or operador
+        if not validar_senha_operador(responsavel, senha):
+            raise AcaoInatividadeArteInvalida("A senha do responsavel e invalida.")
+        preparacao.adiado_para_data = timezone.localtime(agora).date() + timedelta(days=1)
+        preparacao.proximo_alerta_em = None
+    elif acao == "AJUDA_URGENTE":
+        if not alerta.prazo_critico:
+            raise AcaoInatividadeArteInvalida(
+                "Ajuda urgente e oferecida quando o Pedido esta no prazo critico."
+            )
+        preparacao.ajuda_urgente_solicitada_em = agora
+        preparacao.proximo_alerta_em = agora + timedelta(minutes=30)
+    else:
+        minutos = 120 if acao == "AINDA_TRABALHANDO" else 30
+        preparacao.proximo_alerta_em = agora + timedelta(minutes=minutos)
+        preparacao.adiado_para_data = None
+    preparacao.alertas_inatividade_respondidos += 1
+    preparacao.save(
+        update_fields=[
+            "proximo_alerta_em",
+            "adiado_para_data",
+            "alertas_inatividade_respondidos",
+            "ajuda_urgente_solicitada_em",
+            "atualizado_em",
+        ]
+    )
+    registrar_evento(
+        tipo="AlertaInatividadeArteRespondido",
+        operador=operador,
+        origem="gestor_web",
+        alvo_tipo="PreparacaoArtePedido",
+        alvo_id=str(preparacao.pk),
+        acao="responder_alerta_inatividade_arte",
+        valores_anteriores={"numero_alerta": alerta.numero},
+        valores_posteriores={
+            "resposta": acao,
+            "prazo_critico": alerta.prazo_critico,
+            "proximo_alerta_em": (
+                preparacao.proximo_alerta_em.isoformat()
+                if preparacao.proximo_alerta_em
+                else None
+            ),
+            "adiado_para_data": (
+                preparacao.adiado_para_data.isoformat()
+                if preparacao.adiado_para_data
+                else None
+            ),
+        },
+        chave_idempotencia=(
+            f"arte-inatividade:{preparacao.pk}:{alerta.numero}:{acao}"
+        ),
+    )
+    return preparacao
+
+
 def obter_preparacao_arte(*, pedido, operador=None) -> PreparacaoArtePedido:
     preparacao, criada = PreparacaoArtePedido.objects.get_or_create(
         pedido=pedido,
@@ -57,6 +190,25 @@ def obter_preparacao_arte(*, pedido, operador=None) -> PreparacaoArtePedido:
         preparacao.responsavel = operador
         preparacao.save(update_fields=["responsavel", "atualizado_em"])
     return preparacao
+
+
+def _iniciar_monitoramento_inatividade(
+    preparacao: PreparacaoArtePedido, *, agora=None
+) -> None:
+    agora = agora or timezone.now()
+    preparacao.iniciado_em = preparacao.iniciado_em or agora
+    preparacao.ultima_atividade_em = agora
+    preparacao.proximo_alerta_em = agora + timedelta(hours=2)
+    preparacao.adiado_para_data = None
+    preparacao.save(
+        update_fields=[
+            "iniciado_em",
+            "ultima_atividade_em",
+            "proximo_alerta_em",
+            "adiado_para_data",
+            "atualizado_em",
+        ]
+    )
 
 
 def _componente_seguro(valor: str, *, padrao: str) -> str:
@@ -142,6 +294,7 @@ def criar_arquivo_oficial(*, pedido, programa: str, operador) -> ArquivoOficialA
             },
             chave_idempotencia=f"arquivo-oficial-criar:{arquivo.pk}",
         )
+        _iniciar_monitoramento_inatividade(preparacao)
     except Exception:
         caminho.unlink(missing_ok=True)
         raise
@@ -198,6 +351,7 @@ def vincular_arquivo_oficial(*, pedido, caminho: str, operador) -> ArquivoOficia
         },
         chave_idempotencia=f"arquivo-oficial-vincular:{arquivo.pk}",
     )
+    _iniciar_monitoramento_inatividade(preparacao)
     return arquivo
 
 
@@ -258,13 +412,23 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
         preparacao.estado = EstadoPreparacaoArte.EM_PREPARACAO
         preparacao.iniciado_em = preparacao.iniciado_em or timezone.now()
     if mudanca_conteudo:
-        preparacao.ultima_atividade_em = timezone.now()
+        atividade_em = timezone.now()
+        preparacao.ultima_atividade_em = atividade_em
+        preparacao.proximo_alerta_em = atividade_em + timedelta(hours=2)
+        preparacao.adiado_para_data = None
         arquivo.ultima_modificacao_por = operador
-        arquivo.modificacao_detectada_em = timezone.now()
+        arquivo.modificacao_detectada_em = atividade_em
         if preparacao.estado == EstadoPreparacaoArte.CONCLUIDA:
             arquivo.alteracao_pos_conclusao_pendente = True
     preparacao.save(
-        update_fields=["estado", "iniciado_em", "ultima_atividade_em", "atualizado_em"]
+        update_fields=[
+            "estado",
+            "iniciado_em",
+            "ultima_atividade_em",
+            "proximo_alerta_em",
+            "adiado_para_data",
+            "atualizado_em",
+        ]
     )
     arquivo.estado_integridade = EstadoIntegridadeArquivo.ALERTA if discrepancias else EstadoIntegridadeArquivo.INTEGRO
     arquivo.discrepancias = discrepancias
@@ -329,7 +493,9 @@ def concluir_arte_pedido(*, pedido, operador) -> PreparacaoArtePedido:
     preparacao.concluido_em = timezone.now()
     preparacao.concluido_por = operador
     preparacao.responsavel = preparacao.responsavel or operador
-    preparacao.save(update_fields=["estado", "concluido_em", "concluido_por", "responsavel", "atualizado_em"])
+    preparacao.proximo_alerta_em = None
+    preparacao.adiado_para_data = None
+    preparacao.save(update_fields=["estado", "concluido_em", "concluido_por", "responsavel", "proximo_alerta_em", "adiado_para_data", "atualizado_em"])
     registrar_evento(
         tipo="ArtePedidoConcluida", operador=operador, origem="gestor_web",
         alvo_tipo="PreparacaoArtePedido", alvo_id=str(preparacao.pk), acao="concluir_arte_pedido",
