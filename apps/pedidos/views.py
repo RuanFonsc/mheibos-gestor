@@ -18,6 +18,7 @@ from apps.arquivos.services import (
     ArquivoOficialInvalido,
     EncerramentoArquivoInvalido,
     PreparacaoArteInvalida,
+    RestauracaoArquivoInvalida,
     TemaPedidoImutavel,
     criar_arquivo_oficial,
     avaliar_alerta_inatividade_arte,
@@ -29,6 +30,7 @@ from apps.arquivos.services import (
     validar_alteracao_tema,
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
+    vincular_arquivo_restaurado,
 )
 from apps.arquivos.referencias import (
     ArteReferenciaInvalida,
@@ -66,6 +68,7 @@ from apps.pedidos.models import (
 from apps.pedidos.use_cases import (
     AlteracaoStatusNegada,
     ArteNecessariaParaProducao,
+    ArquivoOficialAusenteBloqueiaOperacao,
     EntregaComSaldoNegada,
     alterar_status_pedido,
 )
@@ -193,6 +196,12 @@ def pedido_detail(request, pk):
     pedido.projecao = projetar_pedido(pedido)
     operador = operador_atual(request)
     preferencias = carregar_preferencias(operador=operador, request=request)
+    arquivos_oficiais = pedido.arquivos_oficiais_arte.all()
+    possui_ausencia_critica = any(
+        arquivo.ausencia_critica_ativa
+        for arquivo in arquivos_oficiais
+        if arquivo.estado_vinculo == EstadoVinculoArquivo.ATIVO
+    )
     return render(
         request,
         "pedidos/detail.html",
@@ -203,7 +212,11 @@ def pedido_detail(request, pk):
             "pode_cancelar": operador.pode_cancelar_pedido,
             "pode_desvincular_anexo": operador.is_admin,
             "pode_encerrar_arquivo_oficial": operador.is_admin,
-            "arquivos_oficiais": pedido.arquivos_oficiais_arte.all(),
+            "arquivos_oficiais": arquivos_oficiais,
+            "possui_ausencia_critica": possui_ausencia_critica,
+            "gerentes_ativos": OperadorGestor.objects.filter(
+                ativo=True, papel__in=["ADMIN", "ADMIN_GERAL"]
+            ).order_by("nome"),
             "programas_arte": PROGRAMAS_ARTE,
             "programa_arte_padrao": preferencias["programa_arte"],
             "preparacao_arte": PreparacaoArtePedido.objects.filter(pedido=pedido).first(),
@@ -308,6 +321,9 @@ def pedido_edit(request, pk):
                     "Adicione uma arte de referencia antes de enviar o pedido para as proximas etapas.",
                 )
                 return redirect("pedido_edit", pk=pedido.pk)
+            except ArquivoOficialAusenteBloqueiaOperacao as exc:
+                messages.error(request, str(exc))
+                return redirect("pedido_detail", pk=pedido.pk)
             except (EntregaComSaldoNegada, ProcessoEncerrado):
                 messages.error(
                     request,
@@ -350,17 +366,39 @@ def pedido_update_status(request, pk):
     if form.is_valid():
         novo_status = form.cleaned_data["status"]
         origem_producao = bool(retorno and retorno.startswith("/producao/"))
+        autorizador_id = request.POST.get("autorizador_ausencia", "")
+        autorizador_ausencia = (
+            OperadorGestor.objects.filter(pk=int(autorizador_id), ativo=True).first()
+            if autorizador_id.isdigit()
+            else None
+        )
         try:
             alterar_status_pedido(
                 pedido=pedido,
                 novo_status=novo_status,
                 operador=operador,
                 origem_operacional=origem_producao,
+                autorizador_ausencia=autorizador_ausencia,
+                senha_autorizador_ausencia=request.POST.get(
+                    "senha_autorizador_ausencia", ""
+                ),
+                justificativa_ausencia=request.POST.get(
+                    "justificativa_ausencia", ""
+                ),
             )
         except ArteNecessariaParaProducao:
             messages.error(
                 request,
                 "Pedido mantido em Aguardando arte. Adicione uma arte de referencia para continuar.",
+            )
+            if retorno:
+                return redirect(retorno)
+            return redirect("pedido_detail", pk=pedido.pk)
+        except ArquivoOficialAusenteBloqueiaOperacao as exc:
+            messages.error(
+                request,
+                str(exc)
+                or "Arquivo oficial ausente: restaure o arquivo ou obtenha autorizacao gerencial para esta transicao.",
             )
             if retorno:
                 return redirect(retorno)
@@ -443,7 +481,12 @@ def pedido_bulk_action(request):
         except ArteNecessariaParaProducao:
             bloqueados += 1
             continue
-        except (AlteracaoStatusNegada, EntregaComSaldoNegada, ProcessoEncerrado):
+        except (
+            AlteracaoStatusNegada,
+            ArquivoOficialAusenteBloqueiaOperacao,
+            EntregaComSaldoNegada,
+            ProcessoEncerrado,
+        ):
             bloqueados += 1
             continue
         atualizados += int(resultado.alterado)
@@ -476,15 +519,17 @@ def pedido_rejeitar_producao(request, pk):
         return redirect(retorno)
     operador = operador_atual(request)
     pedido.projecao = projetar_pedido(pedido)
-    alterar_status_pedido(
-        pedido=pedido,
-        novo_status=StatusPedido.AGUARDANDO_ARTE,
-        operador=operador,
-        origem_operacional=True,
-        observacao=f"Rejeitado pela produção: {motivo}",
-    )
-
-
+    try:
+        alterar_status_pedido(
+            pedido=pedido,
+            novo_status=StatusPedido.AGUARDANDO_ARTE,
+            operador=operador,
+            origem_operacional=True,
+            observacao=f"Rejeitado pela produção: {motivo}",
+        )
+    except ArquivoOficialAusenteBloqueiaOperacao as exc:
+        messages.error(request, str(exc))
+        return redirect("pedido_detail", pk=pedido.pk)
     messages.warning(request, f"Pedido #{pedido.pk} devolvido para os designers.")
     return redirect(retorno)
 
@@ -616,6 +661,32 @@ def pedido_verificar_arquivo_oficial(request, pk, arquivo_id):
         messages.warning(request, "A verificacao encontrou discrepancias no arquivo oficial.")
     else:
         messages.success(request, "Arquivo oficial verificado sem discrepancias.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_vincular_arquivo_restaurado(request, pk, arquivo_id):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode confirmar esta restauracao.")
+        return redirect("pedido_detail", pk=pk)
+    arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)
+    try:
+        vincular_arquivo_restaurado(
+            arquivo=arquivo,
+            caminho=request.POST.get("caminho_restaurado", ""),
+            operador=operador,
+            decisao=request.POST.get("decisao_restauracao", ""),
+        )
+    except RestauracaoArquivoInvalida as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(
+            request,
+            "Arquivo restaurado vinculado novamente ao Pedido com nome oficial preservado.",
+        )
     return redirect("pedido_detail", pk=pk)
 
 

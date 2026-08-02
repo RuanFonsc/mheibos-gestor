@@ -46,13 +46,18 @@ from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os,
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
 from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
-from apps.arquivos.models import EstadoPreparacaoArte, PreparacaoArtePedido
+from apps.arquivos.models import (
+    ArquivoOficialArte,
+    EstadoPreparacaoArte,
+    PreparacaoArtePedido,
+)
 from apps.arquivos.services import avaliar_alerta_inatividade_arte
 from apps.pedidos.models import Pedido, PedidoItem, PrioridadePedido, STATUS_ASSISTENCIA, StatusPedido
 from apps.operacao.projections import projetar_lista, queryset_com_projecao, queryset_fila_producao
 from apps.pedidos.use_cases import (
     AlteracaoStatusNegada,
     ArteNecessariaParaProducao,
+    ArquivoOficialAusenteBloqueiaOperacao,
     alterar_status_pedido,
 )
 
@@ -352,6 +357,15 @@ def _preparar_contexto_operacional(pedido):
 
 
 def preparacao_arte(request):
+    pedidos_arquivo_ausente = list(
+        Pedido.objects.filter(
+            arquivos_oficiais_arte__estado_vinculo="ATIVO",
+            arquivos_oficiais_arte__ausencia_critica_ativa=True,
+        )
+        .select_related("cliente")
+        .distinct()
+        .order_by("data_entrega", "id")[:120]
+    )
     aguardando_arte = (
         Pedido.objects.filter(status__in=STATUS_ASSISTENCIA)
         .select_related("cliente")
@@ -380,6 +394,10 @@ def preparacao_arte(request):
             "total_aguardando_arte": len(aguardando_arte),
             "alertas_inatividade_arte": alertas_inatividade,
             "total_alertas_inatividade_arte": len(alertas_inatividade),
+            "pedidos_arquivo_ausente": pedidos_arquivo_ausente,
+            "total_arquivos_ausentes": ArquivoOficialArte.objects.filter(
+                estado_vinculo="ATIVO", ausencia_critica_ativa=True
+            ).count(),
         },
     )
 
@@ -438,6 +456,8 @@ def assistencia_marcar_enviado(request, pk):
             request,
             f"Pedido #{pedido.pk} continua aguardando arte. Adicione a referencia antes de prosseguir.",
         )
+    except ArquivoOficialAusenteBloqueiaOperacao as exc:
+        messages.error(request, str(exc))
     except AlteracaoStatusNegada:
         messages.error(request, "Seu perfil nao pode alterar este Pedido.")
     else:
@@ -828,6 +848,9 @@ def api_widget_prazos(request):
 
 def api_notificacao_assistencia(request):
     resumo = resumo_assistencia_envio(_categorias_da_requisicao(request))
+    total_arquivos_ausentes = ArquivoOficialArte.objects.filter(
+        estado_vinculo="ATIVO", ausencia_critica_ativa=True
+    ).count()
     preparacoes = (
         PreparacaoArtePedido.objects.exclude(estado=EstadoPreparacaoArte.CONCLUIDA)
         .select_related("pedido")
@@ -838,7 +861,18 @@ def api_notificacao_assistencia(request):
         for preparacao in preparacoes
         if avaliar_alerta_inatividade_arte(pedido=preparacao.pedido).ativo
     )
-    if total_inatividade:
+    if total_arquivos_ausentes:
+        resumo["por_categoria"] = [
+            {
+                "id": "ausencia-arquivo-oficial",
+                "nome": "Arquivo oficial ausente",
+                "tipo": "critico",
+                "count": total_arquivos_ausentes,
+            }
+        ]
+        resumo["total"] = total_arquivos_ausentes
+        resumo["alerta"] = True
+    elif total_inatividade:
         resumo["por_categoria"] = [
             {
                 "id": "inatividade-arte",
@@ -850,7 +884,9 @@ def api_notificacao_assistencia(request):
         resumo["total"] = total_inatividade
         resumo["alerta"] = True
     resumo["url"] = reverse(
-        "preparacao_arte" if total_inatividade else "assistencia_envio"
+        "preparacao_arte"
+        if total_arquivos_ausentes or total_inatividade
+        else "assistencia_envio"
     )
     return JsonResponse(resumo)
 

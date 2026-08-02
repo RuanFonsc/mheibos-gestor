@@ -5,6 +5,10 @@ from django.db import transaction
 from apps.catalogo.models import OperadorGestor
 from apps.auditoria.services import registrar_evento
 from apps.catalogo.permissions import pode_editar_pedido
+from apps.arquivos.services import (
+    ExcecaoAusenciaArquivoInvalida,
+    autorizar_excecao_ausencia_arquivo,
+)
 from apps.financeiro.services import sincronizar_financeiro_pedido
 from apps.operacao.services import (
     bloquear_producao_pedido,
@@ -37,6 +41,10 @@ class ArteNecessariaParaProducao(Exception):
     """O Pedido nao pode avancar para execucao sem arte de referencia ativa."""
 
 
+class ArquivoOficialAusenteBloqueiaOperacao(Exception):
+    """Arquivo oficial ausente exige restauracao ou excecao gerencial pontual."""
+
+
 @dataclass(frozen=True)
 class ResultadoAlteracaoStatus:
     alterado: bool
@@ -52,6 +60,9 @@ def alterar_status_pedido(
     operador: OperadorGestor,
     origem_operacional: bool = False,
     observacao: str = "",
+    autorizador_ausencia: OperadorGestor | None = None,
+    senha_autorizador_ausencia: str = "",
+    justificativa_ausencia: str = "",
 ) -> ResultadoAlteracaoStatus:
     valores_validos = {valor for valor, _rotulo in StatusPedido.choices}
     if novo_status not in valores_validos:
@@ -79,6 +90,25 @@ def alterar_status_pedido(
     }
     if novo_status in estados_que_exigem_arte and not pedido.artes_ativas.exists():
         raise ArteNecessariaParaProducao
+
+    excecao_ausencia = None
+    possui_arquivo_ausente = pedido.arquivos_oficiais_arte.filter(
+        estado_vinculo="ATIVO", ausencia_critica_ativa=True
+    ).exists()
+    if possui_arquivo_ausente and novo_status != StatusPedido.CANCELADO:
+        if autorizador_ausencia is None:
+            raise ArquivoOficialAusenteBloqueiaOperacao
+        try:
+            excecao_ausencia = autorizar_excecao_ausencia_arquivo(
+                pedido=pedido,
+                acao=f"ALTERAR_STATUS:{novo_status}",
+                solicitante=operador,
+                autorizador=autorizador_ausencia,
+                senha=senha_autorizador_ausencia,
+                justificativa=justificativa_ausencia,
+            )
+        except ExcecaoAusenciaArquivoInvalida as exc:
+            raise ArquivoOficialAusenteBloqueiaOperacao(str(exc)) from exc
 
     comercial_anterior = pedido.estado_comercial
     entrega_anterior = pedido.estado_entrega
@@ -117,7 +147,17 @@ def alterar_status_pedido(
             "estado_comercial": pedido.estado_comercial,
             "estado_entrega": pedido.estado_entrega,
         },
-        metadados={"observacao": observacao} if observacao else {},
+        metadados={
+            **({"observacao": observacao} if observacao else {}),
+            **(
+                {
+                    "excecao_ausencia_arquivo_id": str(excecao_ausencia.pk),
+                    "autorizador_ausencia_id": excecao_ausencia.autorizador_id,
+                }
+                if excecao_ausencia
+                else {}
+            ),
+        },
     )
     if novo_status == StatusPedido.EM_PRODUCAO:
         iniciar_producao_pedido(pedido=pedido, operador=operador)

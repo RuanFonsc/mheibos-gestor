@@ -18,6 +18,7 @@ urlpatterns = [
     path("<int:pk>/arte/responder-inatividade/", views.pedido_responder_alerta_inatividade_arte, name="pedido_responder_alerta_inatividade_arte"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/decidir-alteracao/", views.pedido_decidir_alteracao_arte, name="pedido_decidir_alteracao_arte"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/verificar/", views.pedido_verificar_arquivo_oficial, name="pedido_verificar_arquivo_oficial"),
+    path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/vincular-restaurado/", views.pedido_vincular_arquivo_restaurado, name="pedido_vincular_arquivo_restaurado"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/reconhecer-alerta/", views.pedido_reconhecer_alerta_arquivo, name="pedido_reconhecer_alerta_arquivo"),
     path("<int:pk>/arquivos-oficiais/<uuid:arquivo_id>/encerrar/", views.pedido_encerrar_arquivo_oficial, name="pedido_encerrar_arquivo_oficial"),
     path("<int:pk>/anexos/adicionar/", views.pedido_adicionar_anexos, name="pedido_adicionar_anexos"),

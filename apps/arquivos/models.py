@@ -88,9 +88,21 @@ class ArquivoOficialArte(models.Model):
         default=EstadoVinculoArquivo.ATIVO,
     )
     tamanho_bytes = models.PositiveBigIntegerField(null=True, blank=True)
+    conteudo_sha256 = models.CharField(max_length=64, blank=True)
     modificado_em_ns = models.PositiveBigIntegerField(null=True, blank=True)
     modificacao_detectada_em = models.DateTimeField(null=True, blank=True)
     alteracao_pos_conclusao_pendente = models.BooleanField(default=False)
+    ausencia_critica_ativa = models.BooleanField(default=False)
+    ausencia_detectada_em = models.DateTimeField(null=True, blank=True)
+    restaurado_em = models.DateTimeField(null=True, blank=True)
+    restaurado_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="arquivos_oficiais_restaurados",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    restauracao_conteudo_divergente = models.BooleanField(default=False)
     ultima_modificacao_por = models.ForeignKey(
         "catalogo.OperadorGestor",
         related_name="arquivos_oficiais_modificados",
@@ -155,6 +167,33 @@ class ArquivoOficialArte(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("O vinculo oficial deve ser encerrado, nunca apagado.")
+
+
+class ExcecaoAusenciaArquivoOficial(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    pedido = models.ForeignKey(
+        "pedidos.Pedido",
+        related_name="excecoes_ausencia_arquivo",
+        on_delete=models.PROTECT,
+    )
+    acao = models.CharField(max_length=120)
+    justificativa = models.TextField()
+    arquivos_ausentes = models.JSONField(default=list)
+    solicitante = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="excecoes_arquivo_solicitadas",
+        on_delete=models.PROTECT,
+    )
+    autorizador = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="excecoes_arquivo_autorizadas",
+        on_delete=models.PROTECT,
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        indexes = [models.Index(fields=["pedido", "acao", "criado_em"])]
 
 
 def anexo_upload_to(instance, filename):

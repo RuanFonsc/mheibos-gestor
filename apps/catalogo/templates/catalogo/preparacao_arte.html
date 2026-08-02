@@ -29,7 +29,42 @@
       <strong>{{ total_alertas_inatividade_arte }}</strong>
       <span>exigem resposta do responsavel</span>
     </div>
+    <div class="card metric-card">
+      <p>Arquivos oficiais ausentes</p>
+      <strong>{{ total_arquivos_ausentes }}</strong>
+      <span>alertas críticos persistentes</span>
+    </div>
   </section>
+
+  {% if pedidos_arquivo_ausente %}
+    <section aria-labelledby="arquivosAusentesTitulo">
+      <div class="page-heading">
+        <div>
+          <span class="kicker text-red-400">Intervenção crítica</span>
+          <h3 id="arquivosAusentesTitulo" class="section-title">Arquivos oficiais ausentes</h3>
+          <p>O pedido permanece sinalizado até o arquivo ser restaurado no nome e caminho oficiais e vinculado novamente pelo Mheibos.</p>
+        </div>
+      </div>
+      <div class="order-grid">
+        {% for pedido in pedidos_arquivo_ausente %}
+          <article class="card order-card border-2 border-red-500" role="alert">
+            <div class="order-card-head">
+              <div>
+                <span class="order-id">#{{ pedido.legado_id|default:pedido.pk }}</span>
+                <h3 class="order-card-title">{{ pedido.cliente.nome }}</h3>
+                <p class="order-card-subtitle">{{ pedido.tema|default:"Sem tema" }}</p>
+              </div>
+              <span class="status-pill bg-red-500/10 text-red-400">Alerta crítico</span>
+            </div>
+            <div class="order-card-foot">
+              <span>Não pode ser dispensado.</span>
+              <a href="{% url 'pedido_detail' pedido.pk %}#arquivos-oficiais" class="btn-primary">Restaurar arquivo</a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 
   {% if alertas_inatividade_arte %}
     <section aria-labelledby="alertasInatividadeTitulo">

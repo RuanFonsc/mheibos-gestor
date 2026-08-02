@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.catalogo.models import OperadorGestor, PapelOperador
 from apps.auditoria.models import EventoOperacional
 from apps.clientes.models import Cliente
+from apps.arquivos.models import ArquivoOficialArte, ExcecaoAusenciaArquivoOficial
 
 from .models import (
     EstadoComercialPedido,
@@ -24,6 +25,7 @@ from .models import ArtePedido, HistoricoStatusPedido, Pedido
 from .use_cases import (
     AlteracaoStatusNegada,
     ArteNecessariaParaProducao,
+    ArquivoOficialAusenteBloqueiaOperacao,
     EntregaComSaldoNegada,
     alterar_status_pedido,
 )
@@ -101,6 +103,117 @@ class AlterarStatusPedidoTests(TestCase):
         self.assertEqual(self.pedido.status, StatusPedido.AGUARDANDO_ARTE)
         self.assertFalse(HistoricoStatusPedido.objects.exists())
         sync_financeiro.assert_not_called()
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_arquivo_oficial_ausente_bloqueia_sem_excecao_gerencial(self, sync_financeiro):
+        ArquivoOficialArte.objects.create(
+            pedido=self.pedido,
+            caminho_oficial=r"C:\\Artes\\pedido.cdr",
+            nome_oficial="pedido.cdr",
+            extensao="cdr",
+            ausencia_critica_ativa=True,
+        )
+
+        with self.assertRaises(ArquivoOficialAusenteBloqueiaOperacao):
+            alterar_status_pedido(
+                pedido=self.pedido,
+                novo_status=StatusPedido.EM_PRODUCAO,
+                operador=self.operador,
+            )
+
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.status, StatusPedido.AGUARDANDO_ARTE)
+        self.assertFalse(ExcecaoAusenciaArquivoOficial.objects.exists())
+        sync_financeiro.assert_not_called()
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_gerente_autoriza_uma_transicao_e_alerta_permanece(self, _sync_financeiro):
+        arquivo = ArquivoOficialArte.objects.create(
+            pedido=self.pedido,
+            caminho_oficial=r"C:\\Artes\\pedido.cdr",
+            nome_oficial="pedido.cdr",
+            extensao="cdr",
+            ausencia_critica_ativa=True,
+        )
+        gerente = OperadorGestor.objects.create(
+            nome="Gerente",
+            senha="senha-gerente",
+            papel=PapelOperador.ADMIN,
+        )
+
+        alterar_status_pedido(
+            pedido=self.pedido,
+            novo_status=StatusPedido.EM_PRODUCAO,
+            operador=self.operador,
+            autorizador_ausencia=gerente,
+            senha_autorizador_ausencia="senha-gerente",
+            justificativa_ausencia="Prazo critico; restauracao em andamento.",
+        )
+
+        excecao = ExcecaoAusenciaArquivoOficial.objects.get()
+        arquivo.refresh_from_db()
+        self.assertEqual(excecao.autorizador, gerente)
+        self.assertEqual(excecao.solicitante, self.operador)
+        self.assertEqual(excecao.acao, "ALTERAR_STATUS:EM_PRODUCAO")
+        self.assertTrue(arquivo.ausencia_critica_ativa)
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_excecao_recusa_senha_invalida_e_justificativa_vazia(self, sync_financeiro):
+        ArquivoOficialArte.objects.create(
+            pedido=self.pedido,
+            caminho_oficial=r"C:\\Artes\\pedido.cdr",
+            nome_oficial="pedido.cdr",
+            extensao="cdr",
+            ausencia_critica_ativa=True,
+        )
+        gerente = OperadorGestor.objects.create(
+            nome="Gerente Bloqueio",
+            senha="senha-gerente",
+            papel=PapelOperador.ADMIN,
+        )
+        for senha, justificativa in [
+            ("senha-invalida", "Urgencia operacional"),
+            ("senha-gerente", ""),
+        ]:
+            with self.assertRaises(ArquivoOficialAusenteBloqueiaOperacao):
+                alterar_status_pedido(
+                    pedido=self.pedido,
+                    novo_status=StatusPedido.EM_PRODUCAO,
+                    operador=self.operador,
+                    autorizador_ausencia=gerente,
+                    senha_autorizador_ausencia=senha,
+                    justificativa_ausencia=justificativa,
+                )
+        self.assertFalse(ExcecaoAusenciaArquivoOficial.objects.exists())
+        sync_financeiro.assert_not_called()
+
+    @patch("apps.pedidos.use_cases.registrar_evento", side_effect=RuntimeError("falha"))
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_falha_da_transicao_reverte_excecao_gerencial(self, _sync, _evento):
+        ArquivoOficialArte.objects.create(
+            pedido=self.pedido,
+            caminho_oficial=r"C:\\Artes\\pedido.cdr",
+            nome_oficial="pedido.cdr",
+            extensao="cdr",
+            ausencia_critica_ativa=True,
+        )
+        gerente = OperadorGestor.objects.create(
+            nome="Gerente Rollback",
+            senha="senha-gerente",
+            papel=PapelOperador.ADMIN,
+        )
+        with self.assertRaises(RuntimeError):
+            alterar_status_pedido(
+                pedido=self.pedido,
+                novo_status=StatusPedido.EM_PRODUCAO,
+                operador=self.operador,
+                autorizador_ausencia=gerente,
+                senha_autorizador_ausencia="senha-gerente",
+                justificativa_ausencia="Excecao auditada para o teste.",
+            )
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.status, StatusPedido.AGUARDANDO_ARTE)
+        self.assertFalse(ExcecaoAusenciaArquivoOficial.objects.exists())
 
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
     def test_authorized_transition_updates_order_and_records_actor(self, sync_financeiro):

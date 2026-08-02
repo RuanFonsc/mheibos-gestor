@@ -125,6 +125,39 @@
               </div>
               <p class="mt-1 break-all text-xs text-[var(--text-secondary)]">{{ arquivo.caminho_oficial }}</p>
               <p class="mt-1 text-xs text-[var(--text-secondary)]">{{ arquivo.get_origem_display }}{% if arquivo.criado_por %} · {{ arquivo.criado_por.nome }}{% endif %}</p>
+              {% if arquivo.ausencia_critica_ativa %}
+                <section class="mt-3 rounded-md border-2 border-red-500 bg-red-500/10 p-4" role="alert" aria-live="assertive">
+                  <strong class="block text-sm text-red-400">ALERTA CRITICO - AUSENCIA DE ARTE OFICIAL DO PEDIDO #{{ pedido.pk }}</strong>
+                  <p class="mt-2 text-sm">O arquivo oficial não foi encontrado. Este alerta permanece ativo até a restauração ser confirmada pelo Mheibos.</p>
+                  <p class="mt-2 break-all text-xs text-[var(--text-secondary)]">Restaure <strong>{{ arquivo.nome_oficial }}</strong> no caminho oficial: {{ arquivo.caminho_oficial }}</p>
+                  {% if pode_editar %}
+                    <form method="post" action="{% url 'pedido_vincular_arquivo_restaurado' pedido.pk arquivo.pk %}" class="mt-4 space-y-3">
+                      {% csrf_token %}
+                      <div data-corel-field>
+                        <input type="hidden" name="caminho_restaurado" data-corel-input required>
+                        <div data-corel-drop class="file-drop">
+                          <p data-corel-empty class="text-sm font-semibold">Selecione o arquivo restaurado no caminho oficial</p>
+                          <p data-corel-value class="hidden max-w-full break-all text-sm font-semibold text-[#00e5ff]"></p>
+                          <p data-corel-feedback class="mt-1 text-xs text-[#8892b0]">Nome e caminho precisam ser exatamente os oficiais.</p>
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                          <button type="button" data-corel-select class="btn-secondary">Selecionar arquivo restaurado</button>
+                          <button type="button" data-corel-clear class="btn-danger">Limpar</button>
+                        </div>
+                      </div>
+                      <div>
+                        <label for="decisaoRestauracao{{ arquivo.pk }}">Se o conteúdo restaurado for diferente</label>
+                        <select id="decisaoRestauracao{{ arquivo.pk }}" name="decisao_restauracao">
+                          <option value="">Escolher somente se houver divergência</option>
+                          <option value="MANTER_ESTADO">Manter o estado atual da arte</option>
+                          <option value="VOLTAR_PREPARACAO">Voltar a arte para preparação</option>
+                        </select>
+                      </div>
+                      <button type="submit" class="btn-primary">Vincular arquivo restaurado</button>
+                    </form>
+                  {% endif %}
+                </section>
+              {% endif %}
               {% if arquivo.ultima_modificacao_por and arquivo.modificacao_detectada_em %}
                 <p class="mt-1 text-xs text-[var(--text-secondary)]">{{ arquivo.ultima_modificacao_por.nome }} confirmou modificacao em {{ arquivo.modificacao_detectada_em|date:"d/m/Y H:i" }}.</p>
               {% endif %}
@@ -154,7 +187,7 @@
                   {% for discrepancia in arquivo.discrepancias %}<p>{{ discrepancia.mensagem }}</p>{% endfor %}
                   {% if arquivo.alerta_reconhecido_em %}
                     <p class="mt-2 text-xs text-[var(--text-secondary)]">Reconhecido por {{ arquivo.alerta_reconhecido_por.nome }} em {{ arquivo.alerta_reconhecido_em|date:"d/m/Y H:i" }}.</p>
-                  {% elif pode_editar %}
+                  {% elif pode_editar and not arquivo.ausencia_critica_ativa %}
                     <form method="post" action="{% url 'pedido_reconhecer_alerta_arquivo' pedido.pk arquivo.pk %}" class="mt-2">
                       {% csrf_token %}<button type="submit" class="btn-danger">Eu entendi</button>
                     </form>
@@ -353,6 +386,32 @@
           <form method="post" action="{% url 'pedido_update_status' pedido.pk %}" class="space-y-3">
             {% csrf_token %}
             {{ status_form.status }}
+            {% if possui_ausencia_critica %}
+              <div class="rounded-lg border-2 border-red-500 bg-red-500/10 p-3 text-sm">
+                <strong class="text-red-400">Arquivo oficial ausente</strong>
+                <p class="mt-1 text-xs">Restaure o arquivo. Para continuar apenas esta transição sem ele, é obrigatória autorização de gerente com senha e justificativa. O alerta crítico continuará ativo.</p>
+                <details class="mt-3">
+                  <summary class="cursor-pointer font-semibold">Solicitar autorização gerencial excepcional</summary>
+                  <div class="mt-3 space-y-3">
+                    <div>
+                      <label for="autorizadorAusencia">Gerente autorizador</label>
+                      <select id="autorizadorAusencia" name="autorizador_ausencia">
+                        <option value="">Selecione</option>
+                        {% for gerente in gerentes_ativos %}<option value="{{ gerente.pk }}">{{ gerente.nome }}</option>{% endfor %}
+                      </select>
+                    </div>
+                    <div>
+                      <label for="senhaAutorizadorAusencia">Senha do gerente</label>
+                      <input id="senhaAutorizadorAusencia" type="password" name="senha_autorizador_ausencia" autocomplete="current-password">
+                    </div>
+                    <div>
+                      <label for="justificativaAusencia">Justificativa</label>
+                      <textarea id="justificativaAusencia" name="justificativa_ausencia" rows="3"></textarea>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            {% endif %}
             <button class="btn-primary w-full" type="submit">Atualizar status</button>
           </form>
         {% endif %}

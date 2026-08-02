@@ -1,5 +1,6 @@
 import os
 import re
+import hashlib
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -16,6 +17,7 @@ from .models import (
     EstadoIntegridadeArquivo,
     EstadoPreparacaoArte,
     EstadoVinculoArquivo,
+    ExcecaoAusenciaArquivoOficial,
     OrigemArquivoOficial,
     PreparacaoArtePedido,
 )
@@ -54,6 +56,22 @@ class PreparacaoArteInvalida(Exception):
 
 class AcaoInatividadeArteInvalida(Exception):
     pass
+
+
+class RestauracaoArquivoInvalida(Exception):
+    pass
+
+
+class ExcecaoAusenciaArquivoInvalida(Exception):
+    pass
+
+
+def _sha256_arquivo(caminho: str) -> str:
+    digest = hashlib.sha256()
+    with open(caminho, "rb") as arquivo_fisico:
+        for bloco in iter(lambda: arquivo_fisico.read(1024 * 1024), b""):
+            digest.update(bloco)
+    return digest.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -275,6 +293,7 @@ def criar_arquivo_oficial(*, pedido, programa: str, operador) -> ArquivoOficialA
             extensao=extensao,
             origem=OrigemArquivoOficial.CRIADO_MHEIBOS,
             criado_por=operador,
+            conteudo_sha256=_sha256_arquivo(str(caminho)),
             propriedades_tecnicas={"programa": programa, "programa_nome": nome_programa},
         )
         registrar_evento(
@@ -334,6 +353,7 @@ def vincular_arquivo_oficial(*, pedido, caminho: str, operador) -> ArquivoOficia
         extensao=extensao,
         origem=OrigemArquivoOficial.VINCULADO_MANUAL,
         criado_por=operador,
+        conteudo_sha256=_sha256_arquivo(caminho) if os.path.isfile(caminho) else "",
     )
     registrar_evento(
         tipo="ArquivoOficialArteVinculado",
@@ -369,6 +389,8 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
     discrepancias = []
     tamanho = None
     modificado_em_ns = None
+    conteudo_sha256 = ""
+    ausencia_detectada = False
     largura_px = arquivo.largura_px
     altura_px = arquivo.altura_px
     resolucao_dpi = arquivo.resolucao_dpi
@@ -376,11 +398,17 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
     try:
         dados = os.stat(arquivo.caminho_oficial)
     except (FileNotFoundError, NotADirectoryError):
+        ausencia_detectada = True
         discrepancias.append({"codigo": "ARQUIVO_NAO_ENCONTRADO", "mensagem": "O arquivo nao foi encontrado no caminho oficial."})
     except OSError as exc:
         discrepancias.append({"codigo": "CAMINHO_INACESSIVEL", "mensagem": "O caminho oficial nao pode ser acessado.", "detalhe": str(exc)})
     else:
         tamanho = dados.st_size
+        conteudo_sha256 = (
+            _sha256_arquivo(arquivo.caminho_oficial)
+            if os.path.isfile(arquivo.caminho_oficial)
+            else arquivo.conteudo_sha256
+        )
         modificado_em_ns = getattr(
             dados,
             "st_mtime_ns",
@@ -400,11 +428,26 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
         if leitura.discrepancia:
             discrepancias.append(leitura.discrepancia)
 
+    if ausencia_detectada:
+        arquivo.ausencia_critica_ativa = True
+        arquivo.ausencia_detectada_em = arquivo.ausencia_detectada_em or timezone.now()
+    elif arquivo.ausencia_critica_ativa:
+        discrepancias.append(
+            {
+                "codigo": "RESTAURACAO_NAO_CONFIRMADA",
+                "mensagem": (
+                    "Um arquivo voltou ao caminho oficial, mas a restauracao ainda "
+                    "precisa ser vinculada explicitamente no Mheibos."
+                ),
+            }
+        )
+
     estado_anterior = arquivo.estado_integridade
     tamanho_anterior = arquivo.tamanho_bytes
     modificado_anterior = arquivo.modificado_em_ns
     mudanca_conteudo = (
-        modificado_anterior is not None
+        not arquivo.ausencia_critica_ativa
+        and modificado_anterior is not None
         and (modificado_anterior != modificado_em_ns or tamanho_anterior != tamanho)
     )
     preparacao = obter_preparacao_arte(pedido=arquivo.pedido, operador=operador)
@@ -432,8 +475,11 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
     )
     arquivo.estado_integridade = EstadoIntegridadeArquivo.ALERTA if discrepancias else EstadoIntegridadeArquivo.INTEGRO
     arquivo.discrepancias = discrepancias
-    arquivo.tamanho_bytes = tamanho
-    arquivo.modificado_em_ns = modificado_em_ns
+    if not ausencia_detectada:
+        arquivo.tamanho_bytes = tamanho
+        arquivo.modificado_em_ns = modificado_em_ns
+        if not arquivo.ausencia_critica_ativa:
+            arquivo.conteudo_sha256 = conteudo_sha256
     arquivo.largura_px = largura_px
     arquivo.altura_px = altura_px
     arquivo.resolucao_dpi = resolucao_dpi
@@ -441,12 +487,12 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
     arquivo.verificado_em = timezone.now()
     arquivo.alerta_reconhecido_em = None
     arquivo.alerta_reconhecido_por = None
-    arquivo.save(update_fields=["estado_integridade", "discrepancias", "tamanho_bytes", "modificado_em_ns", "modificacao_detectada_em", "alteracao_pos_conclusao_pendente", "ultima_modificacao_por", "largura_px", "altura_px", "resolucao_dpi", "propriedades_tecnicas", "verificado_em", "alerta_reconhecido_em", "alerta_reconhecido_por", "atualizado_em"])
+    arquivo.save(update_fields=["estado_integridade", "discrepancias", "tamanho_bytes", "conteudo_sha256", "modificado_em_ns", "modificacao_detectada_em", "alteracao_pos_conclusao_pendente", "ausencia_critica_ativa", "ausencia_detectada_em", "ultima_modificacao_por", "largura_px", "altura_px", "resolucao_dpi", "propriedades_tecnicas", "verificado_em", "alerta_reconhecido_em", "alerta_reconhecido_por", "atualizado_em"])
     registrar_evento(
         tipo="ArquivoOficialArteVerificado", operador=operador, origem="gestor_web",
         alvo_tipo="ArquivoOficialArte", alvo_id=str(arquivo.pk), acao="verificar_integridade_arquivo",
         valores_anteriores={"estado_integridade": estado_anterior},
-        valores_posteriores={"estado_integridade": arquivo.estado_integridade, "discrepancias": discrepancias, "tamanho_bytes": tamanho, "modificacao_conteudo": mudanca_conteudo, "alteracao_pos_conclusao_pendente": arquivo.alteracao_pos_conclusao_pendente, "largura_px": largura_px, "altura_px": altura_px, "resolucao_dpi": str(resolucao_dpi) if resolucao_dpi else None, "propriedades_tecnicas": propriedades_tecnicas},
+        valores_posteriores={"estado_integridade": arquivo.estado_integridade, "discrepancias": discrepancias, "tamanho_bytes": tamanho, "modificacao_conteudo": mudanca_conteudo, "alteracao_pos_conclusao_pendente": arquivo.alteracao_pos_conclusao_pendente, "ausencia_critica_ativa": arquivo.ausencia_critica_ativa, "largura_px": largura_px, "altura_px": altura_px, "resolucao_dpi": str(resolucao_dpi) if resolucao_dpi else None, "propriedades_tecnicas": propriedades_tecnicas},
     )
     return arquivo
 
@@ -531,7 +577,171 @@ def decidir_alteracao_pos_conclusao(*, arquivo: ArquivoOficialArte, operador, ma
 
 
 @transaction.atomic
+def vincular_arquivo_restaurado(
+    *, arquivo: ArquivoOficialArte, caminho: str, operador, decisao: str = ""
+) -> ArquivoOficialArte:
+    arquivo = ArquivoOficialArte.objects.select_for_update().get(pk=arquivo.pk)
+    if not arquivo.ausencia_critica_ativa:
+        raise RestauracaoArquivoInvalida(
+            "Nao existe ausencia critica ativa para este arquivo."
+        )
+    caminho, nome, _extensao = normalizar_caminho_oficial(caminho)
+    if caminho.casefold() != arquivo.caminho_oficial.casefold():
+        raise RestauracaoArquivoInvalida(
+            "Restaure o arquivo no caminho oficial original; mover ou renomear e proibido."
+        )
+    if nome.casefold() != arquivo.nome_oficial.casefold():
+        raise RestauracaoArquivoInvalida("O arquivo restaurado deve manter o nome oficial.")
+    if not os.path.isfile(caminho):
+        raise RestauracaoArquivoInvalida(
+            "O arquivo restaurado ainda nao esta acessivel no caminho oficial."
+        )
+    dados = os.stat(caminho)
+    hash_restaurado = _sha256_arquivo(caminho)
+    conteudo_divergente = bool(
+        arquivo.conteudo_sha256 and arquivo.conteudo_sha256 != hash_restaurado
+    )
+    if conteudo_divergente and decisao not in {
+        "MANTER_ESTADO",
+        "VOLTAR_PREPARACAO",
+    }:
+        raise RestauracaoArquivoInvalida(
+            "O conteudo restaurado diverge da ultima evidencia. Escolha manter o estado atual ou voltar para preparacao."
+        )
+    preparacao = PreparacaoArtePedido.objects.select_for_update().get(
+        pedido=arquivo.pedido
+    )
+    estado_anterior = preparacao.estado
+    if decisao == "VOLTAR_PREPARACAO":
+        preparacao.estado = EstadoPreparacaoArte.EM_PREPARACAO
+        preparacao.concluido_em = None
+        preparacao.concluido_por = None
+        preparacao.ultima_atividade_em = timezone.now()
+        preparacao.proximo_alerta_em = timezone.now() + timedelta(hours=2)
+        preparacao.save(
+            update_fields=[
+                "estado",
+                "concluido_em",
+                "concluido_por",
+                "ultima_atividade_em",
+                "proximo_alerta_em",
+                "atualizado_em",
+            ]
+        )
+    arquivo.conteudo_sha256 = hash_restaurado
+    arquivo.tamanho_bytes = dados.st_size
+    arquivo.modificado_em_ns = getattr(
+        dados,
+        "st_mtime_ns",
+        int(getattr(dados, "st_mtime", 0) * 1_000_000_000),
+    )
+    arquivo.ausencia_critica_ativa = False
+    arquivo.restaurado_em = timezone.now()
+    arquivo.restaurado_por = operador
+    arquivo.restauracao_conteudo_divergente = conteudo_divergente
+    arquivo.estado_integridade = EstadoIntegridadeArquivo.INTEGRO
+    arquivo.discrepancias = []
+    arquivo.alerta_reconhecido_em = None
+    arquivo.alerta_reconhecido_por = None
+    arquivo.save(
+        update_fields=[
+            "conteudo_sha256",
+            "tamanho_bytes",
+            "modificado_em_ns",
+            "ausencia_critica_ativa",
+            "restaurado_em",
+            "restaurado_por",
+            "restauracao_conteudo_divergente",
+            "estado_integridade",
+            "discrepancias",
+            "alerta_reconhecido_em",
+            "alerta_reconhecido_por",
+            "atualizado_em",
+        ]
+    )
+    registrar_evento(
+        tipo="ArquivoOficialArteRestaurado",
+        operador=operador,
+        origem="gestor_web",
+        alvo_tipo="ArquivoOficialArte",
+        alvo_id=str(arquivo.pk),
+        acao="vincular_arquivo_restaurado",
+        valores_anteriores={
+            "ausencia_critica_ativa": True,
+            "estado_arte": estado_anterior,
+        },
+        valores_posteriores={
+            "ausencia_critica_ativa": False,
+            "conteudo_divergente": conteudo_divergente,
+            "decisao": decisao or "CONTEUDO_CONFIRMADO",
+            "estado_arte": preparacao.estado,
+            "nome_oficial_preservado": True,
+        },
+        chave_idempotencia=(
+            f"arquivo-restaurado:{arquivo.pk}:{arquivo.modificado_em_ns}"
+        ),
+    )
+    return arquivo
+
+
+@transaction.atomic
+def autorizar_excecao_ausencia_arquivo(
+    *, pedido, acao: str, solicitante, autorizador, senha: str, justificativa: str
+) -> ExcecaoAusenciaArquivoOficial:
+    ausentes = list(
+        ArquivoOficialArte.objects.filter(
+            pedido=pedido,
+            estado_vinculo=EstadoVinculoArquivo.ATIVO,
+            ausencia_critica_ativa=True,
+        ).values_list("id", flat=True)
+    )
+    if not ausentes:
+        raise ExcecaoAusenciaArquivoInvalida(
+            "Nao existe arquivo oficial ausente neste Pedido."
+        )
+    if not autorizador.ativo or not autorizador.is_admin:
+        raise ExcecaoAusenciaArquivoInvalida(
+            "A excecao exige um gerente ou administrador ativo."
+        )
+    if not validar_senha_operador(autorizador, senha):
+        raise ExcecaoAusenciaArquivoInvalida("A senha do autorizador e invalida.")
+    justificativa = (justificativa or "").strip()
+    if not justificativa:
+        raise ExcecaoAusenciaArquivoInvalida(
+            "Informe a justificativa gerencial para esta transicao."
+        )
+    excecao = ExcecaoAusenciaArquivoOficial.objects.create(
+        pedido=pedido,
+        acao=acao,
+        justificativa=justificativa,
+        arquivos_ausentes=[str(item) for item in ausentes],
+        solicitante=solicitante,
+        autorizador=autorizador,
+    )
+    registrar_evento(
+        tipo="ExcecaoAusenciaArquivoOficialAutorizada",
+        operador=autorizador,
+        origem="gestor_web",
+        alvo_tipo="Pedido",
+        alvo_id=str(pedido.pk),
+        acao=acao,
+        valores_anteriores={"arquivos_ausentes": len(ausentes)},
+        valores_posteriores={
+            "excecao_id": str(excecao.pk),
+            "solicitante_id": solicitante.pk,
+            "justificativa": justificativa,
+        },
+        chave_idempotencia=f"excecao-ausencia:{excecao.pk}",
+    )
+    return excecao
+
+
+@transaction.atomic
 def reconhecer_alerta_arquivo(*, arquivo: ArquivoOficialArte, operador) -> ArquivoOficialArte:
+    if arquivo.ausencia_critica_ativa:
+        raise AlertaArquivoInvalido(
+            "A ausencia de arquivo oficial nao pode ser reconhecida ou dispensada. Restaure e vincule o arquivo."
+        )
     verificacao = arquivo.verificado_em
     if (
         arquivo.estado_integridade != EstadoIntegridadeArquivo.ALERTA

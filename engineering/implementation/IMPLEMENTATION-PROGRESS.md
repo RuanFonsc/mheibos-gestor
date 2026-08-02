@@ -424,3 +424,14 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Validação real:** alerta normal, lembrete de 30 minutos, segundo alerta, prazo crítico, bloqueio de adiamento, ajuda urgente e fila integrada foram exercitados no banco e navegador locais.
 - **Testes e visual:** 59 testes focados aprovados; lint, type checking, Django, migration check, tokens e matriz visual sem overflow aprovados. Evidências em `IMP-009J-VISUAL-VALIDATION.md`.
 - **Próxima fatia:** ausência crítica do arquivo, restauração vinculada e exceção gerencial por ação conforme DEC-IMP-033.
+
+### IMP-009K — COMPLETED
+
+- **Ausência crítica:** a verificação física registra a falta de arquivo oficial como alerta crítico persistente. O alerta não oferece aceite, dispensa ou fechamento e continua ativo mesmo quando um arquivo reaparece no caminho.
+- **Restauração explícita:** somente a ação `Vincular arquivo restaurado`, pela interface do Mheibos, encerra o alerta. Nome e caminho precisam coincidir exatamente com a identidade oficial; mover ou renomear é recusado.
+- **Conteúdo divergente:** o Mheibos compara SHA-256 com a última evidência disponível. Se o conteúdo restaurado divergir, exige decisão humana entre manter o estado atual ou devolver o conjunto para preparação.
+- **Exceção pontual:** continuar uma transição sem o arquivo exige gerente ou administrador ativo, senha própria e justificativa. A autorização pertence somente àquela ação, mantém solicitante e autorizador distintos e não remove o alerta crítico.
+- **Assistencialização:** a ausência aparece no detalhe do Pedido, na fila de Preparação de Arte e com prioridade na notificação global, sem depender de IA.
+- **Auditoria:** restauração e exceção gerencial geram eventos transacionais; a exceção integra a mesma transação da mudança de estado, impedindo autorização órfã quando a operação falha.
+- **Validação:** migration check, Django check, lint, type checking, tokens visuais, 46 testes focados e baseline completo de 167 testes aprovados. Matriz visual oficial sem overflow; evidências em `IMP-009K-VISUAL-VALIDATION.md`.
+- **Próxima fatia:** transferência gerencial de responsabilidade e continuidade da preparação conforme DEC-IMP-033.

@@ -14,8 +14,10 @@ from apps.arquivos.models import ArquivoOficialArte, EstadoPreparacaoArte, Prepa
 from apps.arquivos.services import (
     AcaoInatividadeArteInvalida,
     ArquivoOficialInvalido,
+    AlertaArquivoInvalido,
     EncerramentoArquivoInvalido,
     PreparacaoArteInvalida,
+    RestauracaoArquivoInvalida,
     TemaPedidoImutavel,
     concluir_arte_pedido,
     criar_arquivo_oficial,
@@ -27,6 +29,7 @@ from apps.arquivos.services import (
     validar_alteracao_tema,
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
+    vincular_arquivo_restaurado,
 )
 from apps.auditoria.models import EventoOperacional
 from apps.catalogo.models import (
@@ -54,6 +57,106 @@ class ArquivoOficialArteTests(TestCase):
         session = self.client.session
         session["operador_id"] = (operador or self.operador).pk
         session.save()
+
+    def test_ausencia_critica_persiste_ate_vinculo_explicito_da_restauracao(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            arquivo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            Path(arquivo.caminho_oficial).write_bytes(b"arte original")
+            verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+            Path(arquivo.caminho_oficial).unlink()
+
+            arquivo = verificar_arquivo_oficial(
+                arquivo=arquivo, operador=self.operador
+            )
+            self.assertTrue(arquivo.ausencia_critica_ativa)
+            with self.assertRaises(AlertaArquivoInvalido):
+                reconhecer_alerta_arquivo(
+                    arquivo=arquivo, operador=self.operador
+                )
+
+            Path(arquivo.caminho_oficial).write_bytes(b"arte original")
+            arquivo = verificar_arquivo_oficial(
+                arquivo=arquivo, operador=self.operador
+            )
+            self.assertTrue(arquivo.ausencia_critica_ativa)
+            self.assertIn(
+                "RESTAURACAO_NAO_CONFIRMADA",
+                {item["codigo"] for item in arquivo.discrepancias},
+            )
+
+            arquivo = vincular_arquivo_restaurado(
+                arquivo=arquivo,
+                caminho=arquivo.caminho_oficial,
+                operador=self.operador,
+            )
+            self.assertFalse(arquivo.ausencia_critica_ativa)
+            self.assertEqual(arquivo.restaurado_por, self.operador)
+
+    def test_restauracao_divergente_exige_decisao_e_pode_reabrir_arte(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            arquivo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="pdf", operador=self.operador
+            )
+            Path(arquivo.caminho_oficial).write_bytes(b"versao original")
+            verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+            concluir_arte_pedido(pedido=self.pedido, operador=self.operador)
+            Path(arquivo.caminho_oficial).unlink()
+            arquivo = verificar_arquivo_oficial(
+                arquivo=arquivo, operador=self.operador
+            )
+            Path(arquivo.caminho_oficial).write_bytes(b"versao restaurada diferente")
+
+            with self.assertRaisesMessage(
+                RestauracaoArquivoInvalida, "conteudo restaurado diverge"
+            ):
+                vincular_arquivo_restaurado(
+                    arquivo=arquivo,
+                    caminho=arquivo.caminho_oficial,
+                    operador=self.operador,
+                )
+
+            arquivo = vincular_arquivo_restaurado(
+                arquivo=arquivo,
+                caminho=arquivo.caminho_oficial,
+                operador=self.operador,
+                decisao="VOLTAR_PREPARACAO",
+            )
+            preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+            self.assertTrue(arquivo.restauracao_conteudo_divergente)
+            self.assertEqual(preparacao.estado, EstadoPreparacaoArte.EM_PREPARACAO)
+
+    def test_restauracao_recusa_outro_caminho_mesmo_com_nome_semelhante(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            arquivo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+            Path(arquivo.caminho_oficial).unlink()
+            arquivo = verificar_arquivo_oficial(
+                arquivo=arquivo, operador=self.operador
+            )
+            alternativo = Path(raiz) / arquivo.nome_oficial
+            alternativo.write_bytes(b"")
+
+            with self.assertRaisesMessage(
+                RestauracaoArquivoInvalida, "caminho oficial original"
+            ):
+                vincular_arquivo_restaurado(
+                    arquivo=arquivo,
+                    caminho=str(alternativo),
+                    operador=self.operador,
+                )
 
     def test_multiplos_vinculos_guardam_metadados_sem_binario(self):
         primeiro = vincular_arquivo_oficial(
@@ -554,7 +657,7 @@ class ArquivoOficialArteTests(TestCase):
         self.assertFalse(arquivo.propriedades_tecnicas["leitura_raster"]["suportado"])
 
     @patch("apps.arquivos.services.os.stat", side_effect=FileNotFoundError)
-    def test_arquivo_ausente_exige_eu_entendi_auditado(self, _stat):
+    def test_arquivo_ausente_nao_pode_ser_dispensado(self, _stat):
         arquivo = vincular_arquivo_oficial(
             pedido=self.pedido, caminho=r"C:\Artes\ausente.cdr", operador=self.operador
         )
@@ -562,14 +665,17 @@ class ArquivoOficialArteTests(TestCase):
         self.assertEqual(arquivo.estado_integridade, "ALERTA")
         self.assertEqual(arquivo.discrepancias[0]["codigo"], "ARQUIVO_NAO_ENCONTRADO")
 
-        reconhecer_alerta_arquivo(arquivo=arquivo, operador=self.operador)
-        arquivo.refresh_from_db()
-        self.assertEqual(arquivo.alerta_reconhecido_por, self.operador)
-        evento = EventoOperacional.objects.get(tipo="AlertaArquivoOficialReconhecido")
-        self.assertEqual(evento.acao, "eu_entendi_alerta_arquivo")
+        self.assertTrue(arquivo.ausencia_critica_ativa)
+        with self.assertRaises(AlertaArquivoInvalido):
+            reconhecer_alerta_arquivo(arquivo=arquivo, operador=self.operador)
+        self.assertFalse(
+            EventoOperacional.objects.filter(
+                tipo="AlertaArquivoOficialReconhecido"
+            ).exists()
+        )
 
     @patch("apps.arquivos.services.os.stat", side_effect=FileNotFoundError)
-    def test_rotas_verificam_e_reconhecem_alerta(self, _stat):
+    def test_rota_exibe_alerta_critico_sem_acao_de_dispensa(self, _stat):
         arquivo = vincular_arquivo_oficial(
             pedido=self.pedido, caminho=r"C:\Artes\ausente.cdr", operador=self.operador
         )
@@ -577,10 +683,25 @@ class ArquivoOficialArteTests(TestCase):
         self.client.post(f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/verificar/")
         response = self.client.get(f"/pedidos/{self.pedido.pk}/")
         self.assertContains(response, "O arquivo nao foi encontrado")
-        self.assertContains(response, "Eu entendi")
+        self.assertContains(
+            response,
+            f"ALERTA CRITICO - AUSENCIA DE ARTE OFICIAL DO PEDIDO #{self.pedido.pk}",
+        )
+        self.assertContains(response, "Vincular arquivo restaurado")
+        self.assertNotContains(response, "Eu entendi")
+        fila = self.client.get("/preparacao-arte/")
+        self.assertContains(fila, "Arquivos oficiais ausentes")
+        self.assertContains(fila, self.pedido.cliente.nome)
+        notificacao = self.client.get("/api/notificacoes/assistencia/").json()
+        self.assertEqual(notificacao["total"], 1)
+        self.assertEqual(
+            notificacao["por_categoria"][0]["id"],
+            "ausencia-arquivo-oficial",
+        )
         self.client.post(f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/reconhecer-alerta/")
         arquivo.refresh_from_db()
-        self.assertIsNotNone(arquivo.alerta_reconhecido_em)
+        self.assertIsNone(arquivo.alerta_reconhecido_em)
+        self.assertTrue(arquivo.ausencia_critica_ativa)
 
     def test_encerramento_preserva_fisico_identidade_metadados_e_auditoria(self):
         administrador = OperadorGestor.objects.create(
