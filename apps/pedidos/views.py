@@ -32,6 +32,8 @@ from apps.arquivos.anexos import (
     desvincular_anexo,
 )
 from apps.arquivos.models import AnexoPedido
+from apps.arquivos.models import ArquivoOficialArte, EstadoVinculoArquivo
+from apps.arquivos.pesquisa import pesquisar_pedidos_por_artes
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
@@ -73,23 +75,21 @@ def pedido_list(request):
         "itens",
         queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
     )
+    arquivos_prefetch = Prefetch(
+        "arquivos_oficiais_arte",
+        queryset=ArquivoOficialArte.objects.filter(
+            estado_vinculo=EstadoVinculoArquivo.ATIVO
+        ),
+        to_attr="arquivos_oficiais_ativos",
+    )
     pedidos = queryset_com_projecao(
-        Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "artes")
+        Pedido.objects.select_related("cliente").prefetch_related(
+            itens_prefetch, "artes", arquivos_prefetch
+        )
     )
 
     if busca:
-        filtros_busca = (
-            Q(cliente__nome__icontains=busca)
-            | Q(tema__icontains=busca)
-            | Q(descricao_legada__icontains=busca)
-            | Q(legado_id__icontains=busca)
-            | Q(itens__nome__icontains=busca)
-            | Q(itens__descricao__icontains=busca)
-            | Q(itens__produto__nome__icontains=busca)
-        )
-        if busca.isdigit():
-            filtros_busca |= Q(pk=int(busca)) | Q(legado_id=int(busca))
-        pedidos = pedidos.filter(filtros_busca).distinct()
+        pedidos = pesquisar_pedidos_por_artes(pedidos, busca)
     if status == StatusPedido.EM_PRODUCAO:
         pedidos = pedidos.filter(status__in=STATUS_FUNIL_GESTOR)
     elif status:

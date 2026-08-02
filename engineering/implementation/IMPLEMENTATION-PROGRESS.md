@@ -294,3 +294,13 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Interface:** detalhe do Pedido lista anexos, permite seleção múltipla e apresenta a decisão explícita para duplicidades; informa que o Mheibos não interpreta conteúdo.
 - **Testes:** 6 cenários cobrem opacidade, metadados, ausência de URL pública, duplicidade com decisão humana, autorização e download forçado, preservação física/histórica, proteção do Pedido, rollback e interface; baseline completo aprovado com 108 testes.
 - **Fora desta fatia:** Ctrl+V binário genérico depende de contrato seguro do navegador/Electron; seleção múltipla e drag-and-drop nativo do campo já funcionam sem criar interpretação de conteúdo.
+
+### IMP-009E — COMPLETED
+
+- **Capacidade:** a lista integrada de Pedidos localiza artes por número do Pedido, cliente, telefones, produto, tema, descrição, nome/caminho/extensão do arquivo, referência visual e metadados técnicos.
+- **Metadados:** propriedades técnicas e discrepâncias JSON são convertidas apenas para consulta textual; tamanho, largura, altura e resolução recebem comparação numérica quando o termo é um número.
+- **Escopo operacional:** arquivos oficiais encerrados e referências desvinculadas não participam da busca nem dos nomes exibidos; o histórico permanece preservado em suas entidades.
+- **Interface:** o campo existente foi ampliado, sem criar tela paralela, e cada cartão mostra os nomes dos arquivos oficiais ativos que justificam o resultado.
+- **Leitura:** pesquisa não altera estado e não gera evento de domínio, em conformidade com a regra de auditoria para consultas comuns.
+- **Testes:** 2 cenários percorrem os dez critérios de busca, metadados JSON e numéricos, evidência visual e exclusão de vínculo encerrado; baseline completo aprovado com 110 testes.
+- **Fora desta fatia:** indexação dedicada e ranking só serão introduzidos mediante evidência de volume/desempenho; a consulta atual preserva semântica idêntica em SQLite e PostgreSQL.

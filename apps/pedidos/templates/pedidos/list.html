@@ -28,7 +28,7 @@
 
 <form class="card mb-4 grid gap-3 p-4 md:grid-cols-[1fr_240px_auto_auto]" method="get">
   {% if status_atual %}<input type="hidden" name="status" value="{{ status_atual }}">{% endif %}
-  <input name="q" value="{{ busca }}" placeholder="Buscar cliente, tema, produto ou ID">
+  <input name="q" value="{{ busca }}" placeholder="Buscar pedido, cliente, telefone, produto, tema ou arquivo">
   <select name="categoria">
     <option value="">Todas categorias</option>
     {% for categoria in categorias_tabs %}
@@ -115,6 +115,13 @@
             <span>Financeiro: {{ pedido.projecao.financeiro }}</span>
           </div>
         </div>
+        {% if pedido.arquivos_oficiais_ativos %}
+          <div class="flex min-w-0 flex-wrap gap-2">
+            {% for arquivo in pedido.arquivos_oficiais_ativos %}
+              <span class="max-w-full truncate rounded-md bg-[#171a29] px-2 py-1 text-xs text-[#9aa7d3]">{{ arquivo.nome_oficial }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
         {% if pedido.status != 'PRONTO' and pedido.status != 'CANCELADO' %}
           {% with assistencia=pedido.status_assistencia %}
             <div class="flex max-w-full items-start justify-end gap-1.5 justify-self-end text-right text-xs font-medium leading-snug {% if assistencia.na_assistencia %}text-red-400{% else %}text-blue-400{% endif %}">

@@ -216,3 +216,12 @@
 - **Segurança:** armazenamento privado não expõe URL de mídia; o download autorizado força resposta como anexo e recurso alheio não revela existência.
 - **Alternativas rejeitadas:** analisar extensão/conteúdo; abrir arquivo para validar senha; fundir com arte oficial; sobrescrever duplicado; apagar físico ao remover da lista.
 - **Situação:** definitiva.
+
+## DEC-IMP-023 — Pesquisa de artes integra a consulta de Pedidos
+
+- **Decisão:** centralizar em serviço de leitura os critérios da RFC-0014 e aplicá-lo à lista existente de Pedidos, exibindo nomes de arquivos oficiais ativos no próprio resultado.
+- **Motivo:** localizar uma arte significa localizar seu contexto operacional; uma tela ou índice paralelo duplicaria Pedido e tenderia a divergir da fonte oficial.
+- **Escopo:** consulta inclui campos comerciais, telefones, itens, referências e metadados técnicos; vínculos encerrados são excluídos da projeção operacional sem apagar histórico.
+- **Portabilidade:** JSON é convertido para texto pela camada ORM e números técnicos usam igualdade tipada, mantendo o contrato entre SQLite e PostgreSQL.
+- **Alternativas rejeitadas:** pesquisa por IA; índice externo prematuro; pesquisa somente por nome; incluir vínculos encerrados como resultado operacional.
+- **Situação:** definitiva para semântica; estratégia de indexação permanece evolutiva.
