@@ -9,6 +9,7 @@
 | IMP-004 | Pedido comercial com estados independentes | RFC-0005, 0013 | IMP-003 | COMPLETED_WITH_GAPS | alto | comercial, financeiro e entrega separados com migração | 4 |
 | IMP-005 | Processo, Fluxo e Etapa piloto | RFC-0002, 0005, 0006 | IMP-004 | COMPLETED_WITH_GAPS | alto | fluxo versionado e processo piloto ligado ao Pedido | 5 |
 | IMP-006 | Projeções e interface operacional integrada | RFC-0003, 0009 | IMP-005 | COMPLETED_WITH_GAPS | médio | Gestor/Vendas/Produção como visões da mesma realidade | 6 |
+| IMP-006B | Convergência da interface operacional | RFC-0003, 0007, 0009; UI Standards | IMP-006 | COMPLETED | alto | Vendas removido da interface oficial; Produção especializada por função/Etapa; Expedição e Entrega alinhadas ao Fluxo do Pedido e matriz visual aprovada | 6B |
 | IMP-007 | Pendências e intervenções determinísticas | RFC-0009, 0012 | IMP-003 | COMPLETED_WITH_GAPS | alto | estrutura determinística concluída; política temporal aguarda RFC-0012 | 7 |
 | IMP-007A | Gateway opcional de IA e adaptador Gemini | RFC-0003, 0004, 0006, 0011 | IMP-003, IMP-006 | COMPLETED_WITH_GAPS | alto | sugestão somente leitura funciona com provider real ou fallback sem alterar operação | 7A |
 | IMP-008 | Operação offline restrita e sincronização | RFC-0008 | IMP-002, IMP-003 | COMPLETED_WITH_GAPS | crítico | Ciclo técnico offline completo: partida, identidade, fila, transporte, confirmação e retorno seguro; falta smoke humano do instalador com duas instâncias reais | 8 |

@@ -3,10 +3,10 @@
 {% block title %}Pedido #{{ pedido.pk }}{% endblock %}
 {% block page_title %}Gestor de Pedidos{% endblock %}
 {% block top_tabs %}
-  <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
-  <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
-  <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
-  <a href="{% url 'pedido_list' %}?status=CANCELADO" class="top-tab"><i data-lucide="x" class="h-5 w-5"></i> Cancelados</a>
+  <a href="{% url 'pedido_detail' pedido.pk %}" class="top-tab active" aria-current="page"><i data-lucide="receipt-text" class="h-4 w-4"></i> Pedido</a>
+  <a href="{% url 'producao_home' %}" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
+  <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="send" class="h-4 w-4"></i> Expedição</a>
+  <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
 {% endblock %}
 {% block content %}
 <div class="page-content w-full">
@@ -24,10 +24,10 @@
     </div>
   </div>
 
-  <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
-    <section class="space-y-6">
-      <div class="card p-5">
-        <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
+  <div class="detail-layout">
+    <section class="content-stack">
+      <div class="card summary-card">
+        <div class="summary-grid">
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Cliente</p><strong class="mt-1 block">{{ pedido.cliente.nome }}</strong></div>
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Tema</p><strong class="mt-1 block">{{ pedido.tema|default:"—" }}</strong></div>
           <div><p class="text-xs uppercase text-[var(--text-secondary)]">Data do pedido</p><strong class="mt-1 block">{{ pedido.data_pedido|date:"d/m/Y"|default:"—" }}</strong></div>
@@ -127,7 +127,7 @@
             {% csrf_token %}
             <div data-corel-field>
               <input type="hidden" name="caminho_oficial" data-corel-input>
-              <div data-corel-drop class="flex min-h-[90px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#3d4275] bg-[#22253a] p-3 text-center">
+              <div data-corel-drop class="file-drop">
                 <p data-corel-empty class="text-sm font-semibold">Arraste ou selecione um arquivo oficial existente</p>
                 <p data-corel-value class="hidden max-w-full break-all text-sm font-semibold text-[#00e5ff]"></p>
                 <p data-corel-feedback class="mt-1 text-xs text-[#8892b0]">O arquivo fisico permanece no servidor.</p>
@@ -230,7 +230,7 @@
       </div>
     </section>
 
-    <aside class="space-y-6">
+    <aside class="content-stack">
       <div class="card p-5">
         <h2 class="mb-2 font-semibold">Assistencia cognitiva</h2>
         <p class="mb-4 text-sm text-[var(--text-secondary)]">Gera uma sugestao somente leitura. A operacao continua normalmente se a IA estiver desligada ou indisponivel.</p>
@@ -240,14 +240,15 @@
         </form>
       </div>
       <div class="card p-5">
-        <h2 class="mb-4 font-semibold">Execucao legada</h2>
+        <span class="kicker">Processo e Etapa</span>
+        <h2 class="mb-4 font-semibold">Situação operacional</h2>
         <p class="mb-1 text-sm">Atual: <strong>{{ pedido.projecao.operacional }}</strong></p>
         <p class="mb-3 text-xs text-[var(--text-secondary)]">Fonte: {{ pedido.projecao.fonte_operacional }}</p>
         {% with assistencia=pedido.status_assistencia %}
           <div class="mb-4 rounded-lg p-3 text-xs {% if assistencia.na_assistencia %}bg-red-500/10 text-red-400 border border-red-500/20{% else %}bg-blue-500/10 text-blue-400 border border-blue-500/20{% endif %}">
             <div class="flex items-center gap-2">
               <i data-lucide="{% if assistencia.na_assistencia %}alert-circle{% else %}clock{% endif %}" class="h-4 w-4"></i>
-              <span class="font-medium uppercase tracking-wider">Status Assistência</span>
+              <span class="font-medium uppercase tracking-wider">Próxima intervenção</span>
             </div>
             <p class="mt-1 font-semibold">{{ assistencia.mensagem }}</p>
           </div>

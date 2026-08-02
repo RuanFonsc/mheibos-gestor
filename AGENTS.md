@@ -4,6 +4,14 @@
 
 Para implementação, correção, refatoração, revisão, planejamento, migração, modelos, banco, processos, eventos, segurança, offline, interface, IA, integrações, RFCs ou ENG, ativar obrigatoriamente `$mheibos-engineering` em `.agents/skills/mheibos-engineering/`. O procedimento integral e a versão histórica estão na Skill.
 
+## Skill obrigatória para interface
+
+Toda tarefa que crie, altere, redesenhe ou revise interface deve carregar e seguir também `$mheibos-ui-engineering` em `.agents/skills/mheibos-ui-engineering/`.
+
+A tarefa não poderá ser marcada como concluída enquanto o `docs/VISUAL-QUALITY-GATE-MHEIBOS.md` estiver reprovado ou enquanto não existirem screenshots das resoluções e estados obrigatórios. Testes funcionais aprovados não substituem validação visual.
+
+O padrão canônico para toda interface é `docs/UI-STANDARDS-MHEIBOS.md`. Diferenças entre Gestor e visões especializadas devem surgir de conteúdo, função, permissão e fluxo, nunca de design systems paralelos.
+
 ## Hierarquia das fontes
 
 1. RFC-0000 e RFC-0001.

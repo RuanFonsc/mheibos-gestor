@@ -372,3 +372,12 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Offline:** criação coletiva e todas as mutações de participação permanecem bloqueadas no Cliente offline.
 - **Testes:** 10 cenários novos cobrem criação, consentimento, manifestação, recusa/reconvite, autoridade, idempotência, saída, visibilidade, encerramento, rollback, interface e offline.
 - **Fora desta fatia:** missão atribuída exige tarefas iniciais, prazo e impacto; será implementada junto do modelo de tarefas e da matriz de autoridade administrativa.
+
+### IMP-006B — COMPLETED
+
+- **Convergência:** Mheibos Vendas deixa de ser uma superfície oficial; Gestor de Pedidos concentra a entrada comercial e Produção permanece uma visão especializada por função e Etapa.
+- **Fluxo operacional:** Produção, Expedição e Entrega aparecem como perspectivas contínuas do mesmo Pedido, com navegação e terminologia compartilhadas.
+- **Projeção oficial:** Lista e Detalhe usam a mesma projeção de Processo/Etapa; o detalhe agora carrega explicitamente `projetar_pedido()` e possui teste de regressão.
+- **Funcionamento offline:** a fundação visual e as telas piloto permanecem utilizáveis quando bibliotecas visuais externas não carregam; IA não é requisito para qualquer ação operacional.
+- **Validação visual:** 20 combinações de quatro telas por cinco resoluções/escalas foram aprovadas sem overflow, incluindo 125%, estado vazio e conteúdo extremo.
+- **Rastreabilidade:** relatório completo em `engineering/implementation/IMP-006B-VISUAL-VALIDATION.md`.

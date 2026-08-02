@@ -219,6 +219,21 @@ class FluxosStatusPedidoIntegrationTests(TestCase):
             status=status,
         )
 
+    def test_detail_exposes_same_operational_projection_as_order_list(self):
+        from apps.operacao.services import iniciar_producao_pedido
+
+        pedido = self.novo_pedido(StatusPedido.EM_PRODUCAO)
+        iniciar_producao_pedido(pedido=pedido, operador=self.operador)
+
+        response = self.client.get(f"/pedidos/{pedido.pk}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["pedido"].projecao.operacional, "Em andamento")
+        self.assertEqual(
+            response.context["pedido"].projecao.fonte_operacional,
+            "PRODUCAO_PEDIDO v1",
+        )
+
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
     def test_individual_status_route_uses_audited_use_case(self, _sync_financeiro):
         pedido = self.novo_pedido()

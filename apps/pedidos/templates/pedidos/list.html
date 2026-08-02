@@ -19,14 +19,14 @@
       <a href="{% url 'pedido_create' %}" class="btn-primary"><i data-lucide="plus" class="h-4 w-4"></i> Novo pedido</a>
     </div>
   </div>
-  <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+  <section class="metric-grid">
     <div class="card metric-card"><p>Total</p><strong>{{ total }}</strong><span>pedidos no sistema</span></div>
     <div class="card metric-card"><p>Em producao</p><strong class="text-[#ffb347]">{{ em_producao }}</strong><span>aguardando execucao</span></div>
     <div class="card metric-card"><p>Prontos</p><strong class="text-[#00c896]">{{ prontos }}</strong><span>liberados para entrega</span></div>
     <div class="card metric-card"><p>Cancelados</p><strong class="text-[#ff4b4b]">{{ cancelados }}</strong><span>fora da fila ativa</span></div>
   </section>
 
-<form class="card mb-4 grid gap-3 p-4 md:grid-cols-[1fr_240px_auto_auto]" method="get">
+<form class="card filter-grid" method="get">
   {% if status_atual %}<input type="hidden" name="status" value="{{ status_atual }}">{% endif %}
   <input name="q" value="{{ busca }}" placeholder="Buscar pedido, cliente, telefone, produto, tema ou arquivo">
   <select name="categoria">
@@ -35,11 +35,11 @@
       <option value="{{ categoria.id }}" {% if categoria_atual == categoria.id|stringformat:'s' %}selected{% endif %}>{{ categoria.nome }}</option>
     {% endfor %}
   </select>
-  <div class="flex min-h-[53px] overflow-hidden rounded-[10px] border border-[#3d4275] bg-[#22253a]">
-    <a class="flex w-12 items-center justify-center {% if modo_visualizacao == 'grade' %}bg-[#4b66ff] text-white{% else %}text-[#98a5cc]{% endif %}" href="?status={{ status_atual }}&categoria={{ categoria_atual }}&q={{ busca }}&visualizacao=grade" title="Visualizar em grade"><i data-lucide="layout-grid" class="h-5 w-5"></i></a>
-    <a class="flex w-12 items-center justify-center border-l border-[#3d4275] {% if modo_visualizacao == 'lista' %}bg-[#4b66ff] text-white{% else %}text-[#98a5cc]{% endif %}" href="?status={{ status_atual }}&categoria={{ categoria_atual }}&q={{ busca }}&visualizacao=lista" title="Visualizar em lista"><i data-lucide="list" class="h-5 w-5"></i></a>
+  <div class="view-toggle">
+    <a class="{% if modo_visualizacao == 'grade' %}bg-[#4b66ff] text-white{% endif %}" href="?status={{ status_atual }}&categoria={{ categoria_atual }}&q={{ busca }}&visualizacao=grade">Grade</a>
+    <a class="{% if modo_visualizacao == 'lista' %}bg-[#4b66ff] text-white{% endif %}" href="?status={{ status_atual }}&categoria={{ categoria_atual }}&q={{ busca }}&visualizacao=lista">Lista</a>
   </div>
-  <button class="btn-primary min-w-[53px] px-0" type="submit" title="Filtrar"><i data-lucide="search" class="h-5 w-5"></i></button>
+  <button class="btn-primary" type="submit">Filtrar</button>
 </form>
 
 <form class="bulk-toolbar" method="post" action="{% url 'pedido_bulk_action' %}" data-bulk-form data-bulk-scope="#pedidosLista">
@@ -70,17 +70,17 @@
   {% endif %}
 </form>
 
-<section id="pedidosLista" class="grid gap-3 {% if modo_visualizacao == 'grade' %}lg:grid-cols-2 xl:grid-cols-3{% else %}grid-cols-1{% endif %}">
+<section id="pedidosLista" class="order-grid {% if modo_visualizacao == 'lista' %}order-grid-list{% endif %}">
   {% for pedido in pedidos %}
-    <article data-bulk-card class="card block p-4 transition hover:-translate-y-0.5 hover:border-[#00e5ff] {% if pedido.alerta_prazo and pedido.status == 'PRONTO' %}ready-glow-card{% elif pedido.alerta_prazo and pedido.status != 'CANCELADO' and pedido.status != 'ENTREGUE' %}danger-glow-card{% endif %} {% if modo_visualizacao == 'lista' %}max-w-none{% endif %}">
-      <div class="flex items-start justify-between gap-4">
-        <div class="flex min-w-0 gap-3">
+    <article data-bulk-card class="card order-card {% if pedido.alerta_prazo and pedido.status == 'PRONTO' %}ready-glow-card{% elif pedido.alerta_prazo and pedido.status != 'CANCELADO' and pedido.status != 'ENTREGUE' %}danger-glow-card{% endif %}">
+      <div class="order-card-head">
+        <div class="order-card-identity">
           <label class="bulk-select mt-0.5" title="Selecionar pedido #{{ pedido.legado_id|default:pedido.pk }}">
             <input type="checkbox" value="{{ pedido.pk }}" data-bulk-checkbox>
           </label>
           <div class="min-w-0">
           <div class="flex items-center gap-2">
-            <span class="rounded-md bg-[#171a29] px-2 py-1 text-xs text-[#8892b0]">#{{ pedido.legado_id|default:pedido.pk }}</span>
+            <span class="order-id">#{{ pedido.legado_id|default:pedido.pk }}</span>
             <span class="status-pill
               {% if pedido.status == 'PRONTO' %}is-ok
               {% elif pedido.status == 'CANCELADO' %}is-danger
@@ -88,16 +88,16 @@
               {{ pedido.projecao.operacional }}
             </span>
           </div>
-          <h2 class="mt-3 truncate text-lg font-semibold">{{ pedido.cliente.nome }}</h2>
-          <p class="mt-1 truncate text-sm text-[#8892b0]">{{ pedido.tema|default:"Sem tema" }}</p>
+          <h2 class="order-card-title">{{ pedido.cliente.nome }}</h2>
+          <p class="order-card-subtitle">{{ pedido.tema|default:"Sem tema" }}</p>
           </div>
         </div>
-        <div class="text-right">
-          <p class="text-lg font-semibold text-[#00c896]">R$ {{ pedido.valor_total|floatformat:2 }}</p>
-          <p class="mt-1 text-xs text-[#8892b0]">{{ pedido.data_entrega|date:"d/m/Y"|default:"Sem entrega" }}</p>
+        <div>
+          <p class="order-card-value">R$ {{ pedido.valor_total|floatformat:2 }}</p>
+          <p class="order-card-date">{{ pedido.data_entrega|date:"d/m/Y"|default:"Sem entrega" }}</p>
         </div>
       </div>
-      <div class="mt-4 grid gap-3 border-t border-[#2d3154] pt-4 text-sm text-[#8892b0]">
+      <div class="order-card-foot">
         <div class="flex min-w-0 items-center gap-3">
           <div class="flex h-16 w-20 flex-none items-center justify-center overflow-hidden rounded-lg border border-[#2d3154] bg-[#10131f]">
             {% with arte=pedido.artes_ativas.first %}
@@ -108,7 +108,7 @@
               {% endif %}
             {% endwith %}
           </div>
-          <div class="flex min-w-0 flex-wrap gap-3">
+          <div class="order-card-meta">
             <span>{{ pedido.itens.count }} item(ns)</span>
             <span>{{ pedido.artes_ativas.count }} referência(s)</span>
             <span>Comercial: {{ pedido.projecao.comercial }}</span>
@@ -126,12 +126,12 @@
           {% with assistencia=pedido.status_assistencia %}
             <div class="flex max-w-full items-start justify-end gap-1.5 justify-self-end text-right text-xs font-medium leading-snug {% if assistencia.na_assistencia %}text-red-400{% else %}text-blue-400{% endif %}">
               <i data-lucide="{% if assistencia.na_assistencia %}alert-circle{% else %}clock{% endif %}" class="mt-0.5 h-3.5 w-3.5 flex-none"></i>
-              <span class="max-w-[250px] whitespace-normal break-words">{{ assistencia.mensagem }}</span>
+              <span>{{ assistencia.mensagem }}</span>
             </div>
           {% endwith %}
         {% endif %}
       </div>
-      <div class="mt-3 flex justify-end">
+      <div class="order-card-actions">
         <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary min-h-[36px] text-xs"><i data-lucide="eye" class="h-4 w-4"></i> Abrir</a>
       </div>
     </article>

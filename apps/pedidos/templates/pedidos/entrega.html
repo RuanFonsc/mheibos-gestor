@@ -1,11 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Assistencia de entrega{% endblock %}
-{% block page_title %}Assistencia de entrega{% endblock %}
+{% block title %}Entrega{% endblock %}
+{% block page_title %}Fluxo do Pedido{% endblock %}
+{% block top_tabs %}
+  <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
+  <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="send" class="h-4 w-4"></i> Expedição</a>
+  <a href="{% url 'entrega_list' %}" class="top-tab active" aria-current="page"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
+{% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
-  <section class="grid gap-3 md:grid-cols-2">
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Prontos para entrega</p><strong class="mt-2 block text-2xl text-[#00c896]">{{ prontos }}</strong></div>
-    <div class="card p-4"><p class="text-xs uppercase text-[#8892b0]">Entregues no histórico</p><strong class="mt-2 block text-2xl">{{ entregues }}</strong></div>
+  <header class="page-heading">
+    <div><span class="kicker">Etapa operacional</span><h2 class="section-title">Entrega</h2><p>Confirme a entrega sem confundir conclusão da produção, situação financeira e destino do Pedido.</p></div>
+  </header>
+  <section class="metric-grid">
+    <div class="card metric-card"><p>Prontos para entrega</p><strong>{{ prontos }}</strong><span>aguardando confirmação</span></div>
+    <div class="card metric-card"><p>Entregues no histórico</p><strong>{{ entregues }}</strong><span>pedidos concluídos</span></div>
   </section>
 
   <form class="bulk-toolbar" method="post" action="{% url 'pedido_bulk_action' %}" data-bulk-form data-bulk-scope="#entregaPedidos">
@@ -59,7 +67,7 @@
         </div>
       </article>
     {% empty %}
-      <div class="card p-8 text-center text-[#8892b0]">Nenhum pedido pronto para entrega.</div>
+      <div class="empty-state"><div><strong>Nenhum pedido pronto para entrega</strong><span>Os pedidos aparecerão aqui depois da conclusão da etapa anterior.</span></div></div>
     {% endfor %}
   </section>
 </div>

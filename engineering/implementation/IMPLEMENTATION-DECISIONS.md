@@ -289,3 +289,13 @@
 - **Encerramento:** convite pendente deve receber destino antes da conclusão; participação de missão final é história imutável.
 - **Atribuição administrativa:** adiada de modo intencional até tarefas, prazo e impacto existirem, pois a RFC exige apresentar esses elementos ao participante atribuído.
 - **Situação:** definitiva para missões coletivas espontâneas; tipos atribuídos preservam vocabulário sem produzir obrigação incompleta.
+
+## DEC-IMP-030 — Convergência visual elimina Vendas e especializa Produção
+
+- **Decisão humana:** descontinuar o Mheibos Vendas como aplicação e experiência duplicada; migrar suas capacidades necessárias para o Mheibos Gestor integrado.
+- **Produção:** manter uma visão especializada da mesma aplicação, ativada pela função/permissão do usuário ou pelo contexto da Etapa do Pedido, sempre sobre os mesmos contratos, estados e componentes oficiais.
+- **Fluxo operacional:** reprojetar a relação entre “assistência de envio” e “assistência de entrega” como visualizações coerentes do Processo, Fluxo e Etapas do Pedido, em vez de ilhas independentes baseadas apenas em status legado.
+- **Interface:** adotar `docs/UI-STANDARDS-MHEIBOS.md` e `docs/VISUAL-QUALITY-GATE-MHEIBOS.md` como normas complementares aos ENGs e RFCs, sem colocar autoridade de negócio na camada visual.
+- **Tela-piloto:** usar inicialmente o detalhe do Pedido por concentrar navegação, projeção, estados, Processo/Etapa, entrega, conteúdo longo e intervenção contextual.
+- **Compatibilidade:** rotas e marcadores legados podem existir somente durante migração explícita, com responsável e plano de remoção; não justificam uma segunda experiência permanente.
+- **Situação:** definitiva para a direção de produto; execução registrada como IMP-006B e condicionada aos gates visuais e à aprovação humana da tela-piloto antes da migração em massa.

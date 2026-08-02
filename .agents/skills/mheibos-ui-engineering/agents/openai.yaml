@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mheibos UI Engineering"
+  short_description: "Engenharia visual verificável do Mheibos"
+  default_prompt: "Use $mheibos-ui-engineering para criar, revisar e validar esta interface do Mheibos."

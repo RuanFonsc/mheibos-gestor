@@ -47,13 +47,11 @@
       <input name="senha" type="password" autocomplete="current-password" placeholder="Digite sua senha">
       <button type="submit">Entrar</button>
     </form>
-    <div class="switch">
-      {% if producao or vendas %}
+    {% if producao or vendas %}
+      <div class="switch">
         <a href="{% url 'login' %}">Abrir Mheibos Gestor</a>
-      {% else %}
-        <a href="{% url 'vendas_login' %}">Abrir Mheibos Vendas</a>
-      {% endif %}
-    </div>
+      </div>
+    {% endif %}
   </main>
   <script>lucide.createIcons();</script>
 </body>

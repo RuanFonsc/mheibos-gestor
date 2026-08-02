@@ -1,12 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Assistencia de Envio{% endblock %}
-{% block page_title %}Assistencia de Envio{% endblock %}
+{% block title %}Expedição{% endblock %}
+{% block page_title %}Fluxo do Pedido{% endblock %}
+{% block top_tabs %}
+  <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
+  <a href="{% url 'assistencia_envio' %}" class="top-tab active" aria-current="page"><i data-lucide="send" class="h-4 w-4"></i> Expedição</a>
+  <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
+{% endblock %}
 {% block content %}
 <div class="page-content space-y-5">
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 class="section-title">Assistencia de Envio</h2>
-      <p class="text-sm text-[#8892b0]">Pedidos que entraram na regra de alerta definida por categoria.</p>
+      <span class="kicker">Etapa operacional</span>
+      <h2 class="section-title">Expedição</h2>
+      <p class="text-sm text-[var(--text-secondary)]">Pedidos que exigem preparação ou encaminhamento após a etapa operacional anterior.</p>
     </div>
     <div class="flex gap-3">
       <a class="btn-secondary" href="{% url 'assistencia_envio' %}"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Atualizar</a>
@@ -14,24 +20,24 @@
     </div>
   </section>
 
-  <form class="card grid gap-4 p-4" method="get">
-    <div class="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+  <form class="card flow-filter" method="get">
+    <div class="flow-search">
       <input name="q" value="{{ busca }}" placeholder="Buscar cliente, tema, produto ou ID">
       {% if busca or categorias_selecionadas or usuarios_selecionados %}
-        <a class="btn-secondary min-h-[53px]" href="{% url 'assistencia_envio' %}">
+        <a class="btn-secondary" href="{% url 'assistencia_envio' %}">
           <i data-lucide="x" class="h-4 w-4"></i> Limpar
         </a>
       {% endif %}
-      <button class="btn-primary min-h-[53px]" type="submit">
+      <button class="btn-primary" type="submit">
         <i data-lucide="search" class="h-5 w-5"></i>
       </button>
     </div>
-    <div class="grid gap-3 lg:grid-cols-2">
+    <div class="flow-filter-groups">
       <div>
         <label>Categorias exibidas</label>
-        <div class="mt-2 flex flex-wrap gap-2">
+        <div class="choice-list">
           {% for categoria in categorias %}
-            <label class="flex items-center gap-2 rounded-lg bg-[#171a29] px-3 py-2 text-sm normal-case tracking-normal">
+            <label class="choice-chip">
               <input type="checkbox" name="categorias" value="{{ categoria.id }}" {% if not categorias_selecionadas or categoria.id|stringformat:'s' in categorias_selecionadas %}checked{% endif %}>
               {{ categoria.nome }}
             </label>
@@ -40,9 +46,9 @@
       </div>
       <div>
         <label>Usuarios exibidos</label>
-        <div class="mt-2 flex flex-wrap gap-2">
+        <div class="choice-list">
           {% for usuario in usuarios %}
-            <label class="flex items-center gap-2 rounded-lg bg-[#171a29] px-3 py-2 text-sm normal-case tracking-normal">
+            <label class="choice-chip">
               <input type="checkbox" name="usuarios" value="{{ usuario.nome }}" {% if not usuarios_selecionados or usuario.nome in usuarios_selecionados %}checked{% endif %}>
               {{ usuario.nome }}
             </label>
@@ -52,8 +58,8 @@
     </div>
   </form>
 
-  <section class="card p-4">
-    <div class="flex flex-wrap items-center gap-3">
+  <section class="card flow-summary">
+    <div class="flow-summary-row">
       <span class="text-sm text-[#8892b0]">Categorias:</span>
       {% for grupo in grupos %}
         <span class="rounded-lg bg-[#171a29] px-3 py-2 text-sm">{{ grupo.categoria.nome }}: {{ grupo.pedidos|length }}</span>
@@ -107,7 +113,7 @@ Entrega: {{ pedido.data_entrega|date:"d/m/Y"|default:"-" }} {{ pedido.hora_entre
               </div>
             </article>
           {% empty %}
-            <div class="flex h-full min-h-[180px] items-center justify-center rounded-xl border border-dashed border-[#2d3154] text-center text-sm text-[#8892b0]">
+            <div class="empty-state">
               Nenhum servico para exibir.
             </div>
           {% endfor %}

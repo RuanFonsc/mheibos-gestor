@@ -181,6 +181,7 @@ def pedido_detail(request, pk):
         ),
         pk=pk,
     )
+    pedido.projecao = projetar_pedido(pedido)
     operador = operador_atual(request)
     return render(
         request,
