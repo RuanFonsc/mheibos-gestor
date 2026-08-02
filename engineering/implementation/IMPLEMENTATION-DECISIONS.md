@@ -138,3 +138,11 @@
 - **Migração:** novo vínculo opcional de autoria; históricos antigos permanecem sem autoria inferida.
 - **Reversibilidade:** migration reversível; views podem ser restauradas pelo Git.
 - **Situação:** definitiva para a fronteira do caso de uso; histórico atual é compatibilidade temporária até o evento oficial.
+
+## DEC-IMP-014 — Bootstrap offline conservador pela entrada padrão
+
+- **Decisão:** materializar a credencial confirmada em um SQLite local novo por comando restrito ao papel offline, recebendo o snapshot cifrado/decriptado pelo Electron exclusivamente pela entrada padrão.
+- **Motivo:** habilita autenticação offline com o mecanismo existente sem exportar hash da Central nem expor senha em arquivo, argumento ou variável de ambiente.
+- **Proteção:** Estação, papel e permissões são validados; a presença de outra identidade interrompe a transação sem alterar o banco.
+- **Alternativas rejeitadas:** transportar hash da Central; passar senha na linha de comando; substituir ou desativar operadores preexistentes; criar catálogo local de várias identidades.
+- **Situação:** definitiva para o bootstrap; orquestração pelo Electron pertence à fatia seguinte.

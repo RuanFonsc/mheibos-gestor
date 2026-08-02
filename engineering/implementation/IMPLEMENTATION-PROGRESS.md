@@ -189,3 +189,14 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Persistência:** senha digitada fica em memória até a confirmação e então integra o JSON de identidade cifrado por `safeStorage`; nunca é escrita legível.
 - **Testes:** endpoint prova ausência de senha/hash e recusa segredo de Estação incorreto; teste Node prova que a credencial offline não aparece no JSON persistido.
 - **Fora desta fatia:** materializar a identidade no banco SQLite local e autenticar offline pertencem a IMP-008C.2b.
+
+### IMP-008C.2b — COMPLETED
+
+- **Capacidade:** comando interno materializa no SQLite novo a última identidade validada, permitindo que o autenticador existente compare a senha localmente depois da indisponibilidade da Central.
+- **Canal do segredo:** o JSON de identidade é recebido somente pela entrada padrão do subprocesso; senha ou hash não integram argumentos, ambiente, saída ou protocolo central.
+- **Isolamento:** execução é recusada fora do papel `client_offline` e quando o identificador da Estação não coincide com a configuração local.
+- **Menor privilégio:** papel e permissões precisam ser coerentes; um snapshot adulterado não pode promover permissões contraditórias.
+- **Preservação:** banco com outra identidade é recusado integralmente, sem excluir, desativar ou sobrescrever operadores existentes.
+- **Credencial local:** a senha é transformada pelo hasher oficial antes da persistência; texto legível permanece apenas na memória necessária ao bootstrap.
+- **Testes:** 5 testes específicos e 72 no conjunto completo aprovados; Django check e verificação de migrações sem alterações aprovados.
+- **Fora desta fatia:** executar migrações/bootstrap no ciclo do Electron, iniciar o backend SQLite e comutar a janela para ele pertencem à próxima fatia.
