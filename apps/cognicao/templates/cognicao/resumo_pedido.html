@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Resumo assistido do Pedido #{{ pedido.pk }}{% endblock %}
+{% block page_title %}Assistencia cognitiva{% endblock %}
+{% block content %}
+<div class="page-content mx-auto max-w-3xl">
+  <div class="card p-6">
+    <span class="kicker">Sugestao somente leitura</span>
+    <h2 class="section-title mt-2">Pedido #{{ pedido.pk }}</h2>
+    <p class="mt-4 whitespace-pre-line">{{ resposta.texto }}</p>
+    <p class="mt-4 text-xs text-[var(--text-secondary)]">
+      {% if resposta.disponivel %}Gerado por {{ resposta.provider }} / {{ resposta.modelo }}.{% else %}Fallback seguro: {{ resposta.codigo }}.{% endif %}
+      Esta sugestao nao altera nem autoriza nenhuma operacao.
+    </p>
+    <a class="btn-secondary mt-6 inline-flex" href="{% url 'pedido_detail' pedido.pk %}">Voltar ao Pedido</a>
+  </div>
+</div>
+{% endblock %}

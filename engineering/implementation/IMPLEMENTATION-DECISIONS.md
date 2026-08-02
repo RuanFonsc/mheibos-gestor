@@ -1,5 +1,17 @@
 # Decisões da Implementação
 
+## DEC-IMP-009 — Fundação cognitiva antecipada, opcional e sem autoridade
+
+- **Decisão humana:** em 01/08/2026, foi autorizada a entrada antecipada de IA por API, com retomada posterior do IMP-008.
+- **Interpretação:** antecipar somente Gateway substituível, adaptador e um uso assistivo de leitura; não declarar concluídas a arquitetura cognitiva, analytics ou governança dependentes das RFCs 0015/0016 futuras.
+- **Fontes preservadas:** RFC-0003 §10.9; RFC-0004; RFC-0006; RFC-0011. Nenhuma RFC foi alterada silenciosamente.
+- **Provider:** Gemini fica atrás do Gateway; modelo e provider são configuração, não regra de domínio.
+- **Falha segura:** IA desligada, sem chave ou indisponível produz fallback determinístico; processos oficiais continuam sem degradação de autoridade.
+- **Dados:** o primeiro uso envia apenas ID técnico e projeção de estados; exclui dados pessoais, financeiros, texto livre e arquivos.
+- **Autoridade:** resultado não persiste fatos, não autoriza transições e não substitui decisão humana ou regra determinística.
+- **Segredo:** chave somente em variável de ambiente; nunca em código, documentação, teste, evento ou log.
+- **Situação:** definitiva para a fronteira e regra de não bloqueio; capacidades cognitivas ampliadas permanecem futuras.
+
 ## DEC-IMP-008 — Pendência estrutural sem política temporal presumida
 
 - **Decisão:** implementar a entidade Pendência e integrar bloqueios de Processo, mantendo scheduler, cadência, criticidade automática e escalonamento fora do código até aprovação da RFC-0012.

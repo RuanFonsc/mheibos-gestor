@@ -110,6 +110,14 @@
 
     <aside class="space-y-6">
       <div class="card p-5">
+        <h2 class="mb-2 font-semibold">Assistencia cognitiva</h2>
+        <p class="mb-4 text-sm text-[var(--text-secondary)]">Gera uma sugestao somente leitura. A operacao continua normalmente se a IA estiver desligada ou indisponivel.</p>
+        <form method="post" action="{% url 'cognicao_resumo_pedido' pedido.pk %}">
+          {% csrf_token %}
+          <button class="btn-secondary w-full" type="submit">Gerar resumo assistido</button>
+        </form>
+      </div>
+      <div class="card p-5">
         <h2 class="mb-4 font-semibold">Execucao legada</h2>
         <p class="mb-1 text-sm">Atual: <strong>{{ pedido.projecao.operacional }}</strong></p>
         <p class="mb-3 text-xs text-[var(--text-secondary)]">Fonte: {{ pedido.projecao.fonte_operacional }}</p>

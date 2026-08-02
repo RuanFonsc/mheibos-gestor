@@ -3,7 +3,7 @@
 **Estado geral:** IN_PROGRESS  
 **Fase atual:** Fase 8 — operação offline restrita e sincronização  
 **Ciclo atual:** IMP-008 — comandos offline e reconciliação segura  
-**Último ciclo concluído:** IMP-007 — Pendências estruturais determinísticas  
+**Último ciclo concluído:** IMP-007A — Gateway opcional de IA e adaptador Gemini  
 **Data:** 01/08/2026
 
 ## Contrato do ciclo IMP-003
@@ -130,3 +130,16 @@ IMP-008 — introduzir comandos offline idempotentes, fila local e reconciliaç�
 - **Lacuna formal:** política temporal, briefing, repetição e escalonamento permanecem `DECISAO_HUMANA_NECESSARIA` até RFC-0012 completa.
 - **Teste humano:** rejeitar Pedido em Produção, abrir Pendências, retomar Produção e conferir o item em Encerradas e na Auditoria.
 - **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.
+
+### IMP-007A — COMPLETED_WITH_GAPS
+
+- **Capacidade:** Gateway de IA substituível, adaptador oficial Google Gemini e resumo operacional assistido, somente leitura e acionado pelo usuário.
+- **Ordem excepcional:** fundação antecipada por decisão humana explícita em 01/08/2026; arquitetura cognitiva completa, analytics e governança permanecem nos ciclos proprietários e RFCs futuras.
+- **Não bloqueio:** desligamento, chave ausente, provider incompatível, falha externa ou resposta vazia retornam fallback determinístico e não alteram Pedido, Processo ou Pendência.
+- **Minimização:** somente identificador técnico e estados operacionais entram no contexto; cliente, telefones, valores, observações e arquivos não são enviados.
+- **Autoridade:** texto gerado é sugestão não persistida; não valida, autoriza ou executa operações. A tentativa registra metadados sem prompt, resposta ou segredo.
+- **Provider:** SDK oficial `google-genai`, configuração exclusivamente por ambiente, modelo estável configurável e default `gemini-3.6-flash`.
+- **Testes:** 44 aprovados no conjunto; 6 cobrem fallback, falha, sucesso simulado, POST, auditoria auxiliar e imutabilidade operacional. Django check, migrations e mypy aprovados; Ruff do escopo de produto aprovado.
+- **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS_WITH_GAP; Segurança PASS; IA indisponível PASS; Testes PASS.
+- **Lacunas não bloqueantes:** validação online requer uma nova chave rotacionada; políticas amplas de conhecimento, retenção, custo, quotas e governança aguardam os ciclos/RFCs proprietários.
+- **Teste humano:** com IA desligada, gerar resumo e confirmar fallback; depois de configurar chave nova, habilitar Gemini, gerar resumo e confirmar que nenhum estado se altera.

@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "apps.auditoria",
     "apps.operacao",
     "apps.pendencias",
+    "apps.cognicao",
     "apps.legacy_migration",
 ]
 
@@ -122,3 +123,7 @@ MHEIBOS_LICENSE_PUBLIC_KEY = config("MHEIBOS_LICENSE_PUBLIC_KEY", default="")
 MHEIBOS_LICENSE_SERVER_URL = config("MHEIBOS_LICENSE_SERVER_URL", default="")
 MHEIBOS_LICENSE_OFFLINE_DAYS = config("MHEIBOS_LICENSE_OFFLINE_DAYS", default=30, cast=int)
 MHEIBOS_INTEGRITY_ENFORCED = config("MHEIBOS_INTEGRITY_ENFORCED", default=False, cast=bool)
+MHEIBOS_IA_ENABLED = config("MHEIBOS_IA_ENABLED", default=False, cast=bool)
+MHEIBOS_IA_PROVIDER = config("MHEIBOS_IA_PROVIDER", default="none").lower()
+MHEIBOS_IA_MODEL = config("MHEIBOS_IA_MODEL", default="gemini-3.6-flash")
+GEMINI_API_KEY = config("GEMINI_API_KEY", default="")

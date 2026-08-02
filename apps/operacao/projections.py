@@ -57,7 +57,7 @@ def projetar_pedido(pedido: Pedido) -> ProjecaoPedido:
 def projetar_lista(pedidos: Iterable[Pedido]) -> list[Pedido]:
     resultado = list(pedidos)
     for pedido in resultado:
-        pedido.projecao = projetar_pedido(pedido)
+        setattr(pedido, "projecao", projetar_pedido(pedido))
     return resultado
 
 

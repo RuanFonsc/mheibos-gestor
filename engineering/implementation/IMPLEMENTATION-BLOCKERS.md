@@ -6,8 +6,9 @@ Nenhum bloqueio global ativo.
 
 - RFC-0012 está reservada, mas precisa de elaboração antes de políticas detalhadas de pendências e escalonamento.
 - RFC-0015 e RFC-0016 serão adicionadas posteriormente.
-- Essas lacunas não bloqueiam ciclos independentes nem autorizam antecipar a IA.
+- Essas lacunas não bloqueiam ciclos independentes. A antecipação humana de IMP-007A autoriza somente Gateway, adaptador e leitura assistiva; não antecipa regras pertencentes às RFCs futuras.
 - A exceção de entrega com saldo exige um ciclo futuro de reautenticação superior, motivo, evento e Pendência; até lá, a entrega é recusada com segurança e não bloqueia os demais fluxos.
+- A chave Gemini divulgada na conversa deve ser revogada e rotacionada. A validação online aguarda uma nova chave configurada localmente; desenvolvimento, testes e operação sem IA continuam liberados.
 
 ## DECISAO_HUMANA_NECESSARIA — Política temporal da RFC-0012
 
