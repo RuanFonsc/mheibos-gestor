@@ -23,6 +23,7 @@ urlpatterns = [
     path("produtos/<int:pk>/editar/", catalogo_views.produto_editar, name="produto_editar"),
     path("produtos/<int:pk>/excluir/", catalogo_views.produto_excluir, name="produto_excluir"),
     path("categorias/<int:pk>/excluir/", catalogo_views.categoria_excluir, name="categoria_excluir"),
+    path("preparacao-arte/", catalogo_views.preparacao_arte, name="preparacao_arte"),
     path("assistencia-envio/", catalogo_views.assistencia_envio, name="assistencia_envio"),
     path("assistencia-envio/<int:pk>/enviado/", catalogo_views.assistencia_marcar_enviado, name="assistencia_marcar_enviado"),
     path("aprendizado/", include("apps.aprendizado.urls")),

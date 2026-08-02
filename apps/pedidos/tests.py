@@ -295,11 +295,18 @@ class FluxosStatusPedidoIntegrationTests(TestCase):
             tema="Pedido sem categoria",
         )
 
-        response = self.client.get("/assistencia-envio/")
+        response = self.client.get("/preparacao-arte/")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Preparação de arte")
         self.assertContains(response, pedido.tema)
+
+    def test_printing_assistance_is_separate_from_art_preparation(self):
+        response = self.client.get("/assistencia-envio/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Assistência de Impressão")
+        self.assertNotContains(response, "Pedidos sem arte")
 
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
     def test_individual_status_route_uses_audited_use_case(self, _sync_financeiro):

@@ -2,6 +2,7 @@
 {% block title %}Assistência de Impressão{% endblock %}
 {% block page_title %}Fluxo do Pedido{% endblock %}
 {% block top_tabs %}
+  <a href="{% url 'preparacao_arte' %}" class="top-tab"><i data-lucide="palette" class="h-4 w-4"></i> Preparação de arte</a>
   <a href="{% url 'assistencia_envio' %}" class="top-tab active" aria-current="page"><i data-lucide="printer" class="h-4 w-4"></i> Assistência de Impressão</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
   <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
@@ -12,49 +13,11 @@
     <div>
       <span class="kicker">Acompanhamento preventivo</span>
       <h2 class="section-title">Assistência de Impressão</h2>
-      <p class="text-sm text-[var(--text-secondary)]">Antecipa pedidos que precisam de intervenção para cumprir o prazo: primeiro resolve arte pendente e depois acompanha os alertas de cada categoria.</p>
+      <p class="text-sm text-[var(--text-secondary)]">Antecipa os pedidos que precisam entrar em produção para cumprir o prazo, conforme as regras de cada categoria.</p>
     </div>
     <div class="flex gap-3">
       <a class="btn-secondary" href="{% url 'assistencia_envio' %}"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Atualizar</a>
       <button class="btn-primary" type="button" id="btnVerificarAssistencia"><i data-lucide="bell-ring" class="h-4 w-4"></i> Verificar agora</button>
-    </div>
-  </section>
-
-  <section class="metric-grid">
-    <div class="card metric-card">
-      <p>Aguardando arte</p>
-      <strong>{{ total_aguardando_arte }}</strong>
-      <span>bloqueados antes da Produção</span>
-    </div>
-  </section>
-
-  <section aria-labelledby="aguardandoArteTitulo">
-    <div class="page-heading">
-      <div>
-        <span class="kicker">Intervenção determinística</span>
-        <h3 id="aguardandoArteTitulo" class="section-title">Pedidos sem arte</h3>
-        <p>Esta fila permanece visível até uma arte de referência ser adicionada e o avanço ser confirmado.</p>
-      </div>
-    </div>
-    <div class="order-grid">
-      {% for pedido in aguardando_arte %}
-        <article class="card order-card">
-          <div class="order-card-head">
-            <div>
-              <span class="order-id">#{{ pedido.legado_id|default:pedido.pk }}</span>
-              <h3 class="order-card-title">{{ pedido.cliente.nome }}</h3>
-              <p class="order-card-subtitle">{{ pedido.tema|default:"Sem tema" }}</p>
-            </div>
-            <span class="status-pill is-work">Aguardando arte</span>
-          </div>
-          <div class="order-card-foot">
-            <span>Entrega: {{ pedido.data_entrega|date:"d/m/Y"|default:"não informada" }}</span>
-            <a href="{% url 'pedido_edit' pedido.pk %}" class="btn-primary">Adicionar arte</a>
-          </div>
-        </article>
-      {% empty %}
-        <div class="empty-state"><div><strong>Nenhum pedido aguardando arte</strong><span>Pedidos sem arte aparecerão automaticamente nesta fila.</span></div></div>
-      {% endfor %}
     </div>
   </section>
 

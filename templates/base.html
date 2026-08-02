@@ -527,6 +527,9 @@
         </a>
         <div class="side-nav-group" aria-label="Fluxo operacional do pedido">
           <span class="side-nav-label">Fluxo do pedido</span>
+          <a href="{% url 'preparacao_arte' %}" class="side-link {% if active == 'preparacao_arte' %}active{% endif %}">
+            <i data-lucide="palette" class="h-5 w-5"></i> Preparação de arte
+          </a>
           <a href="{% url 'assistencia_envio' %}" class="side-link {% if active == 'assistencia' %}active{% endif %}">
             <i data-lucide="printer" class="h-5 w-5"></i> Assistência de Impressão
           </a>

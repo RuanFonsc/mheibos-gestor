@@ -314,12 +314,7 @@ def categoria_excluir(request, pk):
     return redirect("produtos")
 
 
-def assistencia_envio(request):
-    operador = operador_atual(request)
-    busca = request.GET.get("q", "").strip()
-    categorias_ids = request.GET.getlist("categorias")
-    usuarios = request.GET.getlist("usuarios")
-    grupos = pedidos_assistencia(busca, categorias_ids, usuarios)
+def preparacao_arte(request):
     aguardando_arte = (
         Pedido.objects.filter(status=StatusPedido.AGUARDANDO_ARTE)
         .select_related("cliente")
@@ -328,14 +323,29 @@ def assistencia_envio(request):
     )
     return render(
         request,
-        "catalogo/assistencia_envio.html",
+        "catalogo/preparacao_arte.html",
         {
-            "active": "assistencia",
-            "grupos": grupos,
+            "active": "preparacao_arte",
             "aguardando_arte": aguardando_arte,
             "total_aguardando_arte": Pedido.objects.filter(
                 status=StatusPedido.AGUARDANDO_ARTE
             ).count(),
+        },
+    )
+
+
+def assistencia_envio(request):
+    operador = operador_atual(request)
+    busca = request.GET.get("q", "").strip()
+    categorias_ids = request.GET.getlist("categorias")
+    usuarios = request.GET.getlist("usuarios")
+    grupos = pedidos_assistencia(busca, categorias_ids, usuarios)
+    return render(
+        request,
+        "catalogo/assistencia_envio.html",
+        {
+            "active": "assistencia",
+            "grupos": grupos,
             "busca": busca,
             "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
             "categorias_selecionadas": [str(item) for item in categorias_ids],
