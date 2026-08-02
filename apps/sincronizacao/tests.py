@@ -15,9 +15,12 @@ from .models import EstacaoCliente, IncorporacaoOffline, SequenciaOffline, Unida
 from .services import (
     SincronizacaoInvalida,
     calcular_checksum,
+    confirmar_unidade,
     criar_estacao,
     enfileirar_pedido_local,
     incorporar_pedido_offline,
+    preparar_proxima_unidade,
+    reagendar_unidade,
     registrar_falha,
 )
 
@@ -135,6 +138,95 @@ class FilaOfflineTests(TestCase):
 
         with self.assertRaises(ValueError):
             unidade.save()
+
+    def test_preparation_marks_attempt_before_transport(self):
+        unidade = enfileirar_pedido_local(
+            pedido=self.pedido,
+            operador=self.operador,
+            estacao_id=self.estacao,
+            versao_politica="politica-1",
+        )
+
+        selecionada = preparar_proxima_unidade()
+
+        assert selecionada is not None
+        self.assertEqual(selecionada.pk, unidade.pk)
+        selecionada.refresh_from_db()
+        self.assertEqual(selecionada.estado, "ENVIANDO")
+        self.assertEqual(selecionada.tentativas, 1)
+        self.assertIsNotNone(selecionada.ultima_tentativa_em)
+
+    def test_valid_confirmation_is_durable_and_audited(self):
+        unidade = enfileirar_pedido_local(
+            pedido=self.pedido,
+            operador=self.operador,
+            estacao_id=self.estacao,
+            versao_politica="politica-1",
+        )
+        preparar_proxima_unidade()
+
+        confirmar_unidade(
+            unidade,
+            {
+                "codigo": "INCORPORADO",
+                "pedido_global_id": 91,
+                "identificador_offline": str(unidade.entidade_local_id),
+            },
+        )
+
+        unidade.refresh_from_db()
+        self.assertEqual(unidade.estado, "INCORPORADA")
+        self.assertEqual(unidade.pedido_global_id_confirmado, 91)
+        self.assertIsNotNone(unidade.incorporada_em)
+        self.assertTrue(
+            EventoOperacional.objects.filter(
+                tipo="PedidoOfflineConfirmado",
+                chave_idempotencia=f"offline-confirmar:{unidade.chave_idempotencia}",
+            ).exists()
+        )
+
+    def test_confirmation_for_another_entity_changes_nothing(self):
+        unidade = enfileirar_pedido_local(
+            pedido=self.pedido,
+            operador=self.operador,
+            estacao_id=self.estacao,
+            versao_politica="politica-1",
+        )
+        preparar_proxima_unidade()
+
+        with self.assertRaises(SincronizacaoInvalida):
+            confirmar_unidade(
+                unidade,
+                {
+                    "codigo": "INCORPORADO",
+                    "pedido_global_id": 91,
+                    "identificador_offline": str(uuid.uuid4()),
+                },
+            )
+
+        unidade.refresh_from_db()
+        self.assertEqual(unidade.estado, "ENVIANDO")
+        self.assertIsNone(unidade.pedido_global_id_confirmado)
+
+    def test_temporary_failure_has_backoff_and_permanent_refusal_stops_retry(self):
+        unidade = enfileirar_pedido_local(
+            pedido=self.pedido,
+            operador=self.operador,
+            estacao_id=self.estacao,
+            versao_politica="politica-1",
+        )
+        preparar_proxima_unidade()
+
+        reagendar_unidade(unidade, "Central indisponivel")
+        unidade.refresh_from_db()
+        self.assertEqual(unidade.estado, "FALHA_TEMPORARIA")
+        self.assertIsNotNone(unidade.proxima_tentativa_em)
+        self.assertIsNone(preparar_proxima_unidade())
+
+        reagendar_unidade(unidade, "Estacao revogada", permanente=True)
+        unidade.refresh_from_db()
+        self.assertEqual(unidade.estado, "REQUER_ATENCAO")
+        self.assertIsNone(unidade.proxima_tentativa_em)
 
 
 class IncorporacaoCentralTests(TestCase):

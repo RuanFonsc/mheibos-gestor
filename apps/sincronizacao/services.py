@@ -3,9 +3,11 @@ import json
 import uuid
 import secrets
 from dataclasses import dataclass
+from datetime import timedelta
 
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.auditoria.services import registrar_evento
@@ -13,7 +15,7 @@ from apps.catalogo.models import OperadorGestor
 from apps.clientes.models import Cliente
 from apps.pedidos.models import PagamentoPedido, Pedido, PedidoItem
 
-from .models import EstacaoCliente, IncorporacaoOffline, SequenciaOffline, UnidadeSincronizacao
+from .models import EstadoUnidade, EstacaoCliente, IncorporacaoOffline, SequenciaOffline, UnidadeSincronizacao
 
 
 class SincronizacaoInvalida(Exception):
@@ -182,3 +184,115 @@ def registrar_falha(unidade: UnidadeSincronizacao, motivo: str) -> None:
     unidade.motivo_falha = motivo
     unidade.estado = "FALHA_TEMPORARIA"
     unidade.save(update_fields=["tentativas", "ultima_tentativa_em", "ultimo_resultado", "motivo_falha", "estado", "atualizada_em"])
+
+
+@transaction.atomic
+def preparar_proxima_unidade() -> UnidadeSincronizacao | None:
+    agora = timezone.now()
+    unidade = (
+        UnidadeSincronizacao.objects.select_for_update()
+        .filter(
+            estado__in=[
+                EstadoUnidade.AGUARDANDO,
+                EstadoUnidade.FALHA_TEMPORARIA,
+                EstadoUnidade.PREPARANDO,
+                EstadoUnidade.ENVIANDO,
+            ]
+        )
+        .filter(Q(proxima_tentativa_em__isnull=True) | Q(proxima_tentativa_em__lte=agora))
+        .order_by("sequencia_local", "criada_em")
+        .first()
+    )
+    if unidade is None:
+        return None
+    unidade.estado = EstadoUnidade.ENVIANDO
+    unidade.tentativas += 1
+    unidade.ultima_tentativa_em = agora
+    unidade.ultimo_resultado = "ENVIANDO"
+    unidade.motivo_falha = ""
+    unidade.proxima_tentativa_em = None
+    unidade.save(
+        update_fields=[
+            "estado",
+            "tentativas",
+            "ultima_tentativa_em",
+            "ultimo_resultado",
+            "motivo_falha",
+            "proxima_tentativa_em",
+            "atualizada_em",
+        ]
+    )
+    return unidade
+
+
+@transaction.atomic
+def confirmar_unidade(unidade: UnidadeSincronizacao, confirmacao: dict) -> None:
+    unidade = UnidadeSincronizacao.objects.select_for_update().get(pk=unidade.pk)
+    codigo = str(confirmacao.get("codigo") or "")
+    if codigo not in {"INCORPORADO", "JA_INCORPORADO"}:
+        raise SincronizacaoInvalida("Confirmacao central desconhecida.")
+    if str(confirmacao.get("identificador_offline") or "") != str(unidade.entidade_local_id):
+        raise SincronizacaoInvalida("Confirmacao central pertence a outra entidade.")
+    try:
+        pedido_global_id = int(confirmacao["pedido_global_id"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SincronizacaoInvalida("Confirmacao central sem Pedido global valido.") from exc
+    if pedido_global_id <= 0:
+        raise SincronizacaoInvalida("Confirmacao central sem Pedido global valido.")
+
+    unidade.estado = EstadoUnidade.INCORPORADA
+    unidade.codigo_confirmacao = codigo
+    unidade.pedido_global_id_confirmado = pedido_global_id
+    unidade.incorporada_em = timezone.now()
+    unidade.ultimo_resultado = codigo
+    unidade.motivo_falha = ""
+    unidade.proxima_tentativa_em = None
+    unidade.save(
+        update_fields=[
+            "estado",
+            "codigo_confirmacao",
+            "pedido_global_id_confirmado",
+            "incorporada_em",
+            "ultimo_resultado",
+            "motivo_falha",
+            "proxima_tentativa_em",
+            "atualizada_em",
+        ]
+    )
+    registrar_evento(
+        tipo="PedidoOfflineConfirmado",
+        operador=unidade.operador,
+        origem="cliente_offline",
+        origem_offline=True,
+        alvo_tipo="Pedido",
+        alvo_id=str(unidade.entidade_local_id),
+        acao="confirmar_incorporacao_central",
+        valores_anteriores={"estado_sincronizacao": EstadoUnidade.ENVIANDO},
+        valores_posteriores={
+            "estado_sincronizacao": EstadoUnidade.INCORPORADA,
+            "pedido_global_id": pedido_global_id,
+            "codigo_confirmacao": codigo,
+        },
+        chave_idempotencia=f"offline-confirmar:{unidade.chave_idempotencia}",
+        metadados={"estacao_id": str(unidade.estacao_id)},
+    )
+
+
+@transaction.atomic
+def reagendar_unidade(unidade: UnidadeSincronizacao, motivo: str, *, permanente: bool = False) -> None:
+    unidade = UnidadeSincronizacao.objects.select_for_update().get(pk=unidade.pk)
+    unidade.estado = EstadoUnidade.REQUER_ATENCAO if permanente else EstadoUnidade.FALHA_TEMPORARIA
+    unidade.ultimo_resultado = "RECUSADA" if permanente else "FALHA_TEMPORARIA"
+    unidade.motivo_falha = motivo[:2000]
+    unidade.proxima_tentativa_em = None if permanente else timezone.now() + timedelta(
+        seconds=min(30 * (2 ** max(unidade.tentativas - 1, 0)), 1800)
+    )
+    unidade.save(
+        update_fields=[
+            "estado",
+            "ultimo_resultado",
+            "motivo_falha",
+            "proxima_tentativa_em",
+            "atualizada_em",
+        ]
+    )

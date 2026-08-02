@@ -154,3 +154,11 @@
 - **Segurança:** somente a identidade anteriormente confirmada e cifrada para a mesma Estação pode ser materializada; falhas interrompem a abertura sem criar credenciais padrão.
 - **Alternativas rejeitadas:** operar diretamente no banco central; usar a mesma porta do servidor local; liberar o primeiro administrador no cliente; guardar senha em parâmetro ou ambiente.
 - **Situação:** definitiva para a partida offline; retorno e sincronização permanecem responsabilidade de IMP-008D.
+
+## DEC-IMP-016 — Tentativa registrada antes da rede e confirmação validada depois
+
+- **Decisão:** persistir `ENVIANDO` e incrementar a tentativa antes de qualquer I/O; somente uma confirmação central coerente muda a unidade para `INCORPORADA`.
+- **Motivo:** permite recuperar quedas em qualquer lado da requisição sem apagar pacote, duplicar efeito ou presumir sucesso.
+- **Recuperação:** estados intermediários são reelegíveis e o endpoint central responde idempotentemente; falha temporária recebe backoff e recusa normativa exige atenção humana.
+- **Alternativas rejeitadas:** remover da fila antes do POST; considerar qualquer HTTP 2xx como confirmação; repetir recusas permanentes indefinidamente.
+- **Situação:** definitiva para o ciclo local; transporte concreto pertence à próxima fatia.

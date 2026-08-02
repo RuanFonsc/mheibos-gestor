@@ -79,6 +79,9 @@ class UnidadeSincronizacao(models.Model):
     proxima_tentativa_em = models.DateTimeField(null=True, blank=True)
     ultimo_resultado = models.CharField(max_length=120, blank=True)
     motivo_falha = models.TextField(blank=True)
+    pedido_global_id_confirmado = models.PositiveBigIntegerField(null=True, blank=True)
+    codigo_confirmacao = models.CharField(max_length=32, blank=True)
+    incorporada_em = models.DateTimeField(null=True, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 

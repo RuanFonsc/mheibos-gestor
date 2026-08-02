@@ -212,3 +212,14 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Testes:** helper Node valida configuração e vínculo da Estação; sintaxe do processo principal e preload aprovada; cofre aprovado; 72 testes Django, check e migrações aprovados.
 - **Lacuna de validação:** `COMPLETED_WITH_GAPS` até smoke humano do instalador Windows confirmar queda real, abertura em `8766` e login local.
 - **Fora desta fatia:** detectar retorno da Central, enviar a fila, persistir confirmações e comutar de volta pertencem a IMP-008D.
+
+### IMP-008D.1 — COMPLETED
+
+- **Capacidade:** ciclo durável da unidade local antes e depois do transporte: seleção ordenada, marcação prévia da tentativa, confirmação central validada, retentativa com backoff e recusa permanente visível.
+- **Crash safety:** `PREPARANDO` e `ENVIANDO` voltam a ser elegíveis; queda após a requisição não perde a unidade e a idempotência central torna o reenvio seguro.
+- **Confirmação:** somente `INCORPORADO` ou `JA_INCORPORADO`, com o mesmo identificador offline e Pedido global positivo, encerram a unidade.
+- **Persistência:** código da confirmação, identificador global e instante de incorporação ficam gravados localmente; o payload causal continua imutável.
+- **Falhas:** indisponibilidade agenda backoff exponencial limitado; recusas permanentes ficam em `REQUER_ATENCAO` e não entram em repetição infinita.
+- **Auditoria:** confirmação local gera `PedidoOfflineConfirmado` na mesma transação, com chave idempotente e sem segredo de Estação.
+- **Testes:** 10 cenários da fila cobrem preparação, confirmação, entidade divergente, backoff, recusa permanente, imutabilidade e rollback; migration explícita aprovada.
+- **Fora desta fatia:** cliente HTTP autenticado e acionamento periódico pelo Electron pertencem a IMP-008D.2.
