@@ -110,6 +110,9 @@ class CategoriaUsuario(models.Model):
 
 
 class OperadorGestor(models.Model):
+    codigo_origem_offline = models.CharField(
+        max_length=12, null=True, blank=True, unique=True
+    )
     nome = models.CharField(max_length=80, unique=True)
     foto = models.ImageField(upload_to="usuarios/fotos/", blank=True)
     senha = models.CharField(max_length=128, default="1234")

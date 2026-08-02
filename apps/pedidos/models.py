@@ -93,6 +93,10 @@ class CanalAtendimentoPedido(models.TextChoices):
 
 
 class Pedido(models.Model):
+    identificador_offline = models.UUIDField(null=True, blank=True, unique=True)
+    codigo_visivel_offline = models.CharField(max_length=40, null=True, blank=True, unique=True)
+    estacao_origem_offline = models.UUIDField(null=True, blank=True)
+    origem_offline = models.BooleanField(default=False)
     legado_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
     cliente = models.ForeignKey(
         "clientes.Cliente",

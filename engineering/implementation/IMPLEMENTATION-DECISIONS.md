@@ -1,5 +1,16 @@
 # Decisões da Implementação
 
+## DEC-IMP-010 — Um backend executável em papéis separados, sem banco compartilhado offline
+
+- **Decisão:** reutilizar casos de uso e schema do backend nos papéis `central` e `client_offline`, mantendo processos e bancos fisicamente separados por execução.
+- **Motivo:** o Electron já empacota o backend; iniciar um serviço local reduz duplicação de regras sem transformar indisponibilidade da Central em indisponibilidade do Cliente.
+- **Proibição preservada:** o Cliente nunca acessa diretamente o banco central e não considera uma tabela central como fila local.
+- **Identidade:** Pedido local usa UUID próprio; código visível combina código permanente da pessoa e sequência durável da Estação. PK de banco local não participa da identidade entre nós.
+- **Fila:** unidade causal é imutável; apenas estado de envio, tentativas e falhas evoluem. Nenhuma remoção comum é permitida.
+- **Incorporação:** a Central aceita unidade completa em transação, preserva autoria/origem e reconhece reenvios pela chave idempotente.
+- **Compatibilidade:** `MHEIBOS_RUNTIME_ROLE=central` é o default e não altera o funcionamento existente.
+- **Situação:** definitiva para a fronteira; SQLite local, transporte e política exata de retentativa permanecem decisões técnicas das próximas fatias.
+
 ## DEC-IMP-009 — Fundação cognitiva antecipada, opcional e sem autoridade
 
 - **Decisão humana:** em 01/08/2026, foi autorizada a entrada antecipada de IA por API, com retomada posterior do IMP-008.

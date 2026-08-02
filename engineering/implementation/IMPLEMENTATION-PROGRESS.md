@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-008 — introduzir comandos offline idempotentes, fila local e reconciliação no escopo autorizado.
+IMP-008B — proteger identidade/credencial offline da última pessoa validada, provisionar Estação e conectar o Cliente Electron ao serviço local.
 
 ## Histórico resumido
 
@@ -143,3 +143,16 @@ IMP-008 — introduzir comandos offline idempotentes, fila local e reconciliaç�
 - **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS_WITH_GAP; Segurança PASS; IA indisponível PASS; Testes PASS.
 - **Lacunas não bloqueantes:** validação online requer uma nova chave rotacionada; políticas amplas de conhecimento, retenção, custo, quotas e governança aguardam os ciclos/RFCs proprietários.
 - **Teste humano:** com IA desligada, gerar resumo e confirmar fallback; depois de configurar chave nova, habilitar Gemini, gerar resumo e confirmar que nenhum estado se altera.
+
+### IMP-008A — COMPLETED
+
+- **Capacidade:** primeiro corte executável do modo offline restrito, com criação local de Pedido, identidade técnica, código visível permanente, sequência por Estação/origem, pacote coerente e fila durável.
+- **Separação:** a mesma base de código pode executar como `central` ou `client_offline`, mas cada papel usa persistência própria; uma tabela da Central não foi tratada como armazenamento local.
+- **Atomicidade:** no papel local, formulário, Pedido, itens, evento causal com UUID estável, reserva da sequência e unidade de sincronização confirmam ou revertem juntos.
+- **Segurança:** nenhuma pessoa existente recebe código offline por inferência; código de origem é único e explícito. Modo local bloqueia mutações de registros globais e logout com pendências.
+- **Integridade:** payload e checksum ficam imutáveis; falhas preservam conteúdo, tentativas e motivo visível.
+- **Central:** incorporação valida esquema, checksum e autoria permanente; reenvio da mesma chave devolve confirmação existente sem duplicar Pedido, Cliente, itens ou eventos.
+- **Interface:** banner persistente identifica o modo restrito e painel `/sincronizacao/` apresenta fila, origem, estado, tentativas e falha.
+- **Testes:** 14 testes específicos aprovados: atomicidade, rollback, sequência, imutabilidade, corrupção, autoria, idempotência, formulário real, bloqueio global e logout.
+- **Fora desta fatia:** transporte autenticado, provisionamento de Estação, cache de identidade/credencial, detecção de queda, comutação Electron, retentativa automática e confirmação cliente-servidor entram em IMP-008B/8C.
+- **Classificação:** `adicionar`; campos em Pedido/Operador são aditivos, sem backfill especulativo.

@@ -29,6 +29,7 @@ urlpatterns = [
     path("auditoria/", include("apps.auditoria.urls")),
     path("pendencias/", include("apps.pendencias.urls")),
     path("cognicao/", include("apps.cognicao.urls")),
+    path("sincronizacao/", include("apps.sincronizacao.urls")),
     path("webhook", aprendizado_views.evolution_webhook, name="aprendizado_webhook_alias"),
     path("configuracoes/", catalogo_views.configuracoes, name="configuracoes"),
     path("producao/login/", catalogo_views.login_producao, name="producao_login"),

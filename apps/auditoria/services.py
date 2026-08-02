@@ -19,6 +19,7 @@ def registrar_evento(
     chave_idempotencia: str | None = None,
     metadados: dict | None = None,
     resultado: str = ResultadoEvento.CONCLUIDO,
+    origem_offline: bool = False,
 ) -> EventoOperacional:
     if chave_idempotencia:
         existente = EventoOperacional.objects.filter(
@@ -31,6 +32,7 @@ def registrar_evento(
         ocorrido_em=timezone.now(),
         operador=operador,
         origem=origem,
+        origem_offline=origem_offline,
         alvo_tipo=alvo_tipo,
         alvo_id=str(alvo_id),
         acao=acao,

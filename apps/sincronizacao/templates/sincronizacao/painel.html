@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Sincronizacao offline{% endblock %}
+{% block page_title %}Sincronizacao offline{% endblock %}
+{% block content %}
+<div class="page-content w-full"><div class="page-heading"><div><span class="kicker">Fila local duravel</span><h2 class="section-title">Pendencias de sincronizacao</h2><p>Itens permanecem visiveis ate confirmacao duravel da Central.</p></div></div><div class="card p-5"><div class="table-wrap"><table class="data-table"><thead><tr><th>Pedido local</th><th>Origem</th><th>Estado</th><th>Tentativas</th><th>Resultado</th></tr></thead><tbody>{% for unidade in unidades %}<tr><td>#{{ unidade.codigo_visivel }}</td><td>{{ unidade.operador.nome }} / {{ unidade.estacao_id }}</td><td>{{ unidade.get_estado_display }}</td><td>{{ unidade.tentativas }}</td><td>{{ unidade.motivo_falha|default:unidade.ultimo_resultado|default:"Aguardando envio" }}</td></tr>{% empty %}<tr><td colspan="5">Nenhuma pendencia local.</td></tr>{% endfor %}</tbody></table></div></div></div>
+{% endblock %}

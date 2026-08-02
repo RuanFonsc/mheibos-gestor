@@ -2,6 +2,7 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.urls import reverse
 from django.conf import settings
+from django.contrib import messages
 
 from apps.catalogo.bootstrap import primeiro_admin_pendente
 from apps.catalogo.authentication import sessao_possui_operador
@@ -100,4 +101,38 @@ class OperadorLoginMiddleware:
             else:
                 login_url = reverse("login")
             return redirect(f"{login_url}?next={request.get_full_path()}")
+        return self.get_response(request)
+
+
+class ModoOfflineRestritoMiddleware:
+    ROTAS_POST_PERMITIDAS = {"/login/", "/pedidos/novo/"}
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if settings.MHEIBOS_RUNTIME_ROLE != "client_offline":
+            return self.get_response(request)
+        caminho = request.path_info
+        if caminho == "/sair/":
+            from apps.sincronizacao.models import EstadoUnidade, UnidadeSincronizacao
+
+            if UnidadeSincronizacao.objects.exclude(
+                estado=EstadoUnidade.INCORPORADA
+            ).exists():
+                messages.error(
+                    request,
+                    "A sessao offline nao pode ser encerrada enquanto houver dados locais pendentes.",
+                )
+                return redirect("sincronizacao_painel")
+        if (
+            request.method not in {"GET", "HEAD", "OPTIONS"}
+            and caminho not in self.ROTAS_POST_PERMITIDAS
+        ):
+            return HttpResponse(
+                "Modo offline restrito: registros globais nao podem ser alterados. "
+                "Crie um novo Pedido local ou aguarde a reconexao.",
+                status=409,
+                content_type="text/plain; charset=utf-8",
+            )
         return self.get_response(request)

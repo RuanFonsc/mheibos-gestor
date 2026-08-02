@@ -16,6 +16,9 @@ files = [
     "apps/cognicao/gateway.py",
     "apps/cognicao/services.py",
     "apps/cognicao/views.py",
+    "apps/sincronizacao/models.py",
+    "apps/sincronizacao/services.py",
+    "apps/sincronizacao/views.py",
 ]
 check_untyped_defs = true
 ignore_missing_imports = true

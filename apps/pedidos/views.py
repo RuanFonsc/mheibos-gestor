@@ -1,6 +1,8 @@
 from decimal import Decimal
+import uuid
 
 from django.contrib import messages
+from django.conf import settings
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.db.models import Prefetch, Q
@@ -36,6 +38,7 @@ from apps.pedidos.use_cases import (
 )
 from apps.operacao.services import ProcessoEncerrado
 from apps.operacao.projections import projetar_lista, projetar_pedido, queryset_com_projecao
+from apps.sincronizacao.services import SincronizacaoInvalida, enfileirar_pedido_local
 
 
 def pedido_list(request):
@@ -426,9 +429,34 @@ def pedido_create(request):
         dados_post["data_pedido"] = hoje.isoformat()
         form = PedidoCreateForm(dados_post, request.FILES)
         if form.is_valid():
-            pedido = _criar_pedido(form, request.FILES.getlist("artes"), operador)
-            messages.success(request, f"Pedido #{pedido.pk} criado com sucesso.")
-            return redirect("pedido_detail", pk=pedido.pk)
+            try:
+                with transaction.atomic():
+                    offline = settings.MHEIBOS_RUNTIME_ROLE == "client_offline"
+                    pedido = _criar_pedido(
+                        form,
+                        request.FILES.getlist("artes"),
+                        operador,
+                        origem_offline=offline,
+                    )
+                    if offline:
+                        try:
+                            estacao_id = uuid.UUID(settings.MHEIBOS_STATION_ID)
+                        except (TypeError, ValueError) as exc:
+                            raise SincronizacaoInvalida(
+                                "Esta estacao offline ainda nao possui identidade valida."
+                            ) from exc
+                        enfileirar_pedido_local(
+                            pedido=pedido,
+                            operador=operador,
+                            estacao_id=estacao_id,
+                            versao_politica=settings.MHEIBOS_POLICY_VERSION,
+                        )
+            except SincronizacaoInvalida as exc:
+                messages.error(request, str(exc))
+            else:
+                identificador = pedido.codigo_visivel_offline or pedido.pk
+                messages.success(request, f"Pedido #{identificador} criado com sucesso.")
+                return redirect("pedido_detail", pk=pedido.pk)
         messages.error(request, "Não foi possível criar o pedido. Confira os campos destacados.")
     else:
         initial = {
@@ -476,7 +504,7 @@ def pedido_create(request):
 
 
 @transaction.atomic
-def _criar_pedido(form, arquivos, operador):
+def _criar_pedido(form, arquivos, operador, *, origem_offline=False):
     dados = form.cleaned_data
     cliente, _ = Cliente.objects.get_or_create(
         nome=dados["nome_cliente"].upper(),
@@ -555,7 +583,8 @@ def _criar_pedido(form, arquivos, operador):
         )
 
     sincronizar_financeiro_pedido(pedido)
-    registrar_evento(tipo="PedidoCriado", operador=operador, origem="gestor_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status_legado": pedido.status, "estado_comercial": pedido.estado_comercial, "estado_entrega": pedido.estado_entrega, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
+    if not origem_offline:
+        registrar_evento(tipo="PedidoCriado", operador=operador, origem="gestor_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status_legado": pedido.status, "estado_comercial": pedido.estado_comercial, "estado_entrega": pedido.estado_entrega, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
     return pedido
 
 

@@ -430,6 +430,9 @@
   {% block head %}{% endblock %}
 </head>
 <body data-app="{% if modo_producao %}producao{% else %}gestor{% endif %}">
+  {% if runtime_offline %}
+    <a href="{% url 'sincronizacao_painel' %}" style="position:fixed;z-index:1000;top:0;left:50%;transform:translateX(-50%);background:#ffb347;color:#171a29;padding:5px 18px;border-radius:0 0 8px 8px;font-weight:900;text-decoration:none;">CENTRAL INDISPONIVEL · MODO OFFLINE RESTRITO · {{ sincronizacao_pendentes }} PENDENTE(S)</a>
+  {% endif %}
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">

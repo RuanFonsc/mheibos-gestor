@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.operacao",
     "apps.pendencias",
     "apps.cognicao",
+    "apps.sincronizacao",
     "apps.legacy_migration",
 ]
 
@@ -43,6 +44,7 @@ MIDDLEWARE = [
     "config.middleware.LicencaMiddleware",
     "config.middleware.PrimeiroAdminMiddleware",
     "config.middleware.OperadorLoginMiddleware",
+    "config.middleware.ModoOfflineRestritoMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -59,6 +61,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "config.context_processors.preferencias_ui",
+                "config.context_processors.estado_runtime",
             ],
         },
     },
@@ -127,3 +130,6 @@ MHEIBOS_IA_ENABLED = config("MHEIBOS_IA_ENABLED", default=False, cast=bool)
 MHEIBOS_IA_PROVIDER = config("MHEIBOS_IA_PROVIDER", default="none").lower()
 MHEIBOS_IA_MODEL = config("MHEIBOS_IA_MODEL", default="gemini-3.6-flash")
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
+MHEIBOS_RUNTIME_ROLE = config("MHEIBOS_RUNTIME_ROLE", default="central").lower()
+MHEIBOS_STATION_ID = config("MHEIBOS_STATION_ID", default="")
+MHEIBOS_POLICY_VERSION = config("MHEIBOS_POLICY_VERSION", default="baseline-1")
