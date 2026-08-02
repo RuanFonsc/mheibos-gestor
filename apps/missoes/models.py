@@ -1,6 +1,7 @@
 import uuid
 from datetime import timedelta
 from django.db import models
+from django.db.models import Q
 
 
 class OrigemMissao(models.TextChoices):
@@ -22,15 +23,55 @@ class EstadoMissao(models.TextChoices):
     ARQUIVADA = "ARQUIVADA", "Arquivada"
 
 
+class TipoMissao(models.TextChoices):
+    INDIVIDUAL_VOLUNTARIA = "INDIVIDUAL_VOLUNTARIA", "Individual voluntária"
+    INDIVIDUAL_ATRIBUIDA = "INDIVIDUAL_ATRIBUIDA", "Individual atribuída"
+    COLETIVA_ESPONTANEA = "COLETIVA_ESPONTANEA", "Coletiva espontânea"
+    COLETIVA_ATRIBUIDA = "COLETIVA_ATRIBUIDA", "Coletiva atribuída"
+
+
+class PapelParticipacao(models.TextChoices):
+    LIDER = "LIDER", "Líder"
+    PARTICIPANTE = "PARTICIPANTE", "Participante"
+    OBSERVADOR = "OBSERVADOR", "Observador autorizado"
+    APROVADOR = "APROVADOR", "Aprovador"
+
+
+class EstadoParticipacao(models.TextChoices):
+    CONVIDADO = "CONVIDADO", "Convidado"
+    ACEITO = "ACEITO", "Aceito"
+    RECUSADO = "RECUSADO", "Recusado"
+    SAIU = "SAIU", "Saiu voluntariamente"
+    REMOVIDO = "REMOVIDO", "Removido pela autoridade"
+    ATRIBUIDO = "ATRIBUIDO", "Atribuído formalmente"
+
+
+class TipoManifestacaoConvite(models.TextChoices):
+    MAIS_INFORMACOES = "MAIS_INFORMACOES", "Pediu mais informações"
+    AJUSTE_PARTICIPACAO = "AJUSTE_PARTICIPACAO", "Sugeriu ajuste de participação"
+
+
 class Missao(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     titulo = models.CharField(max_length=160)
+    tipo = models.CharField(
+        max_length=32,
+        choices=TipoMissao.choices,
+        default=TipoMissao.INDIVIDUAL_VOLUNTARIA,
+    )
     objetivo = models.TextField()
     criterio_conclusao = models.TextField()
     resultado_esperado = models.TextField(blank=True)
     origem = models.CharField(max_length=24, choices=OrigemMissao.choices)
     estado = models.CharField(max_length=24, choices=EstadoMissao.choices)
     criador = models.ForeignKey("catalogo.OperadorGestor", related_name="missoes_criadas", on_delete=models.PROTECT)
+    autoridade_responsavel = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="missoes_sob_autoridade",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
     responsavel_principal = models.ForeignKey("catalogo.OperadorGestor", related_name="missoes_responsaveis", on_delete=models.PROTECT)
     iniciada_em = models.DateTimeField(null=True, blank=True)
     pausada_em = models.DateTimeField(null=True, blank=True)
@@ -58,3 +99,41 @@ class Missao(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class ParticipacaoMissao(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    missao = models.ForeignKey(Missao, related_name="participacoes", on_delete=models.PROTECT)
+    operador = models.ForeignKey(
+        "catalogo.OperadorGestor", related_name="participacoes_missao", on_delete=models.PROTECT
+    )
+    papel = models.CharField(max_length=24, choices=PapelParticipacao.choices)
+    estado_participacao = models.CharField(max_length=24, choices=EstadoParticipacao.choices)
+    convidado_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="convites_missao_emitidos",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    convidado_em = models.DateTimeField(null=True, blank=True)
+    respondido_em = models.DateTimeField(null=True, blank=True)
+    encerrado_em = models.DateTimeField(null=True, blank=True)
+    manifestacao_tipo = models.CharField(
+        max_length=32, choices=TipoManifestacaoConvite.choices, blank=True
+    )
+    manifestacao_texto = models.TextField(blank=True)
+    motivo_saida = models.TextField(blank=True)
+    impacto_saida_confirmado = models.BooleanField(default=False)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["criada_em"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["missao", "operador"],
+                condition=Q(encerrado_em__isnull=True),
+                name="missoes_participacao_corrente_unica",
+            )
+        ]

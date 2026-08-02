@@ -358,3 +358,17 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Offline:** consulta continua permitida, mas todas as transições globais permanecem bloqueadas no Cliente offline.
 - **Testes:** 7 cenários novos cobrem ciclo completo, contexto de bloqueio, autoridade, transição inválida, obrigação remanescente, idempotência, concorrência transacional, rollback, interface e offline; baseline completo aprovado com 130 testes.
 - **Fora desta fatia:** `EM_REVISAO` depende de participante/aprovador ou autoridade identificável; tarefas, referências e destinação formal de pendências entram nos próximos ciclos.
+
+### IMP-010C — COMPLETED
+
+- **Capacidade:** missão coletiva espontânea cria liderança explícita e convites sem impor obrigação; convidado pode aceitar, recusar, pedir informações ou sugerir ajuste de participação.
+- **Consentimento:** aceite constitui participação e torna a missão planejada; recusa encerra somente aquele convite, não gera punição e permite convite futuro com novo histórico.
+- **Papéis:** liderança, participante, observador autorizado e aprovador são vínculos explícitos; acumulação futura não será inferida por cargo global.
+- **Saída voluntária:** participante aceito pode sair após confirmação consciente e motivo; contribuições e vínculo histórico permanecem. Líder precisa transferir liderança antes de sair.
+- **Visibilidade:** convite pendente e participação aceita dão acesso ao workspace da missão; recusa ou saída encerram a projeção corrente sem apagar o registro. Nenhum vínculo concede acesso automático a dados externos restritos.
+- **Encerramento:** convites pendentes impedem conclusão; missão concluída, cancelada ou arquivada não recebe convites, respostas ou saídas tardias.
+- **Auditoria e concorrência:** criação, convite, manifestação, aceite, recusa e saída são transacionais, bloqueiam registros concorrentes e geram eventos; falha de evento reverte missão e participações.
+- **Migração:** missões existentes recebem tipo `INDIVIDUAL_VOLUNTARIA`; nenhuma autoridade ou participação histórica é inventada.
+- **Offline:** criação coletiva e todas as mutações de participação permanecem bloqueadas no Cliente offline.
+- **Testes:** 10 cenários novos cobrem criação, consentimento, manifestação, recusa/reconvite, autoridade, idempotência, saída, visibilidade, encerramento, rollback, interface e offline.
+- **Fora desta fatia:** missão atribuída exige tarefas iniciais, prazo e impacto; será implementada junto do modelo de tarefas e da matriz de autoridade administrativa.

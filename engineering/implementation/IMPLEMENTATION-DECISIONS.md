@@ -277,3 +277,15 @@
 - **Conclusão:** texto livre não é destino formal de obrigação. Enquanto tarefas ou pendências remanescentes não puderem ser concluídas, canceladas com autoridade, transferidas ou incorporadas, a missão não deve concluir.
 - **Revisão:** `EM_REVISAO` permanece no vocabulário, porém sua entrada aguarda participante aprovador ou autoridade identificável; não criar revisão sem destinatário.
 - **Situação:** definitiva para missão individual; missões atribuídas e coletivas terão matriz de autoridade própria.
+
+## DEC-IMP-029 — Consentimento é vínculo histórico, não lista muitos-para-muitos implícita
+
+- **Decisão:** representar cada participação por entidade própria com papel, estado, autoria, convite, resposta, manifestação e encerramento; manter no máximo um vínculo corrente por pessoa e missão.
+- **Motivo:** uma relação simples apagaria recusa, saída, reconvite, autoria e cronologia exigidos pela RFC-0010.
+- **Criação espontânea:** criador nasce como líder aceito; terceiros nascem somente como convidados. A missão fica `AGUARDANDO_ACEITE` até o primeiro aceite e então se torna `PLANEJADA`.
+- **Consentimento:** pedir informação ou ajuste não equivale a aceitar; recusar encerra o convite sem julgamento e um reconvite cria nova ocorrência histórica.
+- **Saída:** somente vínculo aceito não líder pode sair unilateralmente; liderança exige transferência futura para impedir workspace sem coordenação explícita.
+- **Visibilidade:** vínculo corrente convidado ou aceito torna o workspace visível, mas não amplia permissões sobre Pedido, Processo, Etapa ou futura referência restrita.
+- **Encerramento:** convite pendente deve receber destino antes da conclusão; participação de missão final é história imutável.
+- **Atribuição administrativa:** adiada de modo intencional até tarefas, prazo e impacto existirem, pois a RFC exige apresentar esses elementos ao participante atribuído.
+- **Situação:** definitiva para missões coletivas espontâneas; tipos atribuídos preservam vocabulário sem produzir obrigação incompleta.

@@ -4,6 +4,11 @@ from . import views
 urlpatterns = [
     path("", views.lista_missoes, name="missoes_lista"),
     path("nova/", views.criar_missao, name="missao_criar"),
+    path("nova-coletiva/", views.criar_missao_coletiva, name="missao_criar_coletiva"),
     path("<uuid:missao_id>/", views.detalhe_missao, name="missao_detalhe"),
+    path("<uuid:missao_id>/convidar/", views.convidar_na_missao, name="missao_convidar"),
+    path("participacoes/<uuid:participacao_id>/<str:resposta>/", views.responder_convite_view, name="missao_responder_convite"),
+    path("participacoes/<uuid:participacao_id>/manifestar/", views.manifestar_convite_view, name="missao_manifestar_convite"),
+    path("participacoes/<uuid:participacao_id>/sair/", views.sair_missao_view, name="missao_sair"),
     path("<uuid:missao_id>/<str:acao>/", views.alterar_estado_missao, name="missao_alterar_estado"),
 ]

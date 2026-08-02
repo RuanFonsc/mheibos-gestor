@@ -3,7 +3,16 @@ from django.db import transaction
 from django.utils import timezone
 from apps.auditoria.services import registrar_evento
 from apps.catalogo.models import PapelOperador
-from .models import EstadoMissao, Missao, OrigemMissao
+from .models import (
+    EstadoMissao,
+    EstadoParticipacao,
+    Missao,
+    OrigemMissao,
+    PapelParticipacao,
+    ParticipacaoMissao,
+    TipoManifestacaoConvite,
+    TipoMissao,
+)
 
 
 @transaction.atomic
@@ -16,6 +25,202 @@ def criar_missao_individual_voluntaria(*, operador, titulo, objetivo, criterio_c
     missao = Missao.objects.create(**campos, resultado_esperado=(resultado_esperado or "").strip(), origem=OrigemMissao.VOLUNTARIA, estado=EstadoMissao.PLANEJADA, criador=operador, responsavel_principal=operador)
     registrar_evento(tipo="MissaoCriada", operador=operador, origem="missoes_web", alvo_tipo="Missao", alvo_id=str(missao.pk), acao="criar_missao_individual_voluntaria", valores_anteriores={}, valores_posteriores={"origem": missao.origem, "estado": missao.estado, "responsavel_principal_id": operador.pk})
     return missao
+
+
+@transaction.atomic
+def criar_missao_coletiva_espontanea(
+    *, operador, titulo, objetivo, criterio_conclusao, convidados, resultado_esperado=""
+):
+    if not operador or not operador.ativo or operador.papel == PapelOperador.TEMPORARIO:
+        raise PermissionDenied("Somente uma identidade ativa pode criar uma missão coletiva.")
+    convidados = list(dict.fromkeys(convidados or []))
+    if not convidados:
+        raise ValidationError("Uma missão coletiva precisa convidar pelo menos outra pessoa.")
+    if operador in convidados or any(
+        not convidado.ativo or convidado.papel == PapelOperador.TEMPORARIO
+        for convidado in convidados
+    ):
+        raise ValidationError("Os convidados devem ser identidades ativas diferentes do criador.")
+    campos = {
+        "titulo": (titulo or "").strip(),
+        "objetivo": (objetivo or "").strip(),
+        "criterio_conclusao": (criterio_conclusao or "").strip(),
+    }
+    if not all(campos.values()):
+        raise ValidationError("Título, objetivo e critério de conclusão são obrigatórios.")
+    missao = Missao.objects.create(
+        **campos,
+        tipo=TipoMissao.COLETIVA_ESPONTANEA,
+        resultado_esperado=(resultado_esperado or "").strip(),
+        origem=OrigemMissao.VOLUNTARIA,
+        estado=EstadoMissao.AGUARDANDO_ACEITE,
+        criador=operador,
+        responsavel_principal=operador,
+    )
+    ParticipacaoMissao.objects.create(
+        missao=missao,
+        operador=operador,
+        papel=PapelParticipacao.LIDER,
+        estado_participacao=EstadoParticipacao.ACEITO,
+        respondido_em=timezone.now(),
+    )
+    registrar_evento(
+        tipo="MissaoCriada",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="Missao",
+        alvo_id=str(missao.pk),
+        acao="criar_missao_coletiva_espontanea",
+        valores_anteriores={},
+        valores_posteriores={"tipo": missao.tipo, "estado": missao.estado},
+    )
+    for convidado in convidados:
+        convidar_participante(
+            missao=missao,
+            convidado=convidado,
+            operador=operador,
+            papel=PapelParticipacao.PARTICIPANTE,
+        )
+    return missao
+
+
+@transaction.atomic
+def convidar_participante(*, missao, convidado, operador, papel=PapelParticipacao.PARTICIPANTE):
+    missao = _obter_missao_bloqueada(missao, operador)
+    if missao.tipo != TipoMissao.COLETIVA_ESPONTANEA:
+        raise ValidationError("Convite voluntário pertence somente à missão coletiva espontânea.")
+    if missao.estado in {EstadoMissao.CONCLUIDA, EstadoMissao.CANCELADA, EstadoMissao.ARQUIVADA}:
+        raise ValidationError("Missão encerrada não recebe novos convites.")
+    if convidado.pk == operador.pk or not convidado.ativo or convidado.papel == PapelOperador.TEMPORARIO:
+        raise ValidationError("Selecione outra identidade ativa para o convite.")
+    if papel not in {PapelParticipacao.PARTICIPANTE, PapelParticipacao.OBSERVADOR, PapelParticipacao.APROVADOR}:
+        raise ValidationError("Papel de convite inválido.")
+    existente = ParticipacaoMissao.objects.select_for_update().filter(
+        missao=missao, operador=convidado, encerrado_em__isnull=True
+    ).first()
+    if existente:
+        return existente
+    participacao = ParticipacaoMissao.objects.create(
+        missao=missao,
+        operador=convidado,
+        papel=papel,
+        estado_participacao=EstadoParticipacao.CONVIDADO,
+        convidado_por=operador,
+        convidado_em=timezone.now(),
+    )
+    registrar_evento(
+        tipo="ParticipanteConvidado",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="Missao",
+        alvo_id=str(missao.pk),
+        acao="convidar_participante",
+        valores_anteriores={},
+        valores_posteriores={"participacao_id": str(participacao.pk), "operador_id": convidado.pk, "papel": papel},
+    )
+    return participacao
+
+
+@transaction.atomic
+def responder_convite(*, participacao, operador, aceitar):
+    participacao = ParticipacaoMissao.objects.select_for_update().select_related("missao").get(pk=participacao.pk)
+    if participacao.operador_id != operador.pk or not operador.ativo:
+        raise PermissionDenied("Somente a pessoa convidada pode responder ao convite.")
+    estado_alvo = EstadoParticipacao.ACEITO if aceitar else EstadoParticipacao.RECUSADO
+    if participacao.estado_participacao == estado_alvo:
+        return participacao
+    if participacao.estado_participacao != EstadoParticipacao.CONVIDADO:
+        raise ValidationError("Este convite não está mais aguardando resposta.")
+    missao = Missao.objects.select_for_update().get(pk=participacao.missao_id)
+    if missao.estado in {EstadoMissao.CONCLUIDA, EstadoMissao.CANCELADA, EstadoMissao.ARQUIVADA}:
+        raise ValidationError("Convite de missão encerrada não pode ser aceito ou recusado agora.")
+    participacao.estado_participacao = estado_alvo
+    participacao.respondido_em = timezone.now()
+    if not aceitar:
+        participacao.encerrado_em = participacao.respondido_em
+    participacao.save(update_fields=["estado_participacao", "respondido_em", "encerrado_em", "atualizada_em"])
+    estado_anterior = missao.estado
+    if aceitar and missao.estado == EstadoMissao.AGUARDANDO_ACEITE:
+        missao.estado = EstadoMissao.PLANEJADA
+        missao.save(update_fields=["estado", "atualizada_em"])
+    registrar_evento(
+        tipo="ConviteAceito" if aceitar else "ConviteRecusado",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="Missao",
+        alvo_id=str(missao.pk),
+        acao="responder_convite",
+        valores_anteriores={"estado_participacao": EstadoParticipacao.CONVIDADO, "estado_missao": estado_anterior},
+        valores_posteriores={"estado_participacao": estado_alvo, "estado_missao": missao.estado},
+        metadados={"participacao_id": str(participacao.pk)},
+    )
+    return participacao
+
+
+@transaction.atomic
+def manifestar_convite(*, participacao, operador, tipo, texto):
+    participacao = ParticipacaoMissao.objects.select_for_update().get(pk=participacao.pk)
+    if participacao.operador_id != operador.pk or not operador.ativo:
+        raise PermissionDenied("Somente a pessoa convidada pode se manifestar.")
+    if participacao.estado_participacao != EstadoParticipacao.CONVIDADO:
+        raise ValidationError("Somente convite pendente aceita manifestação.")
+    if tipo not in TipoManifestacaoConvite.values or not (texto or "").strip():
+        raise ValidationError("Informe o tipo e o conteúdo da manifestação.")
+    participacao.manifestacao_tipo = tipo
+    participacao.manifestacao_texto = texto.strip()
+    participacao.save(update_fields=["manifestacao_tipo", "manifestacao_texto", "atualizada_em"])
+    registrar_evento(
+        tipo="ConviteManifestado",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="Missao",
+        alvo_id=str(participacao.missao_id),
+        acao="manifestar_convite",
+        valores_anteriores={},
+        valores_posteriores={"tipo": tipo},
+        metadados={"participacao_id": str(participacao.pk), "texto": participacao.manifestacao_texto},
+    )
+    return participacao
+
+
+@transaction.atomic
+def sair_missao_espontanea(*, participacao, operador, confirmacao, motivo):
+    participacao = ParticipacaoMissao.objects.select_for_update().select_related("missao").get(pk=participacao.pk)
+    if participacao.operador_id != operador.pk or not operador.ativo:
+        raise PermissionDenied("Somente o próprio participante pode sair voluntariamente.")
+    if participacao.missao.tipo != TipoMissao.COLETIVA_ESPONTANEA:
+        raise PermissionDenied("Missão atribuída não permite saída unilateral.")
+    if participacao.missao.estado in {
+        EstadoMissao.CONCLUIDA,
+        EstadoMissao.CANCELADA,
+        EstadoMissao.ARQUIVADA,
+    }:
+        raise ValidationError("Participação histórica de missão encerrada não pode ser alterada.")
+    if participacao.papel == PapelParticipacao.LIDER:
+        raise ValidationError("O líder precisa transferir a liderança antes de sair.")
+    if participacao.estado_participacao == EstadoParticipacao.SAIU:
+        return participacao
+    if participacao.estado_participacao != EstadoParticipacao.ACEITO:
+        raise ValidationError("Somente participante ativo pode sair da missão.")
+    if (confirmacao or "").strip().upper() != "SAIR" or not (motivo or "").strip():
+        raise ValidationError("Confirme SAIR e registre o motivo após revisar o impacto.")
+    participacao.estado_participacao = EstadoParticipacao.SAIU
+    participacao.encerrado_em = timezone.now()
+    participacao.motivo_saida = motivo.strip()
+    participacao.impacto_saida_confirmado = True
+    participacao.save(update_fields=["estado_participacao", "encerrado_em", "motivo_saida", "impacto_saida_confirmado", "atualizada_em"])
+    registrar_evento(
+        tipo="ParticipanteSaiuVoluntariamente",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="Missao",
+        alvo_id=str(participacao.missao_id),
+        acao="sair_voluntariamente",
+        valores_anteriores={"estado_participacao": EstadoParticipacao.ACEITO},
+        valores_posteriores={"estado_participacao": EstadoParticipacao.SAIU},
+        metadados={"participacao_id": str(participacao.pk), "motivo": participacao.motivo_saida, "impacto_confirmado": True},
+    )
+    return participacao
 
 
 class TransicaoMissaoInvalida(ValidationError):
@@ -136,6 +341,11 @@ def concluir_missao(*, missao, operador, resultado_alcancado, pendencias_remanes
         raise ValidationError(
             "A missão não pode ser concluída enquanto houver obrigação remanescente sem destino formal."
         )
+    if missao.participacoes.filter(
+        estado_participacao=EstadoParticipacao.CONVIDADO,
+        encerrado_em__isnull=True,
+    ).exists():
+        raise ValidationError("Resolva os convites pendentes antes de concluir a missão.")
     anterior = missao.estado
     missao.estado = EstadoMissao.CONCLUIDA
     missao.resultado_alcancado = resultado

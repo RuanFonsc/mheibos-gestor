@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block title %}Nova missão coletiva{% endblock %}{% block page_title %}Nova missão coletiva espontânea{% endblock %}{% block content %}
+<div class="page-content max-w-3xl"><div class="card p-6"><h2 class="section-title">Convidar para um objetivo compartilhado</h2><p class="mb-5 text-[var(--text-secondary)]">O convite não cria obrigação. Cada pessoa poderá aceitar, recusar, pedir informações ou sugerir ajuste.</p><form method="post" class="space-y-4">{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}<div><label>{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}<button class="btn-primary" type="submit">Criar e enviar convites</button></form></div></div>
+{% endblock %}
