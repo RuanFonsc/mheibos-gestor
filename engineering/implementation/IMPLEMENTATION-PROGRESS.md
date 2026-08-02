@@ -336,3 +336,13 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **DECISAO_HUMANA_NECESSARIA — revisão anual:** falta definir qual data atribui cada vínculo ao período e a semântica de arquivar ou manter um ano ativo.
 - **Extratores especializados:** CDR/AI/SVG continuam não bloqueantes conforme “quando possível”; sua ampliação exige dependência segura e contrato determinístico, sem impedir formatos não suportados.
 - **Continuidade:** as lacunas são isoladas, não invalidam as capacidades entregues e não bloqueiam IMP-010; o ciclo segue como `COMPLETED_WITH_GAPS`.
+
+### IMP-010A — COMPLETED
+
+- **Capacidade:** uma pessoa com identidade ativa cria missão individual voluntária com título, objetivo temporário, critério de conclusão, resultado esperado opcional, origem, responsável e estado planejado.
+- **Workspace persistente:** lista e detalhe recompõem o contexto após troca de tela ou reinício; a missão é entidade própria e não copia Pedido, Processo, Etapa ou Pendência.
+- **Autoridade e exposição:** criador e responsável são a própria pessoa; usuário comum vê somente suas missões e administrador mantém supervisão. Identidade temporária não cria missão.
+- **Offline:** consulta permanece disponível conforme a última base local autorizada; criação é bloqueada pelo contrato global de mutações offline.
+- **Auditoria:** `MissaoCriada` participa da mesma transação; falha do evento reverte a missão.
+- **Testes:** 5 cenários cobrem contrato mínimo, identidade, persistência, auditoria/rollback, privacidade, interface e isolamento offline.
+- **Fora desta fatia:** missão atribuída, participantes, aceite, tarefas, referências, transições, chat, notas e decisões serão adicionados em fatias próprias.

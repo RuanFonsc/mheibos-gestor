@@ -476,6 +476,9 @@
         <a href="{% url 'pendencias_lista' %}" class="side-link {% if active == 'pendencias' %}active{% endif %}">
           <i data-lucide="circle-alert" class="h-5 w-5"></i> Pendencias
         </a>
+        <a href="{% url 'missoes_lista' %}" class="side-link {% if active == 'missoes' %}active{% endif %}">
+          <i data-lucide="target" class="h-5 w-5"></i><span>Missões</span>
+        </a>
         {% if operador_atual.is_admin %}<a href="{% url 'auditoria_lista' %}" class="side-link {% if active == 'auditoria' %}active{% endif %}">
           <i data-lucide="history" class="h-5 w-5"></i> Auditoria
         </a>{% endif %}{% endif %}

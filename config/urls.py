@@ -28,6 +28,7 @@ urlpatterns = [
     path("aprendizado/", include("apps.aprendizado.urls")),
     path("auditoria/", include("apps.auditoria.urls")),
     path("pendencias/", include("apps.pendencias.urls")),
+    path("missoes/", include("apps.missoes.urls")),
     path("cognicao/", include("apps.cognicao.urls")),
     path("sincronizacao/", include("apps.sincronizacao.urls")),
     path("webhook", aprendizado_views.evolution_webhook, name="aprendizado_webhook_alias"),

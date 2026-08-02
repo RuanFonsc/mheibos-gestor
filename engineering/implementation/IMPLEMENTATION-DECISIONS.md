@@ -256,3 +256,13 @@
 - **Alternativas anuais, sem escolha:** data do início da Etapa de Arte; data de criação do vínculo; data comercial do Pedido; competência administrativa explícita.
 - **Impacto:** não é seguro criar pastas/arquivos, declarar backup executado ou encerrar em lote por ano antes dessas respostas. Vínculo manual, integridade, pesquisa e encerramento individual continuam operacionais.
 - **Situação:** `COMPLETED_WITH_GAPS` para IMP-009; retomar as partes afetadas quando houver decisão normativa, sem bloquear IMP-010 e ciclos independentes.
+
+## DEC-IMP-027 — Missão nasce como workspace próprio sem duplicar operação
+
+- **Decisão:** iniciar IMP-010 pela missão individual voluntária planejada, com contrato mínimo persistente e sem participantes, tarefas ou referências implícitas.
+- **Motivo:** valida identidade, persistência, autorização, auditoria e retomada antes de introduzir consentimento coletivo e autoridade administrativa.
+- **Separação:** Missão guarda apenas seu objetivo temporário e critério de conclusão; Pedido, Processo, Etapa e Pendência não são copiados nem recebem estado paralelo.
+- **Autoridade:** na criação voluntária individual, criador e responsável principal são a mesma identidade ativa; origem e estado não são selecionados livremente pela interface.
+- **Offline:** a primeira versão é somente consulta; o middleware existente recusa a mutação global sem criar exceção para Missões.
+- **IA:** a origem `IA_ACEITA` reserva vocabulário normativo, mas não cria missão automaticamente nem participa desta fatia.
+- **Situação:** definitiva para a fundação; colaboração e ciclo de vida evoluem por serviços transacionais próprios.

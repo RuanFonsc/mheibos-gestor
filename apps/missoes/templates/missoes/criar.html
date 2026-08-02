@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block title %}Nova missão{% endblock %}{% block page_title %}Nova missão individual{% endblock %}{% block content %}
+<div class="page-content max-w-3xl"><div class="card p-6"><h2 class="section-title">Planejar um objetivo temporário</h2><p class="mb-5 text-[var(--text-secondary)]">Esta etapa cria uma missão voluntária somente para você. Colaboração será adicionada com convite e aceite explícitos.</p><form method="post" class="space-y-4">{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}<div><label>{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}<button class="btn-primary" type="submit">Criar missão planejada</button></form></div></div>
+{% endblock %}
