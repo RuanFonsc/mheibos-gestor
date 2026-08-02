@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.pendencias",
     "apps.cognicao",
     "apps.sincronizacao",
+    "apps.arquivos",
     "apps.legacy_migration",
 ]
 

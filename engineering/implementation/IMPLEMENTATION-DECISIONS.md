@@ -180,3 +180,12 @@
 - **Experiência:** continuar offline é o padrão seguro e o aviso não se repete na mesma sessão quando recusado.
 - **Alternativas rejeitadas:** comutação automática imediata; verificar fila em JavaScript; excluir banco após sincronização; considerar apenas disponibilidade de rede.
 - **Situação:** definitiva; smoke empacotado permanece como evidência humana pendente.
+
+## DEC-IMP-019 — Arquivo oficial é vínculo imutável, não campo nem binário
+
+- **Decisão:** representar cada arte oficial por entidade UUID vinculada ao Pedido, com identidade física imutável, proveniência, integridade, metadados e autoria; nunca armazenar o conteúdo binário.
+- **Motivo:** RFC-0014 admite vários arquivos e torna nome/localização parte da identidade, enquanto o campo único legado não preserva história nem integridade.
+- **Migração:** cada caminho legado não vazio gera vínculo `LEGADO/NAO_VERIFICADO`, com autoria nula; o campo antigo permanece até todos os consumidores e dados serem validados.
+- **Auditoria:** novo vínculo e evento confirmam atomicamente; exclusão direta é proibida e revisão anual usará encerramento explícito.
+- **Alternativas rejeitadas:** ampliar o `CharField`; guardar upload/binário; inferir autoria; renomear caminho existente; apagar vínculo ao cancelar Pedido.
+- **Situação:** definitiva para identidade e persistência; criação/monitoramento serão adicionados incrementalmente.

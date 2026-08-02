@@ -11,6 +11,12 @@ from django.utils import timezone
 
 from apps.catalogo.assistencia import pedido_em_alerta, preparar_categorias_pedidos
 from apps.auditoria.services import registrar_evento
+from apps.arquivos.services import (
+    ArquivoOficialInvalido,
+    TemaPedidoImutavel,
+    validar_alteracao_tema,
+    vincular_arquivo_oficial,
+)
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
@@ -155,7 +161,7 @@ def entrega_list(request):
 def pedido_detail(request, pk):
     pedido = get_object_or_404(
         Pedido.objects.select_related("cliente").prefetch_related(
-            "itens", "artes", "pagamentos", "processos__etapas__responsavel"
+            "itens", "artes", "arquivos_oficiais_arte", "pagamentos", "processos__etapas__responsavel"
         ),
         pk=pk,
     )
@@ -168,6 +174,7 @@ def pedido_detail(request, pk):
             "pedido": pedido,
             "pode_editar": pode_editar_pedido(pedido, operador),
             "pode_cancelar": operador.pode_cancelar_pedido,
+            "arquivos_oficiais": pedido.arquivos_oficiais_arte.all(),
             "status_form": PedidoStatusForm(initial={"status": pedido.status}),
             "categorias_tabs": CategoriaServico.objects.filter(ativa=True),
         },
@@ -252,6 +259,9 @@ def pedido_edit(request, pk):
                 _atualizar_pedido(
                     pedido, form, request.FILES.getlist("artes"), operador
                 )
+            except TemaPedidoImutavel as exc:
+                messages.error(request, str(exc))
+                return redirect("pedido_edit", pk=pedido.pk)
             except (EntregaComSaldoNegada, ProcessoEncerrado):
                 messages.error(
                     request,
@@ -416,8 +426,31 @@ def pedido_rejeitar_producao(request, pk):
         origem_operacional=True,
         observacao=f"Rejeitado pela produção: {motivo}",
     )
+
+
     messages.warning(request, f"Pedido #{pedido.pk} devolvido para os designers.")
     return redirect(retorno)
+
+
+def pedido_vincular_arquivo_oficial(request, pk):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode vincular arquivos a este Pedido.")
+        return redirect("pedido_detail", pk=pk)
+    try:
+        vincular_arquivo_oficial(
+            pedido=pedido,
+            caminho=request.POST.get("caminho_oficial", ""),
+            operador=operador,
+        )
+    except ArquivoOficialInvalido as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Arquivo oficial de arte vinculado.")
+    return redirect("pedido_detail", pk=pk)
 
 
 def pedido_create(request):
@@ -506,6 +539,11 @@ def pedido_create(request):
 @transaction.atomic
 def _criar_pedido(form, arquivos, operador, *, origem_offline=False):
     dados = form.cleaned_data
+    caminho_oficial = (dados.get("caminho_arquivo_corel") or "").strip()
+    if origem_offline and caminho_oficial:
+        raise SincronizacaoInvalida(
+            "Arquivos fisicos nao podem ser vinculados no modo offline restrito."
+        )
     cliente, _ = Cliente.objects.get_or_create(
         nome=dados["nome_cliente"].upper(),
         defaults={
@@ -542,7 +580,7 @@ def _criar_pedido(form, arquivos, operador, *, origem_offline=False):
         data_entrega=dados["data_entrega"],
         hora_entrega=dados.get("hora_entrega"),
         observacoes=dados.get("observacoes", ""),
-        caminho_arquivo_corel=(dados.get("caminho_arquivo_corel") or "").strip(),
+        caminho_arquivo_corel="",
         valor_total=valor_total,
         valor_pago_legado=dados["valor_pago"],
         desconto_ajuste=dados["desconto_ajuste"],
@@ -583,6 +621,10 @@ def _criar_pedido(form, arquivos, operador, *, origem_offline=False):
         )
 
     sincronizar_financeiro_pedido(pedido)
+    if caminho_oficial:
+        vincular_arquivo_oficial(
+            pedido=pedido, caminho=caminho_oficial, operador=operador
+        )
     if not origem_offline:
         registrar_evento(tipo="PedidoCriado", operador=operador, origem="gestor_web", alvo_tipo="Pedido", alvo_id=str(pedido.pk), acao="criar", valores_anteriores={}, valores_posteriores={"status_legado": pedido.status, "estado_comercial": pedido.estado_comercial, "estado_entrega": pedido.estado_entrega, "origem": pedido.origem, "valor_total": str(pedido.valor_total)})
     return pedido
@@ -618,6 +660,8 @@ def _sincronizar_pagamento_informado(pedido, valor_pago, forma_pagamento, data_p
 @transaction.atomic
 def _atualizar_pedido(pedido, form, arquivos, operador):
     dados = form.cleaned_data
+    validar_alteracao_tema(pedido=pedido, novo_tema=dados["tema"].upper())
+    caminho_oficial = (dados.get("caminho_arquivo_corel") or "").strip()
     cliente = pedido.cliente
     cliente.nome = dados["nome_cliente"].upper()
     cliente.telefone_principal = dados.get("telefone_1", "")
@@ -653,7 +697,6 @@ def _atualizar_pedido(pedido, form, arquivos, operador):
     pedido.data_entrega = dados["data_entrega"]
     pedido.hora_entrega = dados.get("hora_entrega")
     pedido.observacoes = dados.get("observacoes", "")
-    pedido.caminho_arquivo_corel = (dados.get("caminho_arquivo_corel") or "").strip()
     pedido.prioridade = dados["prioridade"]
     pedido.canal_atendimento = dados["canal_atendimento"]
     pedido.valor_total = subtotal + dados["desconto_ajuste"]
@@ -663,6 +706,10 @@ def _atualizar_pedido(pedido, form, arquivos, operador):
     novo_status = dados["status"]
     pedido.usuario_cadastro = dados.get("usuario_cadastro", "").strip()
     pedido.save()
+    if caminho_oficial:
+        vincular_arquivo_oficial(
+            pedido=pedido, caminho=caminho_oficial, operador=operador
+        )
     _sincronizar_pagamento_informado(pedido, dados["valor_pago"], dados["forma_pagamento"], dados["data_pedido"])
 
     if novo_status != pedido.status:

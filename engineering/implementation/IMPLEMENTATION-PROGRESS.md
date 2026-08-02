@@ -247,3 +247,16 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Testes:** 10 testes de transporte/retorno aprovados, incluindo bloqueio com pendência, liberação após confirmação e isolamento do papel Central; sintaxe Python e Electron aprovada.
 - **Lacuna de validação:** `COMPLETED_WITH_GAPS` até smoke humano do instalador confirmar Central desligada, Pedido local, religamento, incorporação e retorno online.
 - **Estado de IMP-008:** `COMPLETED_WITH_GAPS`; nenhuma lacuna técnica impede avançar ao próximo item do backlog.
+
+### IMP-009A — COMPLETED
+
+- **Capacidade:** `ArquivoOficialArte` representa múltiplos vínculos físicos por Pedido, guardando caminho, nome, extensão, proveniência, estados e campos técnicos sem persistir binário.
+- **Identidade:** Pedido, caminho e nome tornam-se imutáveis no primeiro vínculo; exclusão física/lógica silenciosa é recusada e o futuro encerramento usa estado próprio.
+- **Autorização:** somente pessoa autorizada a editar o Pedido vincula arquivo; modo offline não exibe o fluxo e o middleware continua bloqueando a mutação global.
+- **Auditoria:** vínculo e evento `ArquivoOficialArteVinculado` confirmam na mesma transação; falha do evento reverte o vínculo.
+- **Compatibilidade:** caminhos de `Pedido.caminho_arquivo_corel` recebem backfill `LEGADO/NAO_VERIFICADO`, sem autoria inventada. O campo permanece somente como leitura/entrada temporária; novos vínculos são gravados na entidade oficial.
+- **Dono da compatibilidade:** app `pedidos`; remoção após todos os consumidores lerem `arquivos_oficiais_arte`, nenhum caminho legado ficar sem vínculo e a migração ser validada em cópia de produção.
+- **Tema:** alteração é recusada após primeiro pagamento ou primeiro arquivo oficial, cobrindo sinais determinísticos já disponíveis; início formal da Etapa de Arte será incorporado quando a fatia de criação automática ligar Processo/Etapa ao arquivo.
+- **Interface:** detalhe do Pedido lista arquivos, integridade e proveniência e permite vincular outro arquivo existente, deixando explícito que o banco guarda apenas referência.
+- **Testes:** 7 cenários de domínio/interface e 1 teste de migration cobrem múltiplos vínculos, ausência de binário, idempotência, imutabilidade, exclusão, rollback, caminho inválido, tema e autorização.
+- **Fora desta fatia:** nome/diretório automáticos, programa gráfico, verificação física, aceite consciente de alerta, anexos, arte de referência, pesquisa, backup e revisão anual pertencem a IMP-009B em diante.

@@ -47,11 +47,48 @@
             <p class="mt-1 whitespace-pre-line text-sm">{{ pedido.observacoes }}</p>
           </div>
         {% endif %}
-        {% if pedido.caminho_arquivo_corel %}
+        {% if pedido.caminho_arquivo_corel and not arquivos_oficiais %}
           <div class="mt-4 border-t border-[#2d3154] pt-4">
             <p class="text-xs uppercase text-[var(--text-secondary)]">Arquivo Corel</p>
             <a href="#" data-corel-path="{{ pedido.caminho_arquivo_corel }}" class="mt-1 inline-flex text-sm font-semibold text-[#00e5ff]">{{ pedido.caminho_arquivo_corel }}</a>
           </div>
+        {% endif %}
+      </div>
+
+      <div class="card p-5">
+        <div class="flex items-center justify-between gap-3">
+          <div><span class="kicker">RFC-0014</span><h2 class="font-semibold">Arquivos oficiais de arte</h2></div>
+          <span class="text-xs text-[var(--text-secondary)]">Somente vinculos e metadados; nenhum binario no banco.</span>
+        </div>
+        <div class="mt-4 space-y-3">
+          {% for arquivo in arquivos_oficiais %}
+            <div class="rounded-lg border border-[#2d3154] bg-[#22253a] p-3">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <a href="#" data-corel-path="{{ arquivo.caminho_oficial }}" class="font-semibold text-[#00e5ff]">{{ arquivo.nome_oficial }}</a>
+                <span class="text-xs {% if arquivo.estado_integridade == 'ALERTA' %}text-[#ffb347]{% else %}text-[var(--text-secondary)]{% endif %}">{{ arquivo.get_estado_integridade_display }}</span>
+              </div>
+              <p class="mt-1 break-all text-xs text-[var(--text-secondary)]">{{ arquivo.caminho_oficial }}</p>
+              <p class="mt-1 text-xs text-[var(--text-secondary)]">{{ arquivo.get_origem_display }}{% if arquivo.criado_por %} · {{ arquivo.criado_por.nome }}{% endif %}</p>
+            </div>
+          {% empty %}<p class="text-sm text-[var(--text-secondary)]">Nenhum arquivo oficial vinculado.</p>{% endfor %}
+        </div>
+        {% if pode_editar and not runtime_offline %}
+          <form method="post" action="{% url 'pedido_vincular_arquivo_oficial' pedido.pk %}" class="mt-4 border-t border-[#2d3154] pt-4">
+            {% csrf_token %}
+            <div data-corel-field>
+              <input type="hidden" name="caminho_oficial" data-corel-input>
+              <div data-corel-drop class="flex min-h-[90px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#3d4275] bg-[#22253a] p-3 text-center">
+                <p data-corel-empty class="text-sm font-semibold">Arraste ou selecione um arquivo oficial existente</p>
+                <p data-corel-value class="hidden max-w-full break-all text-sm font-semibold text-[#00e5ff]"></p>
+                <p data-corel-feedback class="mt-1 text-xs text-[#8892b0]">O arquivo fisico permanece no servidor.</p>
+              </div>
+              <div class="mt-3 flex gap-2">
+                <button type="button" data-corel-select class="btn-secondary">Selecionar arquivo</button>
+                <button type="button" data-corel-clear class="btn-danger">Limpar</button>
+                <button type="submit" class="btn-primary">Vincular oficialmente</button>
+              </div>
+            </div>
+          </form>
         {% endif %}
       </div>
 
