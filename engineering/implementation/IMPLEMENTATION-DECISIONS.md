@@ -171,3 +171,12 @@
 - **Operação:** execução imediata e a cada 30 segundos não se sobrepõe; indisponibilidade não bloqueia criação de novos Pedidos locais.
 - **Alternativas rejeitadas:** manipular fila pelo JavaScript; apagar item após HTTP 2xx; seguir redirects; repetir em loop sem backoff.
 - **Situação:** definitiva para o transporte; comutação de sessão continua separada.
+
+## DEC-IMP-018 — Retorno online explícito após prova de fila zerada
+
+- **Decisão:** oferecer retorno somente quando a Central responder e o backend local provar ausência de unidades não incorporadas; revalidar ambos após a confirmação humana.
+- **Motivo:** evita abandonar dados locais, interromper formulários silenciosamente ou confiar em contagem mantida pela interface.
+- **Preservação:** o backend local é encerrado, mas o SQLite permanece; nenhuma limpeza automática acompanha a troca.
+- **Experiência:** continuar offline é o padrão seguro e o aviso não se repete na mesma sessão quando recusado.
+- **Alternativas rejeitadas:** comutação automática imediata; verificar fila em JavaScript; excluir banco após sincronização; considerar apenas disponibilidade de rede.
+- **Situação:** definitiva; smoke empacotado permanece como evidência humana pendente.

@@ -235,3 +235,15 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Interface:** painel local mostra Pedido central e código de confirmação, e não oferece provisionamento de Estações no papel offline.
 - **Testes:** 7 testes de transporte/comando e 10 de fila aprovados; cobrem cabeçalhos, URL, bloqueio de redirect, confirmação, indisponibilidade, credencial recusada e isolamento de papel.
 - **Fora desta fatia:** smoke com duas instâncias reais e comutação de volta à Central pertencem a IMP-008D.3.
+
+### IMP-008D.3 — COMPLETED_WITH_GAPS
+
+- **Capacidade:** após cada ciclo de envio, o Cliente verifica disponibilidade da Central e consulta o backend local para provar que todas as unidades estão `INCORPORADA`.
+- **Autoridade:** o Electron não conta registros nem decide pela interface; o comando `verificar_retorno_online` recusa execução fora de `client_offline` e bloqueia qualquer estado não confirmado.
+- **Dupla verificação:** ao aceitar a transição, a janela é desabilitada e fila/Central são verificadas novamente antes de encerrar o backend local.
+- **Experiência segura:** continuar offline é a opção padrão; a pessoa é alertada sobre formulários não salvos. Recusar a troca mantém o modo e não repete o aviso durante a sessão.
+- **Preservação:** SQLite não é apagado nem reescrito; permanece como evidência local. A janela volta ao login da Central e a sessão online é restabelecida pelo canal normal.
+- **Eficiência do empacotado:** migrações automáticas agora executam somente na partida do servidor; comandos periódicos não repetem migrações. A preparação offline executa `migrate --noinput` explicitamente uma vez.
+- **Testes:** 10 testes de transporte/retorno aprovados, incluindo bloqueio com pendência, liberação após confirmação e isolamento do papel Central; sintaxe Python e Electron aprovada.
+- **Lacuna de validação:** `COMPLETED_WITH_GAPS` até smoke humano do instalador confirmar Central desligada, Pedido local, religamento, incorporação e retorno online.
+- **Estado de IMP-008:** `COMPLETED_WITH_GAPS`; nenhuma lacuna técnica impede avançar ao próximo item do backlog.

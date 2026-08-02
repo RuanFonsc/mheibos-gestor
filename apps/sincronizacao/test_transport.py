@@ -141,3 +141,29 @@ class EnviarFilaOfflineCommandTests(TestCase):
     def test_central_nao_pode_executar_envio_local(self):
         with self.assertRaisesMessage(CommandError, "Cliente offline"):
             self.executar()
+
+    def test_retorno_online_e_bloqueado_enquanto_houver_unidade_local(self):
+        with self.assertRaisesMessage(CommandError, "Retorno bloqueado"):
+            call_command("verificar_retorno_online", stdout=io.StringIO())
+
+    @patch("apps.sincronizacao.management.commands.enviar_fila_offline.enviar_envelope")
+    def test_retorno_online_e_liberado_apos_confirmacao_duravel(self, enviar_mock):
+        enviar_mock.return_value = RespostaCentral(
+            status=201,
+            payload={
+                "codigo": "INCORPORADO",
+                "pedido_global_id": 78,
+                "identificador_offline": str(self.unidade.entidade_local_id),
+            },
+        )
+        self.executar()
+        saida = io.StringIO()
+
+        call_command("verificar_retorno_online", stdout=saida)
+
+        self.assertIn("RETORNO_SEGURO", saida.getvalue())
+
+    @override_settings(MHEIBOS_RUNTIME_ROLE="central")
+    def test_central_nao_pode_atestar_fila_de_cliente(self):
+        with self.assertRaisesMessage(CommandError, "Cliente offline"):
+            call_command("verificar_retorno_online", stdout=io.StringIO())

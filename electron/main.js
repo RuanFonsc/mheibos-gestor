@@ -36,6 +36,7 @@ let mainWindow = null;
 let offlineIdentityCandidate = null;
 let syncTimer = null;
 let syncRunning = false;
+let onlineReturnOffered = false;
 
 function modoAtual() {
   const args = process.argv.join(" ").toLowerCase();
@@ -283,7 +284,7 @@ async function prepareOfflineBackend(config) {
   const offlineConfig = offlineRuntimeConfig(config);
   const invocation = backendInvocation([]);
   if (!invocation) return null;
-  if (!invocation.packaged && !(await runBackendCommand(offlineConfig, ["migrate", "--noinput"]))) return null;
+  if (!(await runBackendCommand(offlineConfig, ["migrate", "--noinput"]))) return null;
   if (!(await runBackendCommand(offlineConfig, ["bootstrap_identidade_offline"], JSON.stringify(identity)))) return null;
   return offlineConfig;
 }
@@ -335,8 +336,60 @@ async function synchronizeOfflineQueue(config) {
   syncRunning = true;
   try {
     await runBackendCommand(config, ["enviar_fila_offline", "--limite", "10"]);
+    await offerOnlineReturn(config);
   } finally {
     syncRunning = false;
+  }
+}
+
+async function switchToCentral(config) {
+  if (!mainWindow) return false;
+  mainWindow.setEnabled(false);
+  const queueClear = await runBackendCommand(config, ["verificar_retorno_online"]);
+  const centralAvailable = await serverOnline(REMOTE_URL);
+  if (!queueClear || !centralAvailable) {
+    mainWindow.setEnabled(true);
+    onlineReturnOffered = false;
+    return false;
+  }
+  activeBaseUrl = REMOTE_URL;
+  offlineIdentityCandidate = null;
+  try {
+    await mainWindow.loadURL(`${activeBaseUrl}${destinoInicial()}`);
+  } catch {
+    activeBaseUrl = LOCAL_BASE_URL;
+    mainWindow.setEnabled(true);
+    onlineReturnOffered = false;
+    return false;
+  }
+  if (syncTimer) {
+    clearInterval(syncTimer);
+    syncTimer = null;
+  }
+  if (djangoProcess) {
+    djangoProcess.kill();
+    djangoProcess = null;
+  }
+  mainWindow.setEnabled(true);
+  return true;
+}
+
+async function offerOnlineReturn(config) {
+  if (onlineReturnOffered || !mainWindow || !(await serverOnline(REMOTE_URL))) return;
+  if (!(await runBackendCommand(config, ["verificar_retorno_online"]))) return;
+  onlineReturnOffered = true;
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: "info",
+    title: "Central disponivel",
+    message: "Todos os dados locais foram confirmados pela Central.",
+    detail: "Antes de voltar, confirme que nao ha formulario ainda nao salvo. O banco local sera preservado como evidencia.",
+    buttons: ["Voltar para a Central", "Continuar offline"],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (result.response === 0) {
+    await switchToCentral(config);
   }
 }
 
