@@ -528,7 +528,7 @@
         <div class="side-nav-group" aria-label="Fluxo operacional do pedido">
           <span class="side-nav-label">Fluxo do pedido</span>
           <a href="{% url 'assistencia_envio' %}" class="side-link {% if active == 'assistencia' %}active{% endif %}">
-            <i data-lucide="palette" class="h-5 w-5"></i> Preparação de arte
+            <i data-lucide="printer" class="h-5 w-5"></i> Assistência de Impressão
           </a>
           <a href="{% url 'entrega_list' %}" class="side-link {% if active == 'entrega' %}active{% endif %}">
             <i data-lucide="package-check" class="h-5 w-5"></i> Entregas
@@ -612,7 +612,7 @@
     <div id="notifAssistencia" class="notif-assistencia hidden" aria-hidden="true">
       <div>
         <p id="notifAssistenciaTexto"></p>
-        <a id="notifAssistenciaLink" href="{% url 'assistencia_envio' %}">Abrir preparação de arte</a>
+        <a id="notifAssistenciaLink" href="{% url 'assistencia_envio' %}">Abrir Assistência de Impressão</a>
       </div>
       <button type="button" id="notifAssistenciaClose" class="notif-assistencia-close" title="Fechar notificação">×</button>
     </div>

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Preparação de arte{% endblock %}
+{% block title %}Assistência de Impressão{% endblock %}
 {% block page_title %}Fluxo do Pedido{% endblock %}
 {% block top_tabs %}
-  <a href="{% url 'assistencia_envio' %}" class="top-tab active" aria-current="page"><i data-lucide="palette" class="h-4 w-4"></i> Preparação de arte</a>
+  <a href="{% url 'assistencia_envio' %}" class="top-tab active" aria-current="page"><i data-lucide="printer" class="h-4 w-4"></i> Assistência de Impressão</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
   <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
 {% endblock %}
@@ -10,9 +10,9 @@
 <div class="page-content space-y-5">
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <span class="kicker">Etapa operacional</span>
-      <h2 class="section-title">Preparação de arte</h2>
-      <p class="text-sm text-[var(--text-secondary)]">Pedidos que ainda não podem seguir para Produção porque aguardam criação, recebimento ou aprovação da arte.</p>
+      <span class="kicker">Acompanhamento preventivo</span>
+      <h2 class="section-title">Assistência de Impressão</h2>
+      <p class="text-sm text-[var(--text-secondary)]">Antecipa pedidos que precisam de intervenção para cumprir o prazo: primeiro resolve arte pendente e depois acompanha os alertas de cada categoria.</p>
     </div>
     <div class="flex gap-3">
       <a class="btn-secondary" href="{% url 'assistencia_envio' %}"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Atualizar</a>
@@ -55,6 +55,14 @@
       {% empty %}
         <div class="empty-state"><div><strong>Nenhum pedido aguardando arte</strong><span>Pedidos sem arte aparecerão automaticamente nesta fila.</span></div></div>
       {% endfor %}
+    </div>
+  </section>
+
+  <section class="page-heading" aria-labelledby="alertasPrazoTitulo">
+    <div>
+      <span class="kicker">Regras de antecedência</span>
+      <h3 id="alertasPrazoTitulo" class="section-title">Pedidos que entraram na assistência</h3>
+      <p>Calculados por status, categoria, data de entrega, dias úteis restantes, limite configurado e regra do mesmo dia.</p>
     </div>
   </section>
 

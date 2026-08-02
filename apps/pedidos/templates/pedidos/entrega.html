@@ -3,7 +3,7 @@
 {% block page_title %}Fluxo do Pedido{% endblock %}
 {% block top_tabs %}
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
-  <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="palette" class="h-4 w-4"></i> Preparação de arte</a>
+  <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="printer" class="h-4 w-4"></i> Assistência de Impressão</a>
   <a href="{% url 'entrega_list' %}" class="top-tab active" aria-current="page"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
 {% endblock %}
 {% block content %}
