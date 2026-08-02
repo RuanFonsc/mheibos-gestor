@@ -7,9 +7,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from apps.catalogo.permissions import operador_atual
+from apps.catalogo.authentication import validar_senha_operador
+from apps.auditoria.services import registrar_evento
 
 from .models import EstacaoCliente, UnidadeSincronizacao
-from .services import SincronizacaoInvalida, incorporar_pedido_offline
+from .services import SincronizacaoInvalida, criar_estacao, incorporar_pedido_offline
 
 
 def painel(request):
@@ -18,6 +20,49 @@ def painel(request):
     if not operador.is_admin:
         unidades = unidades.filter(operador=operador)
     return render(request, "sincronizacao/painel.html", {"active": "sincronizacao", "unidades": unidades[:100]})
+
+
+def estacoes(request):
+    operador = operador_atual(request)
+    if not operador.is_admin:
+        return JsonResponse({"codigo": "ACESSO_NEGADO"}, status=403)
+    segredo_novo = None
+    erro = ""
+    if request.method == "POST":
+        senha = request.POST.get("senha_atual", "")
+        if not validar_senha_operador(operador, senha):
+            erro = "Senha atual incorreta. A Estacao nao foi criada."
+        else:
+            try:
+                credencial = criar_estacao(nome=request.POST.get("nome", ""))
+            except SincronizacaoInvalida as exc:
+                erro = str(exc)
+            else:
+                segredo_novo = credencial.segredo
+                registrar_evento(
+                    tipo="EstacaoProvisionada",
+                    operador=operador,
+                    origem="gestor_web",
+                    alvo_tipo="EstacaoCliente",
+                    alvo_id=str(credencial.estacao.pk),
+                    acao="provisionar_estacao",
+                    valores_anteriores={},
+                    valores_posteriores={
+                        "nome": credencial.estacao.nome,
+                        "ativa": True,
+                    },
+                    metadados={"reautenticada": True},
+                )
+    return render(
+        request,
+        "sincronizacao/estacoes.html",
+        {
+            "active": "sincronizacao",
+            "estacoes": EstacaoCliente.objects.all(),
+            "segredo_novo": segredo_novo,
+            "erro": erro,
+        },
+    )
 
 
 def _autenticar_estacao(request):

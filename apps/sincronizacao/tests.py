@@ -349,6 +349,57 @@ class IncorporacaoHttpTests(TestCase):
         self.assertFalse(Pedido.objects.exists())
 
 
+class ProvisionamentoEstacaoTests(TestCase):
+    def entrar(self, operador):
+        session = self.client.session
+        session["operador_id"] = operador.pk
+        session.save()
+
+    def test_common_user_cannot_access_station_provisioning(self):
+        operador = OperadorGestor.objects.create(
+            nome="Comum", senha="segura", papel=PapelOperador.USUARIO
+        )
+        self.entrar(operador)
+
+        response = self.client.get("/sincronizacao/estacoes/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_wrong_reauthentication_creates_nothing(self):
+        operador = OperadorGestor.objects.create(
+            nome="Admin Errado", senha="segura", papel=PapelOperador.ADMIN
+        )
+        self.entrar(operador)
+
+        response = self.client.post(
+            "/sincronizacao/estacoes/", {"nome": "Balcao", "senha_atual": "errada"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Senha atual incorreta")
+        self.assertFalse(EstacaoCliente.objects.exists())
+
+    def test_reauthenticated_admin_receives_secret_once_without_auditing_it(self):
+        operador = OperadorGestor.objects.create(
+            nome="Admin Correto", senha="segura", papel=PapelOperador.ADMIN
+        )
+        self.entrar(operador)
+
+        response = self.client.post(
+            "/sincronizacao/estacoes/", {"nome": "Balcao 1", "senha_atual": "segura"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        segredo = response.context["segredo_novo"]
+        estacao = EstacaoCliente.objects.get()
+        self.assertTrue(segredo)
+        self.assertNotEqual(estacao.segredo_hash, segredo)
+        self.assertTrue(estacao.verifica_segredo(segredo))
+        evento = EventoOperacional.objects.get(tipo="EstacaoProvisionada")
+        self.assertNotIn(segredo, json.dumps(evento.valores_posteriores))
+        self.assertNotIn(segredo, json.dumps(evento.metadados))
+
+
 @override_settings(
     MHEIBOS_RUNTIME_ROLE="client_offline",
     MHEIBOS_STATION_ID="11111111-1111-1111-1111-111111111111",

@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-008C — proteger no Cliente a última identidade validada, guardar a credencial da Estação fora de texto legível e conectar envio/reconexão automática.
+IMP-008C.2 — armazenar a última identidade validada e suas permissões efetivas, habilitar autenticação offline somente nessa Estação e preparar a comutação Electron.
 
 ## Histórico resumido
 
@@ -167,3 +167,14 @@ IMP-008C — proteger no Cliente a última identidade validada, guardar a creden
 - **Segurança:** endpoint técnico não depende de sessão web, mas permanece fechado por credencial de Estação; segredo inválido não persiste dados.
 - **Testes:** 8 cenários de serviço/transporte aprovados, incluindo segredo em hash, recusa, Estação divergente e confirmação idempotente.
 - **Fora desta fatia:** armazenamento protegido do segredo no Windows, provisionamento administrativo visível, transporte cliente e retentativa automática entram em IMP-008C.
+
+### IMP-008C.1 — COMPLETED
+
+- **Capacidade:** provisionamento administrativo visível da Estação e persistência protegida das credenciais do Cliente Electron.
+- **Reautenticação:** somente administrador autenticado e com senha atual comprovada cria Estação; erro ou nome repetido não cria credencial.
+- **Exposição única:** segredo de alta entropia aparece somente na resposta de criação. Banco e evento guardam nome, UUID, estado e hash, nunca o segredo.
+- **Windows:** Electron usa `safeStorage`; sem proteção disponível, recusa salvar em vez de rebaixar para texto legível.
+- **Migração:** configuração antiga com senha PostgreSQL ou segredo legível é regravada protegida na próxima abertura; os campos legíveis são removidos do JSON.
+- **Setup remoto:** Cliente exige UUID e segredo provisionados antes de abrir; a configuração persistida contém somente conteúdo cifrado pelo sistema operacional.
+- **Testes:** 21 testes Django do módulo, mais teste Node isolado que prova ausência dos dois segredos no JSON, recuperação autorizada e recusa sem cofre disponível.
+- **Fora desta fatia:** última identidade validada, cache autorizado, login offline e envio automático permanecem em IMP-008C.2/8D.

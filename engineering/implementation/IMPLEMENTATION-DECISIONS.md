@@ -1,5 +1,15 @@
 # Decisões da Implementação
 
+## DEC-IMP-012 — Segredos locais sob proteção do sistema operacional
+
+- **Decisão:** credenciais persistentes do Cliente usam `safeStorage` do Electron/Windows; JSON local contém somente Base64 do conteúdo cifrado.
+- **Falha segura:** se o cofre do sistema não estiver disponível, o setup não persiste a configuração e explica a falha.
+- **Abrangência:** segredo da Estação e senha PostgreSQL existente seguem o mesmo contrato; nenhuma compatibilidade mantém nova gravação em texto.
+- **Provisionamento:** administrador reautenticado cria Estação na Central; o segredo é revelado uma vez e a Central conserva apenas hash verificável.
+- **Migração:** campos legados legíveis são aceitos apenas em memória para conversão imediata e removidos ao regravar.
+- **Limite:** segredo decifrado pode existir somente em memória durante a execução/autenticação do processo local; não entra em logs, eventos, argumentos de linha de comando ou documentação.
+- **Situação:** definitiva para armazenamento; rotação e revogação visual entram após o primeiro fluxo conectado.
+
 ## DEC-IMP-011 — Transporte central autenticado por Estação
 
 - **Decisão:** a incorporação HTTP usa UUID público da Estação e segredo Bearer de alta entropia, persistido na Central somente por hash do Django.

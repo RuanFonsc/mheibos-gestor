@@ -1,9 +1,10 @@
-const { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, safeStorage, shell } = require("electron");
 const { execFileSync, spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const { fileURLToPath } = require("url");
+const { decryptSecret, protectConfigSecrets } = require("./secure_config");
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.MHEIBOS_PORT || 8765);
@@ -62,9 +63,10 @@ function readConfig() {
 }
 
 function writeConfig(config) {
+  const protectedConfig = protectConfigSecrets(config, safeStorage);
   fs.mkdirSync(app.getPath("userData"), { recursive: true });
   fs.mkdirSync(dataDir(), { recursive: true });
-  fs.writeFileSync(configPath(), JSON.stringify(config, null, 2), "utf8");
+  fs.writeFileSync(configPath(), JSON.stringify(protectedConfig, null, 2), "utf8");
 }
 
 function backendExePath() {
@@ -97,7 +99,7 @@ function envFromConfig(config) {
     env.DB_PORT = db.port || process.env.DB_PORT || "5432";
     env.DB_NAME = db.name || process.env.DB_NAME || "gestor_db";
     env.DB_USER = db.user || process.env.DB_USER || "postgres";
-    env.DB_PASSWORD = db.password ?? process.env.DB_PASSWORD ?? "123456";
+    env.DB_PASSWORD = decryptSecret(db.passwordEncrypted, safeStorage) || db.password || process.env.DB_PASSWORD || "123456";
     env.LEGACY_DB_HOST = env.DB_HOST;
     env.LEGACY_DB_PORT = env.DB_PORT;
     env.LEGACY_DB_NAME = env.DB_NAME;
@@ -107,6 +109,8 @@ function envFromConfig(config) {
     env.MHEIBOS_DB_MODE = "sqlite";
     env.SQLITE_DB_NAME = config.sqlite?.name || "mheibos_gestor";
   }
+  env.MHEIBOS_STATION_ID = config?.stationId || "";
+  env.MHEIBOS_STATION_SECRET = decryptSecret(config?.stationSecretEncrypted, safeStorage);
   return env;
 }
 
@@ -133,7 +137,7 @@ async function waitForServer(timeoutMs = 35000) {
   return false;
 }
 
-function openSetupWindow() {
+function openSetupWindow({ remote = false } = {}) {
   return new Promise((resolve) => {
     const win = new BrowserWindow({
       width: 720,
@@ -154,10 +158,15 @@ function openSetupWindow() {
     };
 
     ipcMain.handle("setup:save", (_event, config) => {
-      writeConfig(config);
+      try {
+        writeConfig(config);
+      } catch (error) {
+        return { ok: false, error: String(error?.message || error) };
+      }
       cleanup();
       win.close();
       resolve(config);
+      return { ok: true };
     });
     ipcMain.handle("setup:cancel", () => {
       cleanup();
@@ -168,13 +177,22 @@ function openSetupWindow() {
       cleanup();
       resolve(null);
     });
-    win.loadFile(path.join(__dirname, "setup.html"));
+    win.loadFile(path.join(__dirname, "setup.html"), { query: { remote: remote ? "1" : "0" } });
   });
 }
 
 async function ensureConfig() {
-  if (REMOTE_CLIENT) return readConfig() || { mode: "remote" };
   const existing = readConfig();
+  if (existing?.postgres?.password || existing?.stationSecret) {
+    writeConfig(existing);
+    return readConfig();
+  }
+  if (REMOTE_CLIENT) {
+    if (existing?.stationId && existing?.stationSecretEncrypted) {
+      return { ...existing, mode: "remote" };
+    }
+    return await openSetupWindow({ remote: true });
+  }
   if (existing) return existing;
   return await openSetupWindow();
 }

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Estacoes autorizadas{% endblock %}
+{% block page_title %}Estacoes autorizadas{% endblock %}
+{% block content %}
+<div class="page-content mx-auto max-w-4xl">
+  <div class="page-heading"><div><span class="kicker">Origem tecnica</span><h2 class="section-title">Provisionar Estacao</h2><p>Cada computador recebe identidade propria. O segredo aparece uma unica vez.</p></div></div>
+  {% if erro %}<div class="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-300">{{ erro }}</div>{% endif %}
+  {% if segredo_novo %}<div class="mb-4 rounded-lg border border-amber-400/40 bg-amber-400/10 p-4"><strong>Copie agora o segredo e informe-o somente no Cliente desta Estacao.</strong><p class="mt-2 break-all font-mono select-all">{{ segredo_novo }}</p><p class="mt-2 text-sm">Ele nao podera ser consultado novamente pela Central.</p></div>{% endif %}
+  <form method="post" class="card grid gap-4 p-5 md:grid-cols-2">{% csrf_token %}<label>Nome da Estacao<input class="form-input mt-1 w-full" name="nome" required maxlength="120"></label><label>Confirme sua senha<input class="form-input mt-1 w-full" name="senha_atual" type="password" required></label><div class="md:col-span-2"><button class="btn-primary" type="submit">Criar Estacao</button></div></form>
+  <div class="card mt-6 p-5"><h3 class="mb-3 font-semibold">Estacoes registradas</h3>{% for estacao in estacoes %}<div class="border-t border-[#2d3154] py-3"><strong>{{ estacao.nome }}</strong><p class="text-xs text-[var(--text-secondary)]">{{ estacao.id }} · {% if estacao.ativa %}Ativa{% else %}Inativa{% endif %}</p></div>{% empty %}<p>Nenhuma Estacao provisionada.</p>{% endfor %}</div>
+</div>
+{% endblock %}

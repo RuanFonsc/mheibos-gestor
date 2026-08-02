@@ -33,9 +33,14 @@ class CredencialEstacaoCriada:
 
 
 def criar_estacao(*, nome: str) -> CredencialEstacaoCriada:
+    nome = nome.strip()
+    if not nome:
+        raise SincronizacaoInvalida("Informe um nome para a Estacao.")
+    if EstacaoCliente.objects.filter(nome__iexact=nome).exists():
+        raise SincronizacaoInvalida("Ja existe uma Estacao com este nome.")
     segredo = secrets.token_urlsafe(32)
     estacao = EstacaoCliente.objects.create(
-        nome=nome.strip(), segredo_hash=make_password(segredo)
+        nome=nome, segredo_hash=make_password(segredo)
     )
     return CredencialEstacaoCriada(estacao=estacao, segredo=segredo)
 

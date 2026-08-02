@@ -56,15 +56,25 @@
       <label class="field">Nome do banco interno<input id="sqliteName" value="mheibos_gestor"></label>
     </section>
 
+    <section id="stationPanel" class="panel hidden">
+      <p>Informe a identidade criada em Sincronizacao &gt; Estacoes autorizadas. O segredo sera protegido pelo Windows e nao ficara legivel neste computador.</p>
+      <div class="grid">
+        <label class="field">ID da Estacao<input id="stationId" autocomplete="off"></label>
+        <label class="field">Segredo de uso unico<input id="stationSecret" type="password" autocomplete="new-password"></label>
+      </div>
+    </section>
+
     <footer>
       <button class="secondary" type="button" id="cancelar">Cancelar</button>
       <button class="primary" type="button" id="salvar">Salvar e abrir</button>
     </footer>
   </main>
   <script>
+    const remoteMode = new URLSearchParams(window.location.search).get("remote") === "1";
     const modes = [...document.querySelectorAll("[name=mode]")];
     const postgresPanel = document.getElementById("postgresPanel");
     const sqlitePanel = document.getElementById("sqlitePanel");
+    const stationPanel = document.getElementById("stationPanel");
     function syncMode() {
       const mode = modes.find((item) => item.checked)?.value || "postgres";
       postgresPanel.classList.toggle("hidden", mode !== "postgres");
@@ -72,12 +82,19 @@
     }
     modes.forEach((item) => item.addEventListener("change", syncMode));
     syncMode();
+    if (remoteMode) {
+      document.querySelector(".mode").classList.add("hidden");
+      postgresPanel.classList.add("hidden");
+      sqlitePanel.classList.add("hidden");
+      stationPanel.classList.remove("hidden");
+      document.querySelector("main > p").textContent = "Vincule este Cliente a uma Estacao autorizada da Central Mheibos.";
+    }
 
     document.getElementById("cancelar").addEventListener("click", () => window.mheibosSetup.cancelar());
     document.getElementById("salvar").addEventListener("click", async () => {
       const mode = modes.find((item) => item.checked)?.value || "postgres";
       const config = {
-        mode,
+        mode: remoteMode ? "remote" : mode,
         postgres: {
           host: document.getElementById("dbHost").value.trim() || "localhost",
           port: document.getElementById("dbPort").value.trim() || "5432",
@@ -88,8 +105,15 @@
         sqlite: {
           name: document.getElementById("sqliteName").value.trim() || "mheibos_gestor",
         },
+        stationId: document.getElementById("stationId").value.trim(),
+        stationSecret: document.getElementById("stationSecret").value,
       };
-      await window.mheibosSetup.salvar(config);
+      if (remoteMode && (!config.stationId || !config.stationSecret)) {
+        window.alert("Informe o ID e o segredo da Estacao.");
+        return;
+      }
+      const result = await window.mheibosSetup.salvar(config);
+      if (!result?.ok) window.alert(result?.error || "Nao foi possivel proteger a configuracao.");
     });
   </script>
 </body>
