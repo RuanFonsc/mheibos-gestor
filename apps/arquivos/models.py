@@ -44,6 +44,16 @@ class ArquivoOficialArte(models.Model):
     altura_px = models.PositiveIntegerField(null=True, blank=True)
     resolucao_dpi = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     propriedades_tecnicas = models.JSONField(default=dict, blank=True)
+    discrepancias = models.JSONField(default=list, blank=True)
+    verificado_em = models.DateTimeField(null=True, blank=True)
+    alerta_reconhecido_em = models.DateTimeField(null=True, blank=True)
+    alerta_reconhecido_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="alertas_arquivo_reconhecidos",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
     criado_por = models.ForeignKey(
         "catalogo.OperadorGestor",
         related_name="arquivos_oficiais_criados",

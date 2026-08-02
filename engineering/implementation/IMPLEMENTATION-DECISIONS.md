@@ -189,3 +189,11 @@
 - **Auditoria:** novo vínculo e evento confirmam atomicamente; exclusão direta é proibida e revisão anual usará encerramento explícito.
 - **Alternativas rejeitadas:** ampliar o `CharField`; guardar upload/binário; inferir autoria; renomear caminho existente; apagar vínculo ao cancelar Pedido.
 - **Situação:** definitiva para identidade e persistência; criação/monitoramento serão adicionados incrementalmente.
+
+## DEC-IMP-020 — Reconhecimento de alerta preserva a discrepância
+
+- **Decisão:** separar o estado de integridade do reconhecimento humano; `Eu entendi` registra ciência, autoria e instante, mas mantém o arquivo em `ALERTA` até uma verificação física sem discrepâncias.
+- **Motivo:** a confirmação exigida pela RFC-0014 é evidência de consciência, não autorização para transformar falha física em integridade.
+- **Revalidação:** toda verificação substitui a fotografia anterior e limpa o reconhecimento, impedindo que um aceite antigo cubra uma discrepância nova.
+- **Limite:** a leitura inicial cobre propriedades universais do sistema de arquivos; propriedades gráficas específicas serão adicionadas somente com extratores determinísticos por formato.
+- **Situação:** definitiva.

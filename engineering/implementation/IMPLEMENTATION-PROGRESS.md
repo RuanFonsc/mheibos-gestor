@@ -260,3 +260,13 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Interface:** detalhe do Pedido lista arquivos, integridade e proveniência e permite vincular outro arquivo existente, deixando explícito que o banco guarda apenas referência.
 - **Testes:** 7 cenários de domínio/interface e 1 teste de migration cobrem múltiplos vínculos, ausência de binário, idempotência, imutabilidade, exclusão, rollback, caminho inválido, tema e autorização.
 - **Fora desta fatia:** nome/diretório automáticos, programa gráfico, verificação física, aceite consciente de alerta, anexos, arte de referência, pesquisa, backup e revisão anual pertencem a IMP-009B em diante.
+
+### IMP-009B — COMPLETED
+
+- **Capacidade:** cada vínculo oficial pode ser verificado contra o sistema de arquivos; existência, acesso, nome e tamanho conhecido atualizam o estado sem copiar o conteúdo para o banco.
+- **Alerta explicável:** ausência, inacessibilidade ou divergência de nome produzem códigos e mensagens persistentes; nova verificação substitui a evidência anterior e exige novo reconhecimento quando ainda houver problema.
+- **Aceite consciente:** o comando explícito `Eu entendi` registra pessoa, data, discrepâncias e evento `AlertaArquivoOficialReconhecido`; ele não corrige nem esconde o alerta.
+- **Autorização:** somente pessoa autorizada a editar o Pedido verifica ou reconhece; verificação física fica indisponível no modo offline restrito.
+- **Auditoria:** verificação e reconhecimento são transacionais e geram eventos próprios com estado anterior e posterior.
+- **Testes:** 3 cenários novos cobrem arquivo íntegro, arquivo ausente, persistência do alerta, interface, reconhecimento e auditoria; suíte completa com 97 testes aprovada.
+- **Fora desta fatia:** dimensões, proporção e resolução dependem de leitores técnicos por formato; criação automática depende das preferências normativas de programa, extensão e raiz física.

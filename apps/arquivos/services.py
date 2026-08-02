@@ -1,11 +1,13 @@
+import os
 import re
 from pathlib import PureWindowsPath
 
 from django.db import transaction
+from django.utils import timezone
 
 from apps.auditoria.services import registrar_evento
 
-from .models import ArquivoOficialArte, OrigemArquivoOficial
+from .models import ArquivoOficialArte, EstadoIntegridadeArquivo, OrigemArquivoOficial
 
 
 class ArquivoOficialInvalido(Exception):
@@ -13,6 +15,10 @@ class ArquivoOficialInvalido(Exception):
 
 
 class TemaPedidoImutavel(Exception):
+    pass
+
+
+class AlertaArquivoInvalido(Exception):
     pass
 
 
@@ -71,3 +77,59 @@ def validar_alteracao_tema(*, pedido, novo_tema: str) -> None:
         raise TemaPedidoImutavel(
             "O tema nao pode ser alterado depois do primeiro pagamento ou vinculo de arte oficial."
         )
+
+
+@transaction.atomic
+def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> ArquivoOficialArte:
+    discrepancias = []
+    tamanho = None
+    try:
+        dados = os.stat(arquivo.caminho_oficial)
+    except (FileNotFoundError, NotADirectoryError):
+        discrepancias.append({"codigo": "ARQUIVO_NAO_ENCONTRADO", "mensagem": "O arquivo nao foi encontrado no caminho oficial."})
+    except OSError as exc:
+        discrepancias.append({"codigo": "CAMINHO_INACESSIVEL", "mensagem": "O caminho oficial nao pode ser acessado.", "detalhe": str(exc)})
+    else:
+        tamanho = dados.st_size
+        if os.path.basename(arquivo.caminho_oficial).casefold() != arquivo.nome_oficial.casefold():
+            discrepancias.append({"codigo": "NOME_DIVERGENTE", "mensagem": "O nome encontrado diverge da identidade oficial."})
+
+    estado_anterior = arquivo.estado_integridade
+    arquivo.estado_integridade = EstadoIntegridadeArquivo.ALERTA if discrepancias else EstadoIntegridadeArquivo.INTEGRO
+    arquivo.discrepancias = discrepancias
+    arquivo.tamanho_bytes = tamanho
+    arquivo.verificado_em = timezone.now()
+    arquivo.alerta_reconhecido_em = None
+    arquivo.alerta_reconhecido_por = None
+    arquivo.save(update_fields=["estado_integridade", "discrepancias", "tamanho_bytes", "verificado_em", "alerta_reconhecido_em", "alerta_reconhecido_por", "atualizado_em"])
+    registrar_evento(
+        tipo="ArquivoOficialArteVerificado", operador=operador, origem="gestor_web",
+        alvo_tipo="ArquivoOficialArte", alvo_id=str(arquivo.pk), acao="verificar_integridade_arquivo",
+        valores_anteriores={"estado_integridade": estado_anterior},
+        valores_posteriores={"estado_integridade": arquivo.estado_integridade, "discrepancias": discrepancias, "tamanho_bytes": tamanho},
+    )
+    return arquivo
+
+
+@transaction.atomic
+def reconhecer_alerta_arquivo(*, arquivo: ArquivoOficialArte, operador) -> ArquivoOficialArte:
+    verificacao = arquivo.verificado_em
+    if (
+        arquivo.estado_integridade != EstadoIntegridadeArquivo.ALERTA
+        or not arquivo.discrepancias
+        or verificacao is None
+    ):
+        raise AlertaArquivoInvalido("Nao existe alerta de arquivo pendente para reconhecer.")
+    if arquivo.alerta_reconhecido_em:
+        return arquivo
+    arquivo.alerta_reconhecido_em = timezone.now()
+    arquivo.alerta_reconhecido_por = operador
+    arquivo.save(update_fields=["alerta_reconhecido_em", "alerta_reconhecido_por", "atualizado_em"])
+    registrar_evento(
+        tipo="AlertaArquivoOficialReconhecido", operador=operador, origem="gestor_web",
+        alvo_tipo="ArquivoOficialArte", alvo_id=str(arquivo.pk), acao="eu_entendi_alerta_arquivo",
+        valores_anteriores={"alerta_reconhecido": False},
+        valores_posteriores={"alerta_reconhecido": True, "discrepancias": arquivo.discrepancias},
+        chave_idempotencia=f"arquivo-alerta-reconhecer:{arquivo.pk}:{verificacao.isoformat()}",
+    )
+    return arquivo

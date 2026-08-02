@@ -1,4 +1,5 @@
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.db import models
@@ -8,7 +9,9 @@ from apps.arquivos.models import ArquivoOficialArte
 from apps.arquivos.services import (
     ArquivoOficialInvalido,
     TemaPedidoImutavel,
+    reconhecer_alerta_arquivo,
     validar_alteracao_tema,
+    verificar_arquivo_oficial,
     vincular_arquivo_oficial,
 )
 from apps.auditoria.models import EventoOperacional
@@ -133,3 +136,44 @@ class ArquivoOficialArteTests(TestCase):
         response = self.client.get(f"/pedidos/{self.pedido.pk}/")
         self.assertContains(response, "oficial.cdr")
         self.assertContains(response, "nenhum binario no banco")
+
+    @patch("apps.arquivos.services.os.stat", return_value=SimpleNamespace(st_size=321))
+    def test_verificacao_integra_registra_tamanho_e_auditoria(self, _stat):
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido, caminho=r"C:\Artes\oficial.cdr", operador=self.operador
+        )
+        verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+        arquivo.refresh_from_db()
+        self.assertEqual(arquivo.estado_integridade, "INTEGRO")
+        self.assertEqual(arquivo.tamanho_bytes, 321)
+        self.assertEqual(arquivo.discrepancias, [])
+        self.assertTrue(EventoOperacional.objects.filter(tipo="ArquivoOficialArteVerificado").exists())
+
+    @patch("apps.arquivos.services.os.stat", side_effect=FileNotFoundError)
+    def test_arquivo_ausente_exige_eu_entendi_auditado(self, _stat):
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido, caminho=r"C:\Artes\ausente.cdr", operador=self.operador
+        )
+        verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+        self.assertEqual(arquivo.estado_integridade, "ALERTA")
+        self.assertEqual(arquivo.discrepancias[0]["codigo"], "ARQUIVO_NAO_ENCONTRADO")
+
+        reconhecer_alerta_arquivo(arquivo=arquivo, operador=self.operador)
+        arquivo.refresh_from_db()
+        self.assertEqual(arquivo.alerta_reconhecido_por, self.operador)
+        evento = EventoOperacional.objects.get(tipo="AlertaArquivoOficialReconhecido")
+        self.assertEqual(evento.acao, "eu_entendi_alerta_arquivo")
+
+    @patch("apps.arquivos.services.os.stat", side_effect=FileNotFoundError)
+    def test_rotas_verificam_e_reconhecem_alerta(self, _stat):
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido, caminho=r"C:\Artes\ausente.cdr", operador=self.operador
+        )
+        self.entrar()
+        self.client.post(f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/verificar/")
+        response = self.client.get(f"/pedidos/{self.pedido.pk}/")
+        self.assertContains(response, "O arquivo nao foi encontrado")
+        self.assertContains(response, "Eu entendi")
+        self.client.post(f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/reconhecer-alerta/")
+        arquivo.refresh_from_db()
+        self.assertIsNotNone(arquivo.alerta_reconhecido_em)

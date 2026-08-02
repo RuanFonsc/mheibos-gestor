@@ -12,9 +12,12 @@ from django.utils import timezone
 from apps.catalogo.assistencia import pedido_em_alerta, preparar_categorias_pedidos
 from apps.auditoria.services import registrar_evento
 from apps.arquivos.services import (
+    AlertaArquivoInvalido,
     ArquivoOficialInvalido,
     TemaPedidoImutavel,
+    reconhecer_alerta_arquivo,
     validar_alteracao_tema,
+    verificar_arquivo_oficial,
     vincular_arquivo_oficial,
 )
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
@@ -450,6 +453,41 @@ def pedido_vincular_arquivo_oficial(request, pk):
         messages.error(request, str(exc))
     else:
         messages.success(request, "Arquivo oficial de arte vinculado.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_verificar_arquivo_oficial(request, pk, arquivo_id):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode verificar arquivos deste Pedido.")
+        return redirect("pedido_detail", pk=pk)
+    arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)
+    verificar_arquivo_oficial(arquivo=arquivo, operador=operador)
+    if arquivo.estado_integridade == "ALERTA":
+        messages.warning(request, "A verificacao encontrou discrepancias no arquivo oficial.")
+    else:
+        messages.success(request, "Arquivo oficial verificado sem discrepancias.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_reconhecer_alerta_arquivo(request, pk, arquivo_id):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode reconhecer alertas deste Pedido.")
+        return redirect("pedido_detail", pk=pk)
+    arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)
+    try:
+        reconhecer_alerta_arquivo(arquivo=arquivo, operador=operador)
+    except AlertaArquivoInvalido as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Confirmacao 'Eu entendi' registrada na auditoria.")
     return redirect("pedido_detail", pk=pk)
 
 
