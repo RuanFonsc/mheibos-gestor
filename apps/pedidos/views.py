@@ -15,7 +15,9 @@ from apps.auditoria.services import registrar_evento
 from apps.arquivos.services import (
     AlertaArquivoInvalido,
     ArquivoOficialInvalido,
+    EncerramentoArquivoInvalido,
     TemaPedidoImutavel,
+    encerrar_vinculo_arquivo_oficial,
     reconhecer_alerta_arquivo,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
@@ -189,6 +191,7 @@ def pedido_detail(request, pk):
             "pode_editar": pode_editar_pedido(pedido, operador),
             "pode_cancelar": operador.pode_cancelar_pedido,
             "pode_desvincular_anexo": operador.is_admin,
+            "pode_encerrar_arquivo_oficial": operador.is_admin,
             "arquivos_oficiais": pedido.arquivos_oficiais_arte.all(),
             "anexos_ativos": pedido.anexos.filter(desvinculado_em__isnull=True),
             "status_form": PedidoStatusForm(initial={"status": pedido.status}),
@@ -568,6 +571,29 @@ def pedido_baixar_anexo(request, pk, anexo_id):
         as_attachment=True,
         filename=anexo.nome_original,
     )
+
+
+def pedido_encerrar_arquivo_oficial(request, pk, arquivo_id):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)
+    if request.POST.get("confirmacao", "").strip().upper() != "ENCERRAR":
+        messages.error(request, "Digite ENCERRAR para confirmar a revisao do vinculo.")
+        return redirect("pedido_detail", pk=pk)
+    try:
+        encerrar_vinculo_arquivo_oficial(
+            arquivo=arquivo,
+            operador=operador,
+            observacao=request.POST.get("observacao", ""),
+            backup_previo_confirmado=request.POST.get("backup_previo_confirmado") == "1",
+        )
+    except EncerramentoArquivoInvalido as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Vinculo oficial encerrado; arquivo e historico preservados.")
+    return redirect("pedido_detail", pk=pk)
 
 
 def pedido_create(request):

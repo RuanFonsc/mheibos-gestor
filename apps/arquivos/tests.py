@@ -11,7 +11,9 @@ from PIL import Image, UnidentifiedImageError
 from apps.arquivos.models import ArquivoOficialArte
 from apps.arquivos.services import (
     ArquivoOficialInvalido,
+    EncerramentoArquivoInvalido,
     TemaPedidoImutavel,
+    encerrar_vinculo_arquivo_oficial,
     reconhecer_alerta_arquivo,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
@@ -240,3 +242,121 @@ class ArquivoOficialArteTests(TestCase):
         self.client.post(f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/reconhecer-alerta/")
         arquivo.refresh_from_db()
         self.assertIsNotNone(arquivo.alerta_reconhecido_em)
+
+    def test_encerramento_preserva_fisico_identidade_metadados_e_auditoria(self):
+        administrador = OperadorGestor.objects.create(
+            nome="Admin Revisao", senha="segura", papel=PapelOperador.ADMIN
+        )
+        with tempfile.TemporaryDirectory() as diretorio:
+            caminho = Path(diretorio) / "arte-preservada.cdr"
+            caminho.write_bytes(b"conteudo-fisico-preservado")
+            arquivo = vincular_arquivo_oficial(
+                pedido=self.pedido,
+                caminho=str(caminho),
+                operador=self.operador,
+            )
+            arquivo.propriedades_tecnicas = {"perfil": "CMYK"}
+            arquivo.largura_px = 1200
+            arquivo.altura_px = 800
+            arquivo.save()
+            encerrar_vinculo_arquivo_oficial(
+                arquivo=arquivo,
+                operador=administrador,
+                observacao="Revisao anual concluida",
+                backup_previo_confirmado=True,
+            )
+            arquivo.refresh_from_db()
+            self.assertEqual(arquivo.estado_vinculo, "ENCERRADO")
+            self.assertEqual(arquivo.encerrado_por, administrador)
+            self.assertEqual(arquivo.nome_oficial, "arte-preservada.cdr")
+            self.assertEqual(arquivo.propriedades_tecnicas, {"perfil": "CMYK"})
+            self.assertEqual((arquivo.largura_px, arquivo.altura_px), (1200, 800))
+            self.assertEqual(caminho.read_bytes(), b"conteudo-fisico-preservado")
+            evento = EventoOperacional.objects.get(tipo="VinculoArquivoOficialEncerrado")
+            self.assertFalse(evento.valores_posteriores["arquivo_fisico_alterado"])
+            self.assertTrue(evento.valores_posteriores["metadados_preservados"])
+            encerrar_vinculo_arquivo_oficial(
+                arquivo=arquivo,
+                operador=administrador,
+            )
+            self.assertEqual(
+                EventoOperacional.objects.filter(tipo="VinculoArquivoOficialEncerrado").count(),
+                1,
+            )
+
+    def test_encerramento_exige_administrador_no_servico(self):
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido,
+            caminho=r"C:\Artes\restrito.cdr",
+            operador=self.operador,
+        )
+        with self.assertRaises(EncerramentoArquivoInvalido):
+            encerrar_vinculo_arquivo_oficial(
+                arquivo=arquivo,
+                operador=self.operador,
+            )
+
+    def test_falha_de_auditoria_reverte_encerramento(self):
+        administrador = OperadorGestor.objects.create(
+            nome="Admin Rollback Revisao", senha="segura", papel=PapelOperador.ADMIN
+        )
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido,
+            caminho=r"C:\Artes\rollback.cdr",
+            operador=self.operador,
+        )
+        with patch("apps.arquivos.services.registrar_evento", side_effect=RuntimeError):
+            with self.assertRaises(RuntimeError):
+                encerrar_vinculo_arquivo_oficial(
+                    arquivo=arquivo,
+                    operador=administrador,
+                )
+        arquivo.refresh_from_db()
+        self.assertEqual(arquivo.estado_vinculo, "ATIVO")
+        self.assertIsNone(arquivo.encerrado_em)
+
+    def test_rota_exige_confirmacao_e_exibe_historico_encerrado(self):
+        administrador = OperadorGestor.objects.create(
+            nome="Admin Interface Revisao", senha="segura", papel=PapelOperador.ADMIN
+        )
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido,
+            caminho=r"C:\Artes\interface-revisao.cdr",
+            operador=self.operador,
+        )
+        self.entrar(administrador)
+        url = f"/pedidos/{self.pedido.pk}/arquivos-oficiais/{arquivo.pk}/encerrar/"
+        self.client.post(url, {"confirmacao": "nao"})
+        arquivo.refresh_from_db()
+        self.assertEqual(arquivo.estado_vinculo, "ATIVO")
+        self.client.post(
+            url,
+            {
+                "confirmacao": "ENCERRAR",
+                "observacao": "Ano revisado",
+                "backup_previo_confirmado": "1",
+            },
+        )
+        response = self.client.get(f"/pedidos/{self.pedido.pk}/")
+        self.assertContains(response, "Encerrado por Admin Interface Revisao")
+        self.assertContains(response, "Backup prévio declarado")
+        self.assertNotContains(response, "Verificar agora")
+
+    def test_cancelar_pedido_nao_altera_vinculo_oficial(self):
+        administrador = OperadorGestor.objects.create(
+            nome="Admin Cancelamento Arquivo", senha="segura", papel=PapelOperador.ADMIN
+        )
+        arquivo = vincular_arquivo_oficial(
+            pedido=self.pedido,
+            caminho=r"C:\Artes\cancelamento-preserva.cdr",
+            operador=self.operador,
+        )
+        identidade = (arquivo.caminho_oficial, arquivo.nome_oficial)
+        self.entrar(administrador)
+        self.client.post(
+            f"/pedidos/{self.pedido.pk}/status/",
+            {"status": "CANCELADO"},
+        )
+        arquivo.refresh_from_db()
+        self.assertEqual(arquivo.estado_vinculo, "ATIVO")
+        self.assertEqual((arquivo.caminho_oficial, arquivo.nome_oficial), identidade)

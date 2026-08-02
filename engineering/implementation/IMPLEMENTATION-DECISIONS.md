@@ -234,3 +234,12 @@
 - **Persistência:** propriedades específicas ficam sob `propriedades_tecnicas.leitura_raster`; dimensões e DPI também ocupam campos tipados para consulta.
 - **Alternativas rejeitadas:** tentar abrir todo arquivo; apagar metadados de extrator anterior; tratar formato não suportado como alerta; usar IA para inferir dimensões.
 - **Situação:** definitiva para política incremental; conjunto de extratores pode crescer.
+
+## DEC-IMP-025 — Encerramento rompe operação, não história nem arquivo físico
+
+- **Decisão:** encerrar vínculo oficial por ação administrativa explícita, persistindo autoria/contexto e mantendo integralmente identidade e fotografia técnica.
+- **Motivo:** RFC-0014 declara vínculos físicos não permanentes, mas exige história, auditoria, metadados, nome e informações técnicas após o encerramento.
+- **Backup:** registrar somente a declaração opcional de backup prévio; não presumir execução nem condicionar o encerramento onde a RFC diz “podendo”.
+- **Projeção:** encerrado deixa de abrir, verificar e aparecer em pesquisa operacional, mas permanece legível no detalhe histórico.
+- **Alternativas rejeitadas:** exclusão; mover/renomear arquivo; apagar metadados; exigir backup; inferir período anual pela data do Pedido ou pelo caminho.
+- **Situação:** definitiva para encerramento individual; agrupamento temporal é decisão pendente separada.

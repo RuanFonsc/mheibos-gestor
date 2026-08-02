@@ -58,6 +58,16 @@ class ArquivoOficialArte(models.Model):
         blank=True,
         on_delete=models.PROTECT,
     )
+    encerrado_em = models.DateTimeField(null=True, blank=True)
+    encerrado_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="vinculos_arquivo_oficial_encerrados",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    encerramento_observacao = models.TextField(blank=True)
+    backup_previo_confirmado = models.BooleanField(default=False)
     criado_por = models.ForeignKey(
         "catalogo.OperadorGestor",
         related_name="arquivos_oficiais_criados",

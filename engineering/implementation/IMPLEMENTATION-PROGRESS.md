@@ -315,3 +315,14 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Interface:** detalhe do Pedido exibe dimensões, proporção, DPI e formato; formatos não suportados recebem explicação não bloqueante.
 - **Testes:** 3 cenários novos cobrem raster real 1600×900/300 DPI, conteúdo raster inválido e preservação de metadados especializados em CDR; baseline completo aprovado com 113 testes.
 - **Fora desta fatia:** leitura nativa de CDR/AI/SVG exige extratores próprios e será adicionada apenas com dependência segura e contrato determinístico.
+
+### IMP-009G — COMPLETED
+
+- **Capacidade:** administrador encerra individualmente um vínculo oficial durante a revisão, sem apagar ou mover o arquivo físico e sem alterar sua identidade.
+- **Persistência:** estado `ENCERRADO`, autoria, instante, observação e declaração opcional de backup prévio ficam no vínculo; nome, caminho, integridade, dimensões, DPI e propriedades técnicas permanecem intactos.
+- **Autorização e consciência:** a regra administrativa vive no serviço; a interface exige digitar `ENCERRAR` e não transforma backup opcional em requisito obrigatório.
+- **Auditoria:** `VinculoArquivoOficialEncerrado` registra estado anterior/posterior e as garantias de preservação na mesma transação; repetição é idempotente e falha do evento reverte o encerramento.
+- **Projeção:** vínculo encerrado continua visível como histórico no detalhe, sem ação de abrir ou verificar e fora da pesquisa operacional.
+- **Cancelamento:** cancelar o Pedido foi validado separadamente e não altera estado, caminho ou nome do arquivo oficial.
+- **Testes:** 5 cenários novos cobrem preservação física real, identidade/metadados, autorização, idempotência, rollback, confirmação/interface e cancelamento; baseline completo aprovado com 118 testes.
+- **Fora desta fatia:** arquivamento em lote e “manter anos ativos” exigem definir normativamente qual data atribui o vínculo a um período; nenhum ano foi inferido silenciosamente.

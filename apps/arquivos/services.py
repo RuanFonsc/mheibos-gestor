@@ -8,7 +8,12 @@ from django.utils import timezone
 from apps.auditoria.services import registrar_evento
 
 from .metadados import extrair_metadados_graficos
-from .models import ArquivoOficialArte, EstadoIntegridadeArquivo, OrigemArquivoOficial
+from .models import (
+    ArquivoOficialArte,
+    EstadoIntegridadeArquivo,
+    EstadoVinculoArquivo,
+    OrigemArquivoOficial,
+)
 
 
 class ArquivoOficialInvalido(Exception):
@@ -20,6 +25,10 @@ class TemaPedidoImutavel(Exception):
 
 
 class AlertaArquivoInvalido(Exception):
+    pass
+
+
+class EncerramentoArquivoInvalido(Exception):
     pass
 
 
@@ -151,5 +160,58 @@ def reconhecer_alerta_arquivo(*, arquivo: ArquivoOficialArte, operador) -> Arqui
         valores_anteriores={"alerta_reconhecido": False},
         valores_posteriores={"alerta_reconhecido": True, "discrepancias": arquivo.discrepancias},
         chave_idempotencia=f"arquivo-alerta-reconhecer:{arquivo.pk}:{verificacao.isoformat()}",
+    )
+    return arquivo
+
+
+@transaction.atomic
+def encerrar_vinculo_arquivo_oficial(
+    *,
+    arquivo: ArquivoOficialArte,
+    operador,
+    observacao: str = "",
+    backup_previo_confirmado: bool = False,
+) -> ArquivoOficialArte:
+    if not operador.is_admin:
+        raise EncerramentoArquivoInvalido(
+            "Somente administradores podem encerrar vinculos de arquivos oficiais."
+        )
+    arquivo = ArquivoOficialArte.objects.select_for_update().get(pk=arquivo.pk)
+    if arquivo.estado_vinculo == EstadoVinculoArquivo.ENCERRADO:
+        return arquivo
+    arquivo.estado_vinculo = EstadoVinculoArquivo.ENCERRADO
+    arquivo.encerrado_em = timezone.now()
+    arquivo.encerrado_por = operador
+    arquivo.encerramento_observacao = (observacao or "").strip()
+    arquivo.backup_previo_confirmado = bool(backup_previo_confirmado)
+    arquivo.save(
+        update_fields=[
+            "estado_vinculo",
+            "encerrado_em",
+            "encerrado_por",
+            "encerramento_observacao",
+            "backup_previo_confirmado",
+            "atualizado_em",
+        ]
+    )
+    registrar_evento(
+        tipo="VinculoArquivoOficialEncerrado",
+        operador=operador,
+        origem="gestor_web",
+        alvo_tipo="ArquivoOficialArte",
+        alvo_id=str(arquivo.pk),
+        acao="encerrar_vinculo_arquivo_oficial",
+        valores_anteriores={"estado_vinculo": EstadoVinculoArquivo.ATIVO},
+        valores_posteriores={
+            "estado_vinculo": EstadoVinculoArquivo.ENCERRADO,
+            "pedido_id": arquivo.pedido_id,
+            "nome_oficial": arquivo.nome_oficial,
+            "caminho_oficial": arquivo.caminho_oficial,
+            "arquivo_fisico_alterado": False,
+            "metadados_preservados": True,
+            "backup_previo_confirmado": arquivo.backup_previo_confirmado,
+            "observacao": arquivo.encerramento_observacao,
+        },
+        chave_idempotencia=f"arquivo-oficial-encerrar:{arquivo.pk}",
     )
     return arquivo
