@@ -305,5 +305,13 @@
 - **Decisão:** Pedido sem arte de referência ativa permanece em `AGUARDANDO_ARTE` e não entra em Produção nem em estados posteriores.
 - **Motivo:** decisão humana de 02/08/2026; a proteção não pode depender de memória do usuário, aparência da tela ou disponibilidade de IA.
 - **Aplicação:** caso de uso único de transição, criação direta como pronto, ações individuais, em massa e rota de compatibilidade da antiga Assistência.
-- **Interface:** “Assistência de envio” passa a ser apresentada conforme sua responsabilidade real: “Preparação de arte”. O nome técnico da rota permanece temporariamente para compatibilidade.
+- **Interface:** Preparação de arte e Assistência de Impressão permanecem funções distintas no mesmo fluxo; nomes técnicos legados de rota podem permanecer temporariamente apenas por compatibilidade.
 - **Lacuna isolada:** Pendência formal de pré-produção, scheduler, cadência e escalonamento aguardam a versão normativa completa da RFC-0012 e a modelagem da Etapa de arte; a fila e a trava determinísticas continuam funcionando.
+
+## DEC-IMP-032 — Referência visual não integra o ciclo de vida do arquivo oficial
+
+- **Decisão humana:** a arte de referência é somente uma imagem inserida na criação ou edição do Pedido e usada como referência visual operacional.
+- **Edição:** adicionar, atualizar ou desvincular referências continua restrito ao fluxo de edição do Pedido já existente.
+- **Separação:** referência visual não cria, converte, renomeia, move, substitui nem atualiza arquivo oficial de arte; também não herda automaticamente nome, caminho, formato ou integridade do arquivo oficial.
+- **Arquivo oficial:** criação automática por programa gráfico, preferência de formato, nome oficial e estrutura Ano/Mês/Dia permanece fluxo próprio da RFC-0014 e da lacuna registrada no IMP-009.
+- **Interface:** a Preparação de arte apresenta ações separadas para editar referências visuais e consultar/vincular arquivos oficiais, sem sugerir promoção automática entre os dois conceitos.

@@ -331,12 +331,12 @@ def _preparar_contexto_operacional(pedido):
     pedido.bloqueio_exibicao = (
         etapa_atual.motivo_bloqueio
         if etapa_atual and etapa_atual.motivo_bloqueio
-        else ("Arte ainda não vinculada" if not artes_ativas else "")
+        else ("Arte de referência ainda não vinculada" if not artes_ativas else "")
     )
     pedido.total_artes_ativas = len(artes_ativas)
     pedido.dias_uteis_ate_entrega = dias_uteis_restantes(pedido.data_entrega)
     proximas_acoes = {
-        StatusPedido.AGUARDANDO_ARTE: "Adicionar ou localizar a arte necessária",
+        StatusPedido.AGUARDANDO_ARTE: "Adicionar ou atualizar a referência visual do pedido",
         StatusPedido.ARTE_EM_PREPARO: "Concluir a preparação e registrar a evidência",
         StatusPedido.AGUARDANDO_APROVACAO: "Registrar a aprovação antes de liberar",
         StatusPedido.LIBERADO_PRODUCAO: "Iniciar a execução da etapa produtiva",

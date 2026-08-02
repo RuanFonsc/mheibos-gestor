@@ -31,7 +31,7 @@
       <div>
         <span class="kicker">Intervenção determinística</span>
         <h3 id="aguardandoArteTitulo" class="section-title">Pedidos sem arte</h3>
-        <p>Esta fila permanece visível até uma arte de referência ser adicionada e o avanço ser confirmado.</p>
+        <p>A referência visual pertence ao Pedido e continua editável somente pela edição. Ela não cria, substitui nem atualiza o arquivo oficial de arte.</p>
       </div>
     </div>
     <div class="order-grid">
@@ -47,7 +47,7 @@
           </div>
           <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             <p><span class="text-[var(--text-secondary)]">Responsável atual:</span> <strong>{{ pedido.responsavel_exibicao }}</strong></p>
-            <p><span class="text-[var(--text-secondary)]">Evidências:</span> <strong>{{ pedido.total_artes_ativas }} arte(s) ativa(s)</strong></p>
+            <p><span class="text-[var(--text-secondary)]">Referências visuais:</span> <strong>{{ pedido.total_artes_ativas }} imagem(ns) ativa(s)</strong></p>
             <p><span class="text-[var(--text-secondary)]">Prazo:</span> <strong>{{ pedido.dias_uteis_ate_entrega }} dia(s) útil(eis)</strong></p>
             <p><span class="text-[var(--text-secondary)]">Próxima ação:</span> <strong>{{ pedido.proxima_acao_exibicao }}</strong></p>
           </div>
@@ -57,8 +57,8 @@
           <div class="order-card-foot">
             <span>Entrega: {{ pedido.data_entrega|date:"d/m/Y"|default:"não informada" }}</span>
             <div class="flex flex-wrap gap-2">
-              <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary">Abrir pedido</a>
-              <a href="{% url 'pedido_edit' pedido.pk %}" class="btn-primary">{% if pedido.total_artes_ativas %}Revisar artes{% else %}Adicionar arte{% endif %}</a>
+              <a href="{% url 'pedido_detail' pedido.pk %}#arquivos-oficiais" class="btn-secondary">Arquivos oficiais</a>
+              <a href="{% url 'pedido_edit' pedido.pk %}#artes-referencia" class="btn-primary">{% if pedido.total_artes_ativas %}Editar referências{% else %}Adicionar referência{% endif %}</a>
             </div>
           </div>
         </article>
