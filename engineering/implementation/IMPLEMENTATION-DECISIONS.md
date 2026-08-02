@@ -1,5 +1,16 @@
 # Decisões da Implementação
 
+## DEC-IMP-007 — Processo prevalece na projeção operacional
+
+- **Decisão:** todas as interfaces consomem `ProjecaoPedido`; quando existe Processo formal, seu estado é oficial, e `Pedido.status` só serve de fallback marcado para legado.
+- **Motivo:** elimina interpretações concorrentes sem apagar pedidos antigos nem exigir backfill especulativo.
+- **Fontes:** RFC-0003 §§9 e 12.6; RFC-0005 §§3.1, 12 e 16; RFC-0009 §§5–7 e 30; ENG-0006 §9.
+- **Abrangência:** lista e detalhe do Gestor, fila de Produção, Vendas, dashboard individual e relatório comercial.
+- **Autorização:** a projeção é somente leitura e não amplia acesso; cada view preserva seu recorte e identidade atuais.
+- **Compatibilidade:** pedidos sem Processo mostram a fonte `Compatibilidade legada`; a condição de remoção é a migração explícita dos fluxos proprietários.
+- **Falhas:** nenhuma IA ou integração participa da projeção; ausência dessas camadas não afeta navegação nem operação.
+- **Situação:** definitiva para precedência e contrato; formatos visuais poderão evoluir.
+
 ## DEC-IMP-006 — Piloto aditivo de Processo de Produção
 
 - **Decisão:** instanciar um Processo nativo `PRODUCAO_PEDIDO`, com snapshot do Modelo de Fluxo versão 1 e Etapa `PRODUZIR`, nas novas transições para produção.

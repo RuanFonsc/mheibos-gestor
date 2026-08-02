@@ -1,9 +1,9 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** Fase 6 — projeções e interface operacional integrada  
-**Ciclo atual:** IMP-006 — projeções e interface operacional integrada  
-**Último ciclo concluído:** IMP-005 — Processo, Fluxo e Etapa piloto  
+**Fase atual:** Fase 7 — pendências e intervenções determinísticas  
+**Ciclo atual:** IMP-007 — pendências e intervenções determinísticas  
+**Último ciclo concluído:** IMP-006 — projeções e interface operacional integrada  
 **Data:** 01/08/2026
 
 ## Contrato do ciclo IMP-003
@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-006 — fazer Gestor, Vendas e Produção consumirem projeções da mesma realidade operacional.
+IMP-007 — auditar a suficiência normativa da RFC-0012 e implementar somente o contrato determinístico autorizado.
 
 ## Histórico resumido
 
@@ -102,4 +102,17 @@ IMP-006 — fazer Gestor, Vendas e Produção consumirem projeções da mesma re
 - **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS; Segurança PASS; Migração PASS; Testes PASS.
 - **Lacunas não bloqueantes:** catálogo amplo de modelos, várias Etapas/dependências, evidências formais e processos independentes entram nos ciclos proprietários.
 - **Teste humano:** mover Pedido para produção, conferir Processo; rejeitar com motivo, retomar e marcar pronto; confirmar estados no detalhe e Auditoria.
+- **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.
+
+### IMP-006 — COMPLETED_WITH_GAPS
+
+- **Capacidade:** uma projeção somente leitura compõe estados comercial, financeiro, entrega e operacional do Pedido.
+- **Precedência:** Processo formal é fonte operacional; `Pedido.status` aparece apenas como compatibilidade identificada quando não há Processo.
+- **Integração:** Gestor, Vendas, dashboard, relatório e Produção usam o mesmo contrato de projeção.
+- **Fila:** Produção seleciona Processo em andamento/bloqueado e Prontos seleciona Processo concluído; fallback legado continua disponível.
+- **Segurança:** recortes e permissões de cada interface foram preservados; projeção não persiste nem autoriza ações.
+- **Testes:** 34 aprovados, incluindo divergência intencional entre Processo e status legado nas três interfaces; Django check, Ruff, mypy e migrations aprovados.
+- **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Interface PASS; Segurança PASS; Testes PASS.
+- **Lacunas não bloqueantes:** outras famílias de Processo ainda usarão fallback até serem formalizadas; Orquestrador de Interface completo pertence a ciclo posterior da RFC-0009.
+- **Teste humano:** abrir o mesmo Pedido no Gestor, Vendas e Produção; comparar estado e fonte; concluir Processo com status legado divergente e confirmar a fila correta.
 - **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.

@@ -10,6 +10,7 @@ from apps.pedidos.models import Pedido, StatusPedido
 from apps.pedidos.use_cases import alterar_status_pedido
 
 from .models import EstadoEtapa, EstadoProcesso, ModeloFluxo, Processo
+from .projections import projetar_lista, queryset_com_projecao, queryset_fila_producao
 from .services import CODIGO_FLUXO_PRODUCAO, ProcessoEncerrado
 
 
@@ -24,6 +25,9 @@ class FluxoPilotoProducaoTests(TestCase):
             usuario_cadastro=self.operador.nome,
             status=StatusPedido.AGUARDANDO_ARTE,
         )
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
 
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
     def test_entering_production_instantiates_versioned_flow(self, _financeiro):
@@ -181,3 +185,67 @@ class FluxoPilotoProducaoTests(TestCase):
         self.pedido.refresh_from_db()
         self.assertEqual(self.pedido.status, StatusPedido.AGUARDANDO_ARTE)
         self.assertFalse(Processo.objects.exists())
+
+
+class ProjecaoOperacionalIntegradaTests(TestCase):
+    def setUp(self):
+        self.operador = OperadorGestor.objects.create(
+            nome="Vendedor Integrado", senha="senha", papel=PapelOperador.USUARIO
+        )
+        cliente = Cliente.objects.create(nome="Cliente Projecao")
+        self.pedido = Pedido.objects.create(
+            cliente=cliente,
+            usuario_cadastro=self.operador.nome,
+            origem="VENDAS",
+            status=StatusPedido.AGUARDANDO_ARTE,
+        )
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_formal_process_wins_over_stale_legacy_status_in_all_views(self, _financeiro):
+        alterar_status_pedido(
+            pedido=self.pedido,
+            novo_status=StatusPedido.EM_PRODUCAO,
+            operador=self.operador,
+        )
+        Pedido.objects.filter(pk=self.pedido.pk).update(status=StatusPedido.AGUARDANDO_ARTE)
+
+        pedido = projetar_lista(
+            queryset_com_projecao(Pedido.objects.filter(pk=self.pedido.pk))
+        )[0]
+        self.assertEqual(pedido.projecao.operacional, "Em andamento")
+        self.assertIn(self.pedido.pk, queryset_fila_producao().values_list("pk", flat=True))
+
+        producao = self.client.get("/producao/")
+        vendas = self.client.get("/vendas/pedidos/")
+        gestor = self.client.get("/pedidos/")
+        self.assertContains(producao, "Em andamento")
+        self.assertContains(vendas, "Em andamento")
+        self.assertContains(gestor, "Em andamento")
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_concluded_process_leaves_active_queue_even_if_legacy_status_is_stale(
+        self, _financeiro
+    ):
+        alterar_status_pedido(
+            pedido=self.pedido,
+            novo_status=StatusPedido.EM_PRODUCAO,
+            operador=self.operador,
+        )
+        alterar_status_pedido(
+            pedido=self.pedido,
+            novo_status=StatusPedido.PRONTO,
+            operador=self.operador,
+            origem_operacional=True,
+        )
+        Pedido.objects.filter(pk=self.pedido.pk).update(status=StatusPedido.EM_PRODUCAO)
+
+        self.assertNotIn(
+            self.pedido.pk, queryset_fila_producao().values_list("pk", flat=True)
+        )
+        self.assertIn(
+            self.pedido.pk,
+            queryset_fila_producao(prontos=True).values_list("pk", flat=True),
+        )

@@ -22,7 +22,8 @@
     <article class="order-row">
       <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-2">
-          <span class="status-pill">{{ pedido.get_status_display }}</span>
+          <span class="status-pill">{{ pedido.projecao.operacional }}</span>
+          <span class="rounded-md bg-[#22253a] px-2 py-1 text-xs text-[#9aa7d3]">{{ pedido.projecao.comercial }} · {{ pedido.projecao.financeiro }}</span>
           <span class="rounded-md bg-[#22253a] px-2 py-1 text-xs text-[#9aa7d3]">#{{ pedido.pk }}</span>
         </div>
         <h2 class="mt-3 truncate text-lg font-black">{{ pedido.cliente.nome }}</h2>

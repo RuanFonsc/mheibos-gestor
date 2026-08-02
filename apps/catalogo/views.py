@@ -47,6 +47,7 @@ from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
 from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
 from apps.pedidos.models import Pedido, PedidoItem, PrioridadePedido, StatusPedido
+from apps.operacao.projections import projetar_lista, queryset_com_projecao, queryset_fila_producao
 
 
 def _destino_seguro(request, padrao):
@@ -611,10 +612,13 @@ def producao_home(request):
         "itens",
         queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
     )
-    status_base = StatusPedido.PRONTO if status == StatusPedido.PRONTO else StatusPedido.EM_PRODUCAO
-    pedidos = Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "artes").filter(status=status_base)
-    if status in {StatusPedido.EM_PRODUCAO, StatusPedido.PRONTO}:
-        pedidos = pedidos.filter(status=status)
+    mostrando_prontos = status == StatusPedido.PRONTO
+    status_base = StatusPedido.PRONTO if mostrando_prontos else StatusPedido.EM_PRODUCAO
+    pedidos = queryset_com_projecao(
+        queryset_fila_producao(prontos=mostrando_prontos)
+        .select_related("cliente")
+        .prefetch_related(itens_prefetch, "artes")
+    )
     if prioridade:
         pedidos = pedidos.filter(prioridade=prioridade)
     if categoria:
@@ -623,7 +627,11 @@ def producao_home(request):
         ).distinct()
 
     categorias = list(CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"))
-    pedidos_lista = preparar_categorias_pedidos(pedidos.order_by("data_entrega" if ordem == "asc" else "-data_entrega", "id")[:180])
+    pedidos_lista = projetar_lista(
+        preparar_categorias_pedidos(
+            pedidos.order_by("data_entrega" if ordem == "asc" else "-data_entrega", "id")[:180]
+        )
+    )
     grupos_map = defaultdict(list)
     sem_categoria = []
     for pedido in pedidos_lista:
@@ -654,10 +662,10 @@ def producao_home(request):
         "ordem_inversa": "desc" if ordem == "asc" else "asc",
         "categorias_tabs": categorias,
         "prioridade_choices": PrioridadePedido.choices,
-        "liberados": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
-        "produzindo": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO).count(),
-        "prontos": Pedido.objects.filter(status=StatusPedido.PRONTO).count(),
-        "urgentes": Pedido.objects.filter(status=StatusPedido.EM_PRODUCAO, prioridade=PrioridadePedido.URGENTE).count(),
+        "liberados": queryset_fila_producao().count(),
+        "produzindo": queryset_fila_producao().count(),
+        "prontos": queryset_fila_producao(prontos=True).count(),
+        "urgentes": queryset_fila_producao().filter(prioridade=PrioridadePedido.URGENTE).count(),
         "pode_acoes_admin": operador.is_admin,
     }
     return render(request, "pedidos/producao.html", contexto)

@@ -35,6 +35,7 @@ from apps.pedidos.use_cases import (
     alterar_status_pedido,
 )
 from apps.operacao.services import ProcessoEncerrado
+from apps.operacao.projections import projetar_lista, projetar_pedido, queryset_com_projecao
 
 
 def pedido_list(request):
@@ -49,7 +50,9 @@ def pedido_list(request):
         "itens",
         queryset=PedidoItem.objects.select_related("produto__categoria_servico", "categoria_servico"),
     )
-    pedidos = Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "artes")
+    pedidos = queryset_com_projecao(
+        Pedido.objects.select_related("cliente").prefetch_related(itens_prefetch, "artes")
+    )
 
     if busca:
         filtros_busca = (
@@ -73,7 +76,7 @@ def pedido_list(request):
             Q(itens__categoria_servico_id=categoria) | Q(itens__produto__categoria_servico_id=categoria)
         ).distinct()
 
-    pedidos_lista = preparar_categorias_pedidos(pedidos[:80])
+    pedidos_lista = projetar_lista(preparar_categorias_pedidos(pedidos[:80]))
     for pedido in pedidos_lista:
         pedido.alerta_prazo = pedido_em_alerta(pedido)
 
@@ -402,6 +405,7 @@ def pedido_rejeitar_producao(request, pk):
         messages.error(request, "Somente pedidos em producao podem ser rejeitados.")
         return redirect(retorno)
     operador = operador_atual(request)
+    pedido.projecao = projetar_pedido(pedido)
     alterar_status_pedido(
         pedido=pedido,
         novo_status=StatusPedido.AGUARDANDO_ARTE,

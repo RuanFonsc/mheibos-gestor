@@ -78,7 +78,7 @@
   {% for pedido in pedidos_recentes %}
     <article class="order-row">
       <div class="min-w-0">
-        <span class="status-pill">{{ pedido.get_status_display }}</span>
+        <span class="status-pill">{{ pedido.projecao.operacional }}</span>
         <h3 class="mt-2 truncate font-black">{{ pedido.cliente.nome }}</h3>
         <p class="mt-1 truncate text-sm text-[#9aa7d3]">{{ pedido.tema|default:"Sem resumo" }}</p>
       </div>

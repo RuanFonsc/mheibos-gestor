@@ -22,6 +22,7 @@ from apps.clientes.models import Cliente, StatusCadastroCliente
 from apps.financeiro.crm import MESES_CURTOS
 from apps.financeiro.models import LancamentoFinanceiro, MetaVendasUsuario, StatusLancamento, TipoLancamento
 from apps.pedidos.models import Pedido, PedidoItem, StatusPedido
+from apps.operacao.projections import projetar_lista, queryset_com_projecao
 from apps.vendas.forms import VendasPedidoForm
 from apps.vendas.services import criar_pedido_vendas
 
@@ -36,11 +37,12 @@ def _contexto_base(request):
 
 def vendas_pedidos(request):
     operador = operador_atual(request)
-    pedidos = (
+    pedidos = queryset_com_projecao(
         Pedido.objects.select_related("cliente")
         .filter(origem="VENDAS")
-        .order_by("-criado_em")[:30]
-    )
+        .order_by("-criado_em")
+    )[:30]
+    pedidos = projetar_lista(pedidos)
     contexto = _contexto_base(request)
     contexto.update(
         {
@@ -148,7 +150,9 @@ def vendas_dashboard(request):
             "produtos_labels": [row["nome"] for row in top_produtos],
             "produtos_valores": [float(row["quantidade"] or 0) for row in top_produtos],
             "pode_ver_fluxo_caixa": operador.is_admin_geral,
-            "pedidos_recentes": pedidos.order_by("-data_pedido", "-id")[:8],
+            "pedidos_recentes": projetar_lista(
+                queryset_com_projecao(pedidos.order_by("-data_pedido", "-id"))[:8]
+            ),
         }
     )
     return render(request, "vendas/dashboard.html", contexto)
@@ -186,7 +190,9 @@ def vendas_relatorio(request, tipo):
         fim = hoje
         titulo = "Relatorio Mensal - Mheibos Vendas"
         nome = f"mheibos-vendas-mensal-{hoje:%Y%m}.pdf"
-    vendas = pedidos.filter(data_pedido__range=(inicio, fim)).order_by("data_pedido", "id")
+    vendas = queryset_com_projecao(
+        pedidos.filter(data_pedido__range=(inicio, fim)).order_by("data_pedido", "id")
+    )
     total = vendas.aggregate(total=Sum("valor_total"))["total"] or Decimal("0.00")
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), leftMargin=1.2 * cm, rightMargin=1.2 * cm, topMargin=1.1 * cm, bottomMargin=1.1 * cm)
@@ -199,13 +205,13 @@ def vendas_relatorio(request, tipo):
         Spacer(1, 0.25 * cm),
     ]
     dados = [["Data", "Pedido", "Cliente", "Resumo", "Status", "Valor"]]
-    for pedido in vendas[:500]:
+    for pedido in projetar_lista(vendas[:500]):
         dados.append([
             pedido.data_pedido.strftime("%d/%m/%Y") if pedido.data_pedido else "-",
             f"#{pedido.legado_id or pedido.pk}",
             pedido.cliente.nome,
             pedido.tema or "-",
-            pedido.get_status_display(),
+            pedido.projecao.operacional,
             _moeda(pedido.valor_total),
         ])
     dados.append(["", "", "", "", "Total", _moeda(total)])

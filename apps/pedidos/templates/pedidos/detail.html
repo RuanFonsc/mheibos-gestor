@@ -111,7 +111,8 @@
     <aside class="space-y-6">
       <div class="card p-5">
         <h2 class="mb-4 font-semibold">Execucao legada</h2>
-        <p class="mb-3 text-sm">Compatibilidade atual: <strong>{{ pedido.get_status_display }}</strong></p>
+        <p class="mb-1 text-sm">Atual: <strong>{{ pedido.projecao.operacional }}</strong></p>
+        <p class="mb-3 text-xs text-[var(--text-secondary)]">Fonte: {{ pedido.projecao.fonte_operacional }}</p>
         {% with assistencia=pedido.status_assistencia %}
           <div class="mb-4 rounded-lg p-3 text-xs {% if assistencia.na_assistencia %}bg-red-500/10 text-red-400 border border-red-500/20{% else %}bg-blue-500/10 text-blue-400 border border-blue-500/20{% endif %}">
             <div class="flex items-center gap-2">
