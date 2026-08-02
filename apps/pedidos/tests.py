@@ -306,7 +306,8 @@ class FluxosStatusPedidoIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Assistência de Impressão")
-        self.assertNotContains(response, "Pedidos sem arte")
+        self.assertNotIn("aguardando_arte", response.context)
+        self.assertContains(response, 'href="/producao/"')
 
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
     def test_individual_status_route_uses_audited_use_case(self, _sync_financeiro):

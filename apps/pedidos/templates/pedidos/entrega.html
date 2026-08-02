@@ -3,8 +3,8 @@
 {% block page_title %}Fluxo do Pedido{% endblock %}
 {% block top_tabs %}
   <a href="{% url 'preparacao_arte' %}" class="top-tab"><i data-lucide="palette" class="h-4 w-4"></i> Preparação de arte</a>
-  <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
   <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="printer" class="h-4 w-4"></i> Assistência de Impressão</a>
+  <a href="{% url 'producao_home' %}" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
   <a href="{% url 'entrega_list' %}" class="top-tab active" aria-current="page"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
 {% endblock %}
 {% block content %}
@@ -23,9 +23,10 @@
     <span data-bulk-ids></span>
     <label class="bulk-select" title="Selecionar todos"><input type="checkbox" data-bulk-all></label>
     <span class="bulk-counter" data-bulk-counter>0 selecionado(s)</span>
-    <button class="btn-primary min-h-[40px]" type="submit" name="acao" value="marcar_entregue" data-bulk-action disabled>
+    <button class="btn-primary min-h-[40px]" type="submit" name="acao" value="marcar_entregue" data-bulk-action aria-describedby="ajudaMarcarEntregue" disabled>
       <i data-lucide="check" class="h-4 w-4"></i> Marcar como entregue
     </button>
+    <span id="ajudaMarcarEntregue" class="text-xs text-[var(--text-secondary)]">Selecione ao menos um pedido. Pedidos com saldo aberto exigem autorização superior registrada.</span>
   </form>
 
   <section id="entregaPedidos" class="grid gap-3">
@@ -47,6 +48,9 @@
             {{ pedido.cliente.telefone_principal|default:"Sem telefone" }}
             {% if pedido.cliente.telefone_secundario %} / {{ pedido.cliente.telefone_secundario }}{% endif %}
           </p>
+          <p class="mt-2 text-sm text-[#8892b0]">Entrega prevista: <strong>{{ pedido.data_entrega|date:"d/m/Y"|default:"Sem data" }} {{ pedido.hora_entrega|time:"H:i" }}</strong></p>
+          <p class="mt-2 text-sm text-[#8892b0]">Referência operacional: <strong>{{ pedido.designer|default:pedido.usuario_cadastro|default:"Não atribuído" }}</strong></p>
+          <p class="mt-1 text-sm text-[#8892b0]">Próxima ação: <strong>confirmar entrega e situação financeira</strong></p>
           {% if pedido.alerta_prazo %}<p class="mt-2 text-xs font-semibold uppercase tracking-wide text-[#eadcff]">Pronto com prazo perto ou vencido</p>{% endif %}
           </div>
         </div>
@@ -60,11 +64,16 @@
 
         <div class="flex flex-wrap gap-2 lg:justify-end">
           <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary"><i data-lucide="eye" class="h-4 w-4"></i> Abrir</a>
-          <form method="post" action="{% url 'pedido_update_status' pedido.pk %}">
-            {% csrf_token %}
-            <input type="hidden" name="status" value="ENTREGUE">
-            <button class="btn-primary" type="submit"><i data-lucide="check" class="h-4 w-4"></i> Entregue</button>
-          </form>
+          {% if pedido.saldo_aberto > 0 %}
+            <button class="btn-primary" type="button" disabled title="A entrega com saldo aberto exige autorização superior registrada."><i data-lucide="lock-keyhole" class="h-4 w-4"></i> Entrega bloqueada</button>
+            <p class="basis-full text-xs text-[#ffb347]">Saldo aberto: autorização superior e motivo são obrigatórios antes da entrega.</p>
+          {% else %}
+            <form method="post" action="{% url 'pedido_update_status' pedido.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="status" value="ENTREGUE">
+              <button class="btn-primary" type="submit"><i data-lucide="check" class="h-4 w-4"></i> Entregue</button>
+            </form>
+          {% endif %}
         </div>
       </article>
     {% empty %}

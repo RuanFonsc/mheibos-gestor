@@ -3,8 +3,11 @@
 {% block title %}Producao{% endblock %}
 {% block page_title %}Producao{% endblock %}
 {% block top_tabs %}
+  <a href="{% url 'preparacao_arte' %}" class="top-tab"><i data-lucide="palette" class="h-4 w-4"></i> Preparação de arte</a>
+  <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="printer" class="h-4 w-4"></i> Assistência de Impressão</a>
   <a href="{% url 'producao_home' %}?status=EM_PRODUCAO&ordem={{ ordem }}" class="top-tab {% if status_atual == 'EM_PRODUCAO' %}active{% endif %}"><i data-lucide="factory" class="h-5 w-5"></i> Fila</a>
   <a href="{% url 'producao_home' %}?status=PRONTO&ordem={{ ordem }}" class="top-tab {% if status_atual == 'PRONTO' %}active{% endif %}"><i data-lucide="package-check" class="h-5 w-5"></i> Prontos</a>
+  <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="truck" class="h-4 w-4"></i> Entrega</a>
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
@@ -51,9 +54,10 @@
     <span data-bulk-ids></span>
     <label class="bulk-select" title="Selecionar todos"><input type="checkbox" data-bulk-all></label>
     <span class="bulk-counter" data-bulk-counter>0 selecionado(s)</span>
-    <button class="btn-primary min-h-[40px]" type="submit" name="acao" value="marcar_pronto" data-bulk-action disabled>
+    <button class="btn-primary min-h-[40px]" type="submit" name="acao" value="marcar_pronto" data-bulk-action aria-describedby="ajudaMarcarPronto" disabled>
       <i data-lucide="check" class="h-4 w-4"></i> Marcar como pronto
     </button>
+    <span id="ajudaMarcarPronto" class="text-xs text-[var(--text-secondary)]">Selecione ao menos um pedido. Bloqueios operacionais continuam validados pelo sistema.</span>
   </form>
   {% endif %}
 
@@ -106,6 +110,8 @@
                     <p>Sem itens normalizados.</p>
                   {% endfor %}
                   {% if pedido.alerta_prazo %}<p class="mt-2 font-semibold {% if pedido.status == 'PRONTO' %}text-[#eadcff]{% else %}text-[#ffd1d1]{% endif %}">{% if pedido.status == 'PRONTO' %}Pronto com prazo perto ou vencido{% else %}Alerta de prazo da categoria{% endif %}</p>{% endif %}
+                  <p class="mt-2 text-xs text-[#c6cce0]"><strong>Responsável atual:</strong> {{ pedido.responsavel_exibicao }}</p>
+                  <p class="mt-1 text-xs text-[#c6cce0]"><strong>Próxima ação:</strong> {{ pedido.proxima_acao_exibicao }}</p>
                   <p class="mt-2 text-xs text-[#8892b0]">Fonte: {{ pedido.projecao.fonte_operacional }}</p>
                   {% if pedido.projecao.bloqueio %}<p class="mt-1 text-xs font-semibold text-[#ffb347]">Bloqueio: {{ pedido.projecao.bloqueio }}</p>{% endif %}
                   {% if pedido.caminho_arquivo_corel %}

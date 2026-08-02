@@ -386,6 +386,8 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 
 - **Regra:** sem arte de referência ativa, o Pedido não avança para Produção ou estados posteriores.
 - **Assistência atual:** fila de Preparação de arte, contador, notificação periódica determinística e ação direta para anexar arte.
+- **Convergência funcional da interface (02/08/2026):** Preparação de arte e Assistência de Impressão permanecem funções distintas; ambas expõem o fluxo contínuo para a Produção especializada e Entrega. As filas agora comunicam prazo, responsável ou referência operacional, evidências, bloqueio, próxima ação e motivo calculado do alerta quando houver item aplicável.
+- **Ações e segurança visual:** ações em massa desabilitadas explicam a seleção necessária; Entrega torna visível que saldo aberto exige autorização superior registrada, sem criar silenciosamente o mecanismo normativo ainda ausente.
 - **Consistência:** rotas individual, em massa e de compatibilidade usam o mesmo caso de uso; o botão global “Abrir a Produção” foi removido.
 - **Testes e visual:** 38 testes direcionados e 10 combinações visuais aprovados.
 - **Lacuna:** Pendência formal, scheduler, cadência e escalonamento dependem da RFC-0012 completa; não bloqueiam a trava nem a fila atuais.

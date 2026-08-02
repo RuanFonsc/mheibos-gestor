@@ -46,7 +46,7 @@ from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os,
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
 from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
-from apps.pedidos.models import Pedido, PedidoItem, PrioridadePedido, StatusPedido
+from apps.pedidos.models import Pedido, PedidoItem, PrioridadePedido, STATUS_ASSISTENCIA, StatusPedido
 from apps.operacao.projections import projetar_lista, queryset_com_projecao, queryset_fila_producao
 from apps.pedidos.use_cases import (
     AlteracaoStatusNegada,
@@ -314,22 +314,56 @@ def categoria_excluir(request, pk):
     return redirect("produtos")
 
 
+def _preparar_contexto_operacional(pedido):
+    etapas = [
+        etapa
+        for processo in pedido.processos.all()
+        for etapa in processo.etapas.all()
+        if etapa.estado not in {"CONCLUIDA", "DISPENSADA", "CANCELADA"}
+    ]
+    etapa_atual = etapas[0] if etapas else None
+    artes_ativas = [arte for arte in pedido.artes.all() if arte.desvinculado_em is None]
+    pedido.responsavel_exibicao = (
+        etapa_atual.responsavel.nome
+        if etapa_atual and etapa_atual.responsavel
+        else pedido.designer or "Não atribuído"
+    )
+    pedido.bloqueio_exibicao = (
+        etapa_atual.motivo_bloqueio
+        if etapa_atual and etapa_atual.motivo_bloqueio
+        else ("Arte ainda não vinculada" if not artes_ativas else "")
+    )
+    pedido.total_artes_ativas = len(artes_ativas)
+    pedido.dias_uteis_ate_entrega = dias_uteis_restantes(pedido.data_entrega)
+    proximas_acoes = {
+        StatusPedido.AGUARDANDO_ARTE: "Adicionar ou localizar a arte necessária",
+        StatusPedido.ARTE_EM_PREPARO: "Concluir a preparação e registrar a evidência",
+        StatusPedido.AGUARDANDO_APROVACAO: "Registrar a aprovação antes de liberar",
+        StatusPedido.LIBERADO_PRODUCAO: "Iniciar a execução da etapa produtiva",
+        StatusPedido.EM_PRODUCAO: "Executar e concluir a etapa produtiva atual",
+        StatusPedido.PRONTO: "Confirmar a entrega e a situação financeira",
+    }
+    pedido.proxima_acao_exibicao = proximas_acoes.get(
+        pedido.status, "Revisar o estado operacional"
+    )
+    return pedido
+
+
 def preparacao_arte(request):
     aguardando_arte = (
-        Pedido.objects.filter(status=StatusPedido.AGUARDANDO_ARTE)
+        Pedido.objects.filter(status__in=STATUS_ASSISTENCIA)
         .select_related("cliente")
-        .prefetch_related("itens", "artes")
+        .prefetch_related("itens", "artes", "processos__etapas__responsavel")
         .order_by("data_entrega", "id")[:120]
     )
+    aguardando_arte = [_preparar_contexto_operacional(pedido) for pedido in aguardando_arte]
     return render(
         request,
         "catalogo/preparacao_arte.html",
         {
             "active": "preparacao_arte",
             "aguardando_arte": aguardando_arte,
-            "total_aguardando_arte": Pedido.objects.filter(
-                status=StatusPedido.AGUARDANDO_ARTE
-            ).count(),
+            "total_aguardando_arte": len(aguardando_arte),
         },
     )
 
@@ -340,6 +374,23 @@ def assistencia_envio(request):
     categorias_ids = request.GET.getlist("categorias")
     usuarios = request.GET.getlist("usuarios")
     grupos = pedidos_assistencia(busca, categorias_ids, usuarios)
+    for grupo in grupos:
+        limite = grupo["regra"].get("limite_dias_uteis")
+        itens = []
+        for pedido in grupo["pedidos"]:
+            pedido = _preparar_contexto_operacional(pedido)
+            dias = pedido.dias_uteis_ate_entrega
+            if grupo["regra"]["tipo"] == "mesmo_dia":
+                motivo = "Regra do mesmo dia desta categoria acionada."
+            elif limite is None:
+                motivo = f"Prazo em {dias} dia(s) útil(eis); categoria sem limite numérico."
+            else:
+                motivo = (
+                    f"Prazo em {dias} dia(s) útil(eis); a categoria entra em alerta "
+                    f"abaixo de {limite} dia(s) útil(eis)."
+                )
+            itens.append({"pedido": pedido, "motivo": motivo})
+        grupo["itens"] = itens
     return render(
         request,
         "catalogo/assistencia_envio.html",
@@ -673,6 +724,7 @@ def producao_home(request):
     grupos_map = defaultdict(list)
     sem_categoria = []
     for pedido in pedidos_lista:
+        _preparar_contexto_operacional(pedido)
         pedido.alerta_prazo = pedido_em_alerta(pedido)
         categorias_pedido = sorted(categorias_do_pedido(pedido), key=lambda item: (item.ordem, item.nome))
         if not categorias_pedido:

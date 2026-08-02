@@ -194,7 +194,7 @@ def pedidos_assistencia(busca="", categorias_ids=None, usuarios=None):
         )
         .exclude(status=StatusPedido.AGUARDANDO_ARTE)
         .select_related("cliente")
-        .prefetch_related(itens_prefetch, "artes")
+        .prefetch_related(itens_prefetch, "artes", "processos__etapas__responsavel")
         .order_by("data_entrega", "id")
     )
     busca = str(busca or "").strip()

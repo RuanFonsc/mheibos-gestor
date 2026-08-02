@@ -4,7 +4,7 @@
 {% block top_tabs %}
   <a href="{% url 'preparacao_arte' %}" class="top-tab active" aria-current="page"><i data-lucide="palette" class="h-4 w-4"></i> Preparação de arte</a>
   <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="printer" class="h-4 w-4"></i> Assistência de Impressão</a>
-  <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
+  <a href="{% url 'producao_home' %}" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
   <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
 {% endblock %}
 {% block content %}
@@ -13,14 +13,14 @@
     <div>
       <span class="kicker">Etapa operacional</span>
       <h2 class="section-title">Preparação de arte</h2>
-      <p class="text-sm text-[var(--text-secondary)]">Pedidos bloqueados antes da produção enquanto aguardam criação, recebimento ou aprovação da arte.</p>
+      <p class="text-sm text-[var(--text-secondary)]">Pedidos bloqueados antes da produção enquanto aguardam criação, recebimento, conclusão ou aprovação da arte.</p>
     </div>
     <a class="btn-secondary" href="{% url 'preparacao_arte' %}"><i data-lucide="refresh-cw" class="h-4 w-4"></i> Atualizar</a>
   </section>
 
   <section class="metric-grid">
     <div class="card metric-card">
-      <p>Aguardando arte</p>
+      <p>Na preparação de arte</p>
       <strong>{{ total_aguardando_arte }}</strong>
       <span>bloqueados antes da Produção</span>
     </div>
@@ -43,11 +43,23 @@
               <h3 class="order-card-title">{{ pedido.cliente.nome }}</h3>
               <p class="order-card-subtitle">{{ pedido.tema|default:"Sem tema" }}</p>
             </div>
-            <span class="status-pill is-work">Aguardando arte</span>
+            <span class="status-pill is-work">{{ pedido.get_status_display }}</span>
           </div>
+          <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <p><span class="text-[var(--text-secondary)]">Responsável atual:</span> <strong>{{ pedido.responsavel_exibicao }}</strong></p>
+            <p><span class="text-[var(--text-secondary)]">Evidências:</span> <strong>{{ pedido.total_artes_ativas }} arte(s) ativa(s)</strong></p>
+            <p><span class="text-[var(--text-secondary)]">Prazo:</span> <strong>{{ pedido.dias_uteis_ate_entrega }} dia(s) útil(eis)</strong></p>
+            <p><span class="text-[var(--text-secondary)]">Próxima ação:</span> <strong>{{ pedido.proxima_acao_exibicao }}</strong></p>
+          </div>
+          {% if pedido.bloqueio_exibicao %}
+            <p class="mt-3 rounded-lg border border-[#ffb347]/50 bg-[#ffb347]/10 p-3 text-sm text-[#ffd59a]"><strong>Bloqueio:</strong> {{ pedido.bloqueio_exibicao }}</p>
+          {% endif %}
           <div class="order-card-foot">
             <span>Entrega: {{ pedido.data_entrega|date:"d/m/Y"|default:"não informada" }}</span>
-            <a href="{% url 'pedido_edit' pedido.pk %}" class="btn-primary">Adicionar arte</a>
+            <div class="flex flex-wrap gap-2">
+              <a href="{% url 'pedido_detail' pedido.pk %}" class="btn-secondary">Abrir pedido</a>
+              <a href="{% url 'pedido_edit' pedido.pk %}" class="btn-primary">{% if pedido.total_artes_ativas %}Revisar artes{% else %}Adicionar arte{% endif %}</a>
+            </div>
           </div>
         </article>
       {% empty %}
