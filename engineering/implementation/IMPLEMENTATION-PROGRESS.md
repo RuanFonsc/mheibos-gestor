@@ -1,10 +1,10 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** Fase 8 — operação offline restrita e sincronização  
-**Ciclo atual:** IMP-008 — comandos offline e reconciliação segura  
-**Último ciclo concluído:** IMP-007A — Gateway opcional de IA e adaptador Gemini  
-**Data:** 01/08/2026
+**Fase atual:** consolidação das lacunas executáveis antes de IMP-010  
+**Ciclo atual:** revisão de IMP-008 e IMP-009  
+**Último ciclo concluído:** IMP-009L — transferência crítica de responsabilidade  
+**Data:** 02/08/2026
 
 ## Contrato do ciclo IMP-003
 
@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-008C.2b — inicializar no banco local somente a identidade protegida da Estação e habilitar login offline com política/permissão registrada.
+IMP-009M — materializar a criação provisória de Arte Oficial quando o compartilhamento estiver indisponível, preservando transferência posterior e decisão explícita sobre a cópia local.
 
 ## Histórico resumido
 
@@ -245,7 +245,8 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Preservação:** SQLite não é apagado nem reescrito; permanece como evidência local. A janela volta ao login da Central e a sessão online é restabelecida pelo canal normal.
 - **Eficiência do empacotado:** migrações automáticas agora executam somente na partida do servidor; comandos periódicos não repetem migrações. A preparação offline executa `migrate --noinput` explicitamente uma vez.
 - **Testes:** 10 testes de transporte/retorno aprovados, incluindo bloqueio com pendência, liberação após confirmação e isolamento do papel Central; sintaxe Python e Electron aprovada.
-- **Lacuna de validação:** `COMPLETED_WITH_GAPS` até smoke humano do instalador confirmar Central desligada, Pedido local, religamento, incorporação e retorno online.
+- **Smoke isolado real (02/08/2026):** duas bases SQLite independentes e uma Central HTTP temporária provaram bloqueio do retorno com fila pendente, incorporação real, liberação somente após confirmação e repetição idempotente `JA_INCORPORADO`; a Central terminou com um Pedido e uma incorporação. O executor reproduzível está em `tools/smoke_offline_two_instances.py` e as bases/evidência foram preservadas fora do repositório.
+- **Lacuna de validação remanescente:** `COMPLETED_WITH_GAPS` somente até smoke humano do instalador Windows empacotado confirmar cofre do sistema, comutação visual para `8766` e retorno visual à Central. Não há artefato `.exe` ou `.msi` no repositório atual; o comportamento Django/HTTP entre duas instâncias já foi validado.
 - **Estado de IMP-008:** `COMPLETED_WITH_GAPS`; nenhuma lacuna técnica impede avançar ao próximo item do backlog.
 
 ### IMP-009A — COMPLETED
