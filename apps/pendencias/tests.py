@@ -6,7 +6,7 @@ from apps.auditoria.models import EventoOperacional
 from apps.catalogo.models import OperadorGestor, PapelOperador
 from apps.clientes.models import Cliente
 from apps.operacao.models import EstadoProcesso, Processo
-from apps.pedidos.models import Pedido, StatusPedido
+from apps.pedidos.models import ArtePedido, Pedido, StatusPedido
 from apps.pedidos.use_cases import alterar_status_pedido
 
 from .models import EstadoPendencia, FormaEncerramentoPendencia, Pendencia
@@ -22,6 +22,12 @@ class PendenciaBloqueioProcessoTests(TestCase):
             cliente=cliente,
             usuario_cadastro=self.operador.nome,
             status=StatusPedido.AGUARDANDO_ARTE,
+        )
+        ArtePedido.objects.create(
+            pedido=self.pedido,
+            arquivo="pedidos/testes/arte-pendencia.png",
+            nome_original="arte-pendencia.png",
+            criado_por=self.operador,
         )
 
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")

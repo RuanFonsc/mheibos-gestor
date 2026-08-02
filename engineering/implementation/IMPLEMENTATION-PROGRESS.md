@@ -376,8 +376,16 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 ### IMP-006B — COMPLETED
 
 - **Convergência:** Mheibos Vendas deixa de ser uma superfície oficial; Gestor de Pedidos concentra a entrada comercial e Produção permanece uma visão especializada por função e Etapa.
-- **Fluxo operacional:** Produção, Expedição e Entrega aparecem como perspectivas contínuas do mesmo Pedido, com navegação e terminologia compartilhadas.
+- **Fluxo operacional:** Produção e Entrega aparecem como perspectivas contínuas do mesmo Pedido; a tela intermediária inicialmente rotulada como Expedição teve sua responsabilidade corrigida para Preparação de arte no IMP-006C.
 - **Projeção oficial:** Lista e Detalhe usam a mesma projeção de Processo/Etapa; o detalhe agora carrega explicitamente `projetar_pedido()` e possui teste de regressão.
 - **Funcionamento offline:** a fundação visual e as telas piloto permanecem utilizáveis quando bibliotecas visuais externas não carregam; IA não é requisito para qualquer ação operacional.
 - **Validação visual:** 20 combinações de quatro telas por cinco resoluções/escalas foram aprovadas sem overflow, incluindo 125%, estado vazio e conteúdo extremo.
 - **Rastreabilidade:** relatório completo em `engineering/implementation/IMP-006B-VISUAL-VALIDATION.md`.
+
+### IMP-006C — COMPLETED_WITH_GAPS
+
+- **Regra:** sem arte de referência ativa, o Pedido não avança para Produção ou estados posteriores.
+- **Assistência atual:** fila de Preparação de arte, contador, notificação periódica determinística e ação direta para anexar arte.
+- **Consistência:** rotas individual, em massa e de compatibilidade usam o mesmo caso de uso; o botão global “Abrir a Produção” foi removido.
+- **Testes e visual:** 38 testes direcionados e 10 combinações visuais aprovados.
+- **Lacuna:** Pendência formal, scheduler, cadência e escalonamento dependem da RFC-0012 completa; não bloqueiam a trava nem a fila atuais.

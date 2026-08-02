@@ -6,7 +6,7 @@ from django.test import TestCase
 from apps.auditoria.models import EventoOperacional
 from apps.catalogo.models import OperadorGestor, PapelOperador
 from apps.clientes.models import Cliente
-from apps.pedidos.models import Pedido, StatusPedido
+from apps.pedidos.models import ArtePedido, Pedido, StatusPedido
 from apps.pedidos.use_cases import alterar_status_pedido
 
 from .models import EstadoEtapa, EstadoProcesso, ModeloFluxo, Processo
@@ -24,6 +24,12 @@ class FluxoPilotoProducaoTests(TestCase):
             cliente=cliente,
             usuario_cadastro=self.operador.nome,
             status=StatusPedido.AGUARDANDO_ARTE,
+        )
+        ArtePedido.objects.create(
+            pedido=self.pedido,
+            arquivo="pedidos/testes/arte-operacao.png",
+            nome_original="arte-operacao.png",
+            criado_por=self.operador,
         )
         session = self.client.session
         session["operador_id"] = self.operador.pk
@@ -198,6 +204,12 @@ class ProjecaoOperacionalIntegradaTests(TestCase):
             usuario_cadastro=self.operador.nome,
             origem="VENDAS",
             status=StatusPedido.AGUARDANDO_ARTE,
+        )
+        ArtePedido.objects.create(
+            pedido=self.pedido,
+            arquivo="pedidos/testes/arte-projecao.png",
+            nome_original="arte-projecao.png",
+            criado_por=self.operador,
         )
         session = self.client.session
         session["operador_id"] = self.operador.pk

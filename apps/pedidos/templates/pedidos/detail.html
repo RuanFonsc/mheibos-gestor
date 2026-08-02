@@ -5,7 +5,7 @@
 {% block top_tabs %}
   <a href="{% url 'pedido_detail' pedido.pk %}" class="top-tab active" aria-current="page"><i data-lucide="receipt-text" class="h-4 w-4"></i> Pedido</a>
   <a href="{% url 'producao_home' %}" class="top-tab"><i data-lucide="factory" class="h-4 w-4"></i> Produção</a>
-  <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="send" class="h-4 w-4"></i> Expedição</a>
+  <a href="{% url 'assistencia_envio' %}" class="top-tab"><i data-lucide="palette" class="h-4 w-4"></i> Preparação de arte</a>
   <a href="{% url 'entrega_list' %}" class="top-tab"><i data-lucide="package-check" class="h-4 w-4"></i> Entrega</a>
 {% endblock %}
 {% block content %}

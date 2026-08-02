@@ -8,7 +8,7 @@ Estado: COMPLETED
 
 - Gestor de Pedidos como entrada comercial única, sem navegação para Mheibos Vendas.
 - Produção como visão especializada, acessível pelo papel/função e pela etapa do Pedido.
-- Expedição e Entrega como etapas visíveis do mesmo Fluxo do Pedido.
+- A tela então chamada Expedição e a Entrega como partes visíveis do Fluxo do Pedido. A responsabilidade real da primeira foi corrigida para Preparação de arte no IMP-006C.
 - Detalhe do Pedido expondo a projeção oficial de Processo e Etapa.
 - Operação integral sem IA; assistência cognitiva permanece opcional e não bloqueante.
 
@@ -24,7 +24,7 @@ Os dados foram criados apenas na cópia isolada `C:\Users\Ruan\Documents\Mheibos
 
 ## Matriz visual
 
-Lista, Detalhe, Expedição e Entrega foram verificadas em 1366 × 768, 1440 × 900, 1536 × 864 e 1920 × 1080 a 100%, além de 1366 × 768 a 125% (viewport CSS 1093 × 614 e fator 1,25).
+Lista, Detalhe, a tela então chamada Expedição e Entrega foram verificadas em 1366 × 768, 1440 × 900, 1536 × 864 e 1920 × 1080 a 100%, além de 1366 × 768 a 125% (viewport CSS 1093 × 614 e fator 1,25). A errata semântica está registrada no IMP-006C.
 
 Resultado final: 20 de 20 combinações sem overflow detectado. A evidência local está em `C:\Users\Ruan\Documents\Mheibos Gestor\visual-evidence\IMP-006B\final-*`; a correção específica de 125% está em `final-list-125-fix`.
 

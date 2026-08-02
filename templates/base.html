@@ -528,7 +528,7 @@
         <div class="side-nav-group" aria-label="Fluxo operacional do pedido">
           <span class="side-nav-label">Fluxo do pedido</span>
           <a href="{% url 'assistencia_envio' %}" class="side-link {% if active == 'assistencia' %}active{% endif %}">
-            <i data-lucide="send" class="h-5 w-5"></i> Expedição
+            <i data-lucide="palette" class="h-5 w-5"></i> Preparação de arte
           </a>
           <a href="{% url 'entrega_list' %}" class="side-link {% if active == 'entrega' %}active{% endif %}">
             <i data-lucide="package-check" class="h-5 w-5"></i> Entregas
@@ -574,12 +574,7 @@
           <h1>{% block page_title %}Gestor de Pedidos{% endblock %}</h1>
         </div>
         <div class="top-meta">
-          {% if not modo_producao %}
-            <a class="topbar-action" href="{% url 'producao_home' %}" title="Abrir a Produção">
-              <i data-lucide="factory" class="h-5 w-5"></i>
-              <span>Abrir a Produção</span>
-            </a>
-          {% elif operador_atual.is_admin_geral %}
+          {% if modo_producao and operador_atual.is_admin_geral %}
             <a class="topbar-action" href="{% url 'pedido_create' %}" title="Abrir o Mheibos Gestor">
               <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
               <span>Abrir Gestor</span>
@@ -617,7 +612,7 @@
     <div id="notifAssistencia" class="notif-assistencia hidden" aria-hidden="true">
       <div>
         <p id="notifAssistenciaTexto"></p>
-        <a id="notifAssistenciaLink" href="{% url 'assistencia_envio' %}">Abrir assistência de envio</a>
+        <a id="notifAssistenciaLink" href="{% url 'assistencia_envio' %}">Abrir preparação de arte</a>
       </div>
       <button type="button" id="notifAssistenciaClose" class="notif-assistencia-close" title="Fechar notificação">×</button>
     </div>

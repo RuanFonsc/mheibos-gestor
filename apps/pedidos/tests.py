@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase
+from django.utils import timezone
 
 from apps.catalogo.models import OperadorGestor, PapelOperador
 from apps.auditoria.models import EventoOperacional
@@ -19,8 +20,13 @@ from .models import (
     StatusPedido,
     arte_upload_to,
 )
-from .models import HistoricoStatusPedido, Pedido
-from .use_cases import AlteracaoStatusNegada, EntregaComSaldoNegada, alterar_status_pedido
+from .models import ArtePedido, HistoricoStatusPedido, Pedido
+from .use_cases import (
+    AlteracaoStatusNegada,
+    ArteNecessariaParaProducao,
+    EntregaComSaldoNegada,
+    alterar_status_pedido,
+)
 
 
 class PedidoDomainBaselineTests(SimpleTestCase):
@@ -73,6 +79,28 @@ class AlterarStatusPedidoTests(TestCase):
             cliente=self.cliente,
             usuario_cadastro=self.operador.nome,
         )
+        ArtePedido.objects.create(
+            pedido=self.pedido,
+            arquivo="pedidos/testes/arte.png",
+            nome_original="arte.png",
+            criado_por=self.operador,
+        )
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_order_without_art_cannot_advance_to_production(self, sync_financeiro):
+        self.pedido.artes.update(desvinculado_em=timezone.now())
+
+        with self.assertRaises(ArteNecessariaParaProducao):
+            alterar_status_pedido(
+                pedido=self.pedido,
+                novo_status=StatusPedido.EM_PRODUCAO,
+                operador=self.operador,
+            )
+
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.status, StatusPedido.AGUARDANDO_ARTE)
+        self.assertFalse(HistoricoStatusPedido.objects.exists())
+        sync_financeiro.assert_not_called()
 
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
     def test_authorized_transition_updates_order_and_records_actor(self, sync_financeiro):
@@ -213,11 +241,18 @@ class FluxosStatusPedidoIntegrationTests(TestCase):
         session.save()
 
     def novo_pedido(self, status=StatusPedido.AGUARDANDO_ARTE):
-        return Pedido.objects.create(
+        pedido = Pedido.objects.create(
             cliente=self.cliente,
             usuario_cadastro=self.operador.nome,
             status=status,
         )
+        ArtePedido.objects.create(
+            pedido=pedido,
+            arquivo=f"pedidos/testes/arte-{pedido.pk}.png",
+            nome_original="arte.png",
+            criado_por=self.operador,
+        )
+        return pedido
 
     def test_detail_exposes_same_operational_projection_as_order_list(self):
         from apps.operacao.services import iniciar_producao_pedido
@@ -233,6 +268,38 @@ class FluxosStatusPedidoIntegrationTests(TestCase):
             response.context["pedido"].projecao.fonte_operacional,
             "PRODUCAO_PEDIDO v1",
         )
+
+    @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
+    def test_status_route_keeps_order_without_art_in_preparation(self, _sync_financeiro):
+        pedido = Pedido.objects.create(
+            cliente=self.cliente,
+            usuario_cadastro=self.operador.nome,
+            status=StatusPedido.AGUARDANDO_ARTE,
+        )
+
+        response = self.client.post(
+            f"/pedidos/{pedido.pk}/status/",
+            {"status": StatusPedido.EM_PRODUCAO},
+        )
+
+        pedido.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(pedido.status, StatusPedido.AGUARDANDO_ARTE)
+        self.assertFalse(HistoricoStatusPedido.objects.filter(pedido=pedido).exists())
+
+    def test_art_preparation_queue_includes_order_without_category(self):
+        pedido = Pedido.objects.create(
+            cliente=self.cliente,
+            usuario_cadastro=self.operador.nome,
+            status=StatusPedido.AGUARDANDO_ARTE,
+            tema="Pedido sem categoria",
+        )
+
+        response = self.client.get("/assistencia-envio/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Preparação de arte")
+        self.assertContains(response, pedido.tema)
 
     @patch("apps.pedidos.use_cases.sincronizar_financeiro_pedido")
     def test_individual_status_route_uses_audited_use_case(self, _sync_financeiro):

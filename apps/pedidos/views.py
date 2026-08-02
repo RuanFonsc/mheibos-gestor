@@ -57,6 +57,7 @@ from apps.pedidos.models import (
 )
 from apps.pedidos.use_cases import (
     AlteracaoStatusNegada,
+    ArteNecessariaParaProducao,
     EntregaComSaldoNegada,
     alterar_status_pedido,
 )
@@ -288,6 +289,12 @@ def pedido_edit(request, pk):
             except TemaPedidoImutavel as exc:
                 messages.error(request, str(exc))
                 return redirect("pedido_edit", pk=pedido.pk)
+            except ArteNecessariaParaProducao:
+                messages.error(
+                    request,
+                    "Adicione uma arte de referencia antes de enviar o pedido para as proximas etapas.",
+                )
+                return redirect("pedido_edit", pk=pedido.pk)
             except (EntregaComSaldoNegada, ProcessoEncerrado):
                 messages.error(
                     request,
@@ -337,6 +344,14 @@ def pedido_update_status(request, pk):
                 operador=operador,
                 origem_operacional=origem_producao,
             )
+        except ArteNecessariaParaProducao:
+            messages.error(
+                request,
+                "Pedido mantido em Aguardando arte. Adicione uma arte de referencia para continuar.",
+            )
+            if retorno:
+                return redirect(retorno)
+            return redirect("pedido_detail", pk=pedido.pk)
         except (AlteracaoStatusNegada, EntregaComSaldoNegada, ProcessoEncerrado):
             messages.error(request, "Seu perfil não tem permissão para alterar este pedido.")
             if retorno:
@@ -412,6 +427,9 @@ def pedido_bulk_action(request):
                 operador=operador,
                 origem_operacional=origem_operacional,
             )
+        except ArteNecessariaParaProducao:
+            bloqueados += 1
+            continue
         except (AlteracaoStatusNegada, EntregaComSaldoNegada, ProcessoEncerrado):
             bloqueados += 1
             continue
@@ -420,7 +438,10 @@ def pedido_bulk_action(request):
     if atualizados:
         messages.success(request, f"{atualizados} pedido(s) atualizado(s).")
     if bloqueados:
-        messages.warning(request, f"{bloqueados} pedido(s) ignorado(s) por permissao.")
+        messages.warning(
+            request,
+            f"{bloqueados} pedido(s) permaneceram na etapa atual por permissao, saldo, processo encerrado ou ausencia de arte.",
+        )
     if not atualizados and not bloqueados:
         messages.info(request, "Nenhum pedido precisou ser alterado.")
     return redirect(retorno or "pedido_list")
@@ -628,6 +649,12 @@ def pedido_create(request):
                             estacao_id=estacao_id,
                             versao_politica=settings.MHEIBOS_POLICY_VERSION,
                         )
+            except ArteNecessariaParaProducao:
+                form.add_error(
+                    "marcar_pronto",
+                    "Adicione uma arte de referencia antes de marcar o pedido como pronto.",
+                )
+                messages.error(request, "O pedido sem arte deve permanecer em preparacao.")
             except SincronizacaoInvalida as exc:
                 messages.error(request, str(exc))
             else:
@@ -683,6 +710,8 @@ def pedido_create(request):
 @transaction.atomic
 def _criar_pedido(form, arquivos, operador, *, origem_offline=False):
     dados = form.cleaned_data
+    if dados["marcar_pronto"] and not arquivos:
+        raise ArteNecessariaParaProducao
     caminho_oficial = (dados.get("caminho_arquivo_corel") or "").strip()
     if origem_offline and caminho_oficial:
         raise SincronizacaoInvalida(

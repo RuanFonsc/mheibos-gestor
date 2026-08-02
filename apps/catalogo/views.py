@@ -48,6 +48,11 @@ from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_pa
 from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
 from apps.pedidos.models import Pedido, PedidoItem, PrioridadePedido, StatusPedido
 from apps.operacao.projections import projetar_lista, queryset_com_projecao, queryset_fila_producao
+from apps.pedidos.use_cases import (
+    AlteracaoStatusNegada,
+    ArteNecessariaParaProducao,
+    alterar_status_pedido,
+)
 
 
 def _destino_seguro(request, padrao):
@@ -315,12 +320,22 @@ def assistencia_envio(request):
     categorias_ids = request.GET.getlist("categorias")
     usuarios = request.GET.getlist("usuarios")
     grupos = pedidos_assistencia(busca, categorias_ids, usuarios)
+    aguardando_arte = (
+        Pedido.objects.filter(status=StatusPedido.AGUARDANDO_ARTE)
+        .select_related("cliente")
+        .prefetch_related("itens", "artes")
+        .order_by("data_entrega", "id")[:120]
+    )
     return render(
         request,
         "catalogo/assistencia_envio.html",
         {
             "active": "assistencia",
             "grupos": grupos,
+            "aguardando_arte": aguardando_arte,
+            "total_aguardando_arte": Pedido.objects.filter(
+                status=StatusPedido.AGUARDANDO_ARTE
+            ).count(),
             "busca": busca,
             "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
             "categorias_selecionadas": [str(item) for item in categorias_ids],
@@ -334,9 +349,22 @@ def assistencia_envio(request):
 
 def assistencia_marcar_enviado(request, pk):
     pedido = get_object_or_404(Pedido, pk=pk)
-    pedido.status = StatusPedido.EM_PRODUCAO
-    pedido.save(update_fields=["status", "atualizado_em"])
-    messages.success(request, f"Pedido #{pedido.pk} enviado para producao.")
+    operador = operador_atual(request)
+    try:
+        alterar_status_pedido(
+            pedido=pedido,
+            novo_status=StatusPedido.EM_PRODUCAO,
+            operador=operador,
+        )
+    except ArteNecessariaParaProducao:
+        messages.error(
+            request,
+            f"Pedido #{pedido.pk} continua aguardando arte. Adicione a referencia antes de prosseguir.",
+        )
+    except AlteracaoStatusNegada:
+        messages.error(request, "Seu perfil nao pode alterar este Pedido.")
+    else:
+        messages.success(request, f"Pedido #{pedido.pk} enviado para producao.")
     return redirect("assistencia_envio")
 
 

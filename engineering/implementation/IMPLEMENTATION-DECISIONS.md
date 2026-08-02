@@ -299,3 +299,11 @@
 - **Tela-piloto:** usar inicialmente o detalhe do Pedido por concentrar navegação, projeção, estados, Processo/Etapa, entrega, conteúdo longo e intervenção contextual.
 - **Compatibilidade:** rotas e marcadores legados podem existir somente durante migração explícita, com responsável e plano de remoção; não justificam uma segunda experiência permanente.
 - **Situação:** definitiva para a direção de produto; execução registrada como IMP-006B e condicionada aos gates visuais e à aprovação humana da tela-piloto antes da migração em massa.
+
+## DEC-IMP-031 — Arte bloqueia deterministicamente o avanço à Produção
+
+- **Decisão:** Pedido sem arte de referência ativa permanece em `AGUARDANDO_ARTE` e não entra em Produção nem em estados posteriores.
+- **Motivo:** decisão humana de 02/08/2026; a proteção não pode depender de memória do usuário, aparência da tela ou disponibilidade de IA.
+- **Aplicação:** caso de uso único de transição, criação direta como pronto, ações individuais, em massa e rota de compatibilidade da antiga Assistência.
+- **Interface:** “Assistência de envio” passa a ser apresentada conforme sua responsabilidade real: “Preparação de arte”. O nome técnico da rota permanece temporariamente para compatibilidade.
+- **Lacuna isolada:** Pendência formal de pré-produção, scheduler, cadência e escalonamento aguardam a versão normativa completa da RFC-0012 e a modelagem da Etapa de arte; a fila e a trava determinísticas continuam funcionando.

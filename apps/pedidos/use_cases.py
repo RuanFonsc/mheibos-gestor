@@ -33,6 +33,10 @@ class EntregaComSaldoNegada(Exception):
     """Entrega com saldo exige autorizacao superior explicita."""
 
 
+class ArteNecessariaParaProducao(Exception):
+    """O Pedido nao pode avancar para execucao sem arte de referencia ativa."""
+
+
 @dataclass(frozen=True)
 class ResultadoAlteracaoStatus:
     alterado: bool
@@ -66,6 +70,15 @@ def alterar_status_pedido(
 
     if novo_status == StatusPedido.ENTREGUE and pedido.saldo_aberto > 0:
         raise EntregaComSaldoNegada
+
+    estados_que_exigem_arte = {
+        StatusPedido.LIBERADO_PRODUCAO,
+        StatusPedido.EM_PRODUCAO,
+        StatusPedido.PRONTO,
+        StatusPedido.ENTREGUE,
+    }
+    if novo_status in estados_que_exigem_arte and not pedido.artes_ativas.exists():
+        raise ArteNecessariaParaProducao
 
     comercial_anterior = pedido.estado_comercial
     entrega_anterior = pedido.estado_entrega

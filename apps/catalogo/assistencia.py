@@ -192,6 +192,7 @@ def pedidos_assistencia(busca="", categorias_ids=None, usuarios=None):
         Pedido.objects.filter(
             status__in=STATUS_ASSISTENCIA,
         )
+        .exclude(status=StatusPedido.AGUARDANDO_ARTE)
         .select_related("cliente")
         .prefetch_related(itens_prefetch, "artes")
         .order_by("data_entrega", "id")

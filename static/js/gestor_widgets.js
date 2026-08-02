@@ -144,7 +144,7 @@
       return;
     }
     const partes = resumo.por_categoria.map((item) => `${item.nome}: ${item.count}`);
-    const texto = `${resumo.total} pedido(s) na assistência de envio${partes.length ? ` (${partes.join(" · ")})` : ""}`;
+    const texto = `${resumo.total} pedido(s) exigem preparação de arte${partes.length ? ` (${partes.join(" · ")})` : ""}`;
     toastText.textContent = texto;
     toastLink.href = resumo.url || "/assistencia-envio/";
     toast?.classList.toggle("is-alert", Boolean(resumo.alerta));
@@ -153,7 +153,7 @@
     if (window.mheibosDesktop?.notificar && assinatura !== ultimaNotificacaoAssistencia) {
       ultimaNotificacaoAssistencia = assinatura;
       window.mheibosDesktop.notificar({
-        title: "Assistência de envio",
+        title: "Preparação de arte",
         body: texto,
         url: resumo.url || "/assistencia-envio/",
       }).catch(() => {});

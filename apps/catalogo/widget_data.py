@@ -1,6 +1,7 @@
 from difflib import SequenceMatcher
 
 from apps.catalogo.assistencia import normalizar, pedidos_assistencia, regra_categoria
+from apps.pedidos.models import Pedido, StatusPedido
 
 MAX_ITENS_WIDGET = 9
 
@@ -135,8 +136,18 @@ def resumo_assistencia_envio(categorias_ids=None):
         ids = _expandir_categorias_equivalentes(grupos_raw, categorias_ids)
         grupos_raw = [grupo for grupo in grupos_raw if grupo["categoria"].id in ids]
 
+    aguardando_arte = Pedido.objects.filter(status=StatusPedido.AGUARDANDO_ARTE).count()
     por_categoria = []
-    total = 0
+    total = aguardando_arte
+    if aguardando_arte:
+        por_categoria.append(
+            {
+                "id": "aguardando-arte",
+                "nome": "Aguardando arte",
+                "tipo": "pre_producao",
+                "count": aguardando_arte,
+            }
+        )
     for grupo in grupos_raw:
         quantidade = len(grupo["pedidos"])
         if not quantidade:

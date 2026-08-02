@@ -204,7 +204,7 @@ class Pedido(models.Model):
         from django.utils import timezone
 
         if self.status not in STATUS_ASSISTENCIA:
-            return {"na_assistencia": False, "mensagem": "Fora da assistência de envio"}
+            return {"na_assistencia": False, "mensagem": "Sem intervenção de arte pendente"}
         
         agora = timezone.localtime()
         categorias = categorias_do_pedido(self)
@@ -218,7 +218,7 @@ class Pedido(models.Model):
         if na_assistencia:
             if self.status == StatusPedido.AGUARDANDO_ARTE:
                 return {"na_assistencia": True, "mensagem": "Aguardando arte para seguir para produção"}
-            return {"na_assistencia": True, "mensagem": "Está na assistência de envio"}
+            return {"na_assistencia": True, "mensagem": "Requer acompanhamento na preparação de arte"}
             
         # Se não está, calcula quanto tempo falta (menor limite entre as categorias)
         prazos = []
