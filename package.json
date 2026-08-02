@@ -7,7 +7,7 @@
   "scripts": {
     "electron:gestor": "electron . --gestor",
     "electron:producao": "electron . --producao",
-    "test:electron-secure": "node electron/secure_config.test.js",
+    "test:electron-secure": "node electron/secure_config.test.js && node electron/offline_runtime.test.js",
     "build:backend": "powershell -ExecutionPolicy Bypass -File tools/build_backend.ps1",
     "dist:suite": "electron-builder --config electron-builder.suite.yml",
     "dist:all": "powershell -ExecutionPolicy Bypass -File tools/build_suite.ps1",

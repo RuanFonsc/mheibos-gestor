@@ -146,3 +146,11 @@
 - **Proteção:** Estação, papel e permissões são validados; a presença de outra identidade interrompe a transação sem alterar o banco.
 - **Alternativas rejeitadas:** transportar hash da Central; passar senha na linha de comando; substituir ou desativar operadores preexistentes; criar catálogo local de várias identidades.
 - **Situação:** definitiva para o bootstrap; orquestração pelo Electron pertence à fatia seguinte.
+
+## DEC-IMP-015 — Fallback local em porta e papel dedicados
+
+- **Decisão:** quando a Central estiver indisponível na abertura, o Cliente prepara um SQLite exclusivo e inicia o mesmo backend no papel `client_offline`, em porta local distinta da instalação Central.
+- **Motivo:** reaproveita contratos e autenticação determinísticos sem transformar tabela central em cache, e evita confundir um serviço local preexistente com o fallback.
+- **Segurança:** somente a identidade anteriormente confirmada e cifrada para a mesma Estação pode ser materializada; falhas interrompem a abertura sem criar credenciais padrão.
+- **Alternativas rejeitadas:** operar diretamente no banco central; usar a mesma porta do servidor local; liberar o primeiro administrador no cliente; guardar senha em parâmetro ou ambiente.
+- **Situação:** definitiva para a partida offline; retorno e sincronização permanecem responsabilidade de IMP-008D.

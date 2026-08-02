@@ -200,3 +200,15 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Credencial local:** a senha é transformada pelo hasher oficial antes da persistência; texto legível permanece apenas na memória necessária ao bootstrap.
 - **Testes:** 5 testes específicos e 72 no conjunto completo aprovados; Django check e verificação de migrações sem alterações aprovados.
 - **Fora desta fatia:** executar migrações/bootstrap no ciclo do Electron, iniciar o backend SQLite e comutar a janela para ele pertencem à próxima fatia.
+
+### IMP-008C.3 — COMPLETED_WITH_GAPS
+
+- **Capacidade:** no início do Cliente Electron, indisponibilidade da Central aciona preparação do SQLite, bootstrap da identidade validada, backend `client_offline` e abertura do login local.
+- **Separação:** a URL da Central permanece o destino online; o backend offline usa `127.0.0.1:8766` por padrão e banco `mheibos_offline`, sem compartilhar persistência com a Central.
+- **Empacotado e desenvolvimento:** o executável empacotado executa sua migração interna; em desenvolvimento, o Electron executa `migrate --noinput` antes do bootstrap.
+- **Segredo:** o snapshot é decriptado somente em memória e enviado ao comando pela entrada padrão; o processo de bootstrap ignora saída e nunca recebe senha em argumentos ou ambiente.
+- **Falha segura:** sem identidade válida da própria Estação, ou se migração/bootstrap falhar, o Cliente não cria operador improvisado e informa que o modo offline ainda não está disponível.
+- **Limite:** a captura de login só atualiza o cache quando a janela está efetivamente conectada à Central; autenticação local não tenta revalidar ou sobrescrever o snapshot central.
+- **Testes:** helper Node valida configuração e vínculo da Estação; sintaxe do processo principal e preload aprovada; cofre aprovado; 72 testes Django, check e migrações aprovados.
+- **Lacuna de validação:** `COMPLETED_WITH_GAPS` até smoke humano do instalador Windows confirmar queda real, abertura em `8766` e login local.
+- **Fora desta fatia:** detectar retorno da Central, enviar a fila, persistir confirmações e comutar de volta pertencem a IMP-008D.

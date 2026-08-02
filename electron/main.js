@@ -5,6 +5,7 @@ const http = require("http");
 const path = require("path");
 const { fileURLToPath } = require("url");
 const { decryptSecret, protectConfigSecrets } = require("./secure_config");
+const { offlineRuntimeConfig, readOfflineIdentity } = require("./offline_runtime");
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.MHEIBOS_PORT || 8765);
@@ -25,8 +26,11 @@ function readClientConfig() {
 }
 const CLIENT_CONFIG = readClientConfig();
 const REMOTE_BASE_URL = process.env.MHEIBOS_BASE_URL || CLIENT_CONFIG.serverUrl || "";
-const BASE_URL = (REMOTE_BASE_URL || `http://${HOST}:${PORT}`).replace(/\/$/, "");
 const REMOTE_CLIENT = Boolean(REMOTE_BASE_URL);
+const REMOTE_URL = REMOTE_BASE_URL.replace(/\/$/, "");
+const LOCAL_PORT = REMOTE_CLIENT ? Number(process.env.MHEIBOS_OFFLINE_PORT || 8766) : PORT;
+const LOCAL_BASE_URL = `http://${HOST}:${LOCAL_PORT}`;
+let activeBaseUrl = REMOTE_URL || LOCAL_BASE_URL;
 let djangoProcess = null;
 let mainWindow = null;
 let offlineIdentityCandidate = null;
@@ -112,6 +116,7 @@ function envFromConfig(config) {
   }
   env.MHEIBOS_STATION_ID = config?.stationId || "";
   env.MHEIBOS_STATION_SECRET = decryptSecret(config?.stationSecretEncrypted, safeStorage);
+  env.MHEIBOS_RUNTIME_ROLE = config?.runtimeRole || "central";
   return env;
 }
 
@@ -126,7 +131,7 @@ function installStationHeaders(config) {
   const credentials = stationCredentials(config);
   if (!REMOTE_CLIENT || !credentials.id || !credentials.secret) return;
   session.defaultSession.webRequest.onBeforeSendHeaders(
-    { urls: [`${BASE_URL}/*`] },
+    { urls: [`${REMOTE_URL}/*`] },
     (details, callback) => {
       details.requestHeaders["X-Mheibos-Station-ID"] = credentials.id;
       details.requestHeaders["X-Mheibos-Station-Secret"] = credentials.secret;
@@ -136,7 +141,7 @@ function installStationHeaders(config) {
 }
 
 async function cacheValidatedOfflineIdentity(win, config) {
-  if (!REMOTE_CLIENT || !offlineIdentityCandidate) return;
+  if (!REMOTE_CLIENT || activeBaseUrl !== REMOTE_URL || !offlineIdentityCandidate) return;
   try {
     const snapshot = await win.webContents.executeJavaScript(
       `fetch('/sincronizacao/identidade-atual/', {credentials: 'same-origin'})` +
@@ -159,9 +164,9 @@ async function cacheValidatedOfflineIdentity(win, config) {
   }
 }
 
-function serverOnline() {
+function serverOnline(baseUrl = activeBaseUrl) {
   return new Promise((resolve) => {
-    const req = http.get(`${BASE_URL}/login/`, (res) => {
+    const req = http.get(`${baseUrl}/login/`, (res) => {
       res.resume();
       resolve(res.statusCode >= 200 && res.statusCode < 500);
     });
@@ -173,10 +178,10 @@ function serverOnline() {
   });
 }
 
-async function waitForServer(timeoutMs = 35000) {
+async function waitForServer(baseUrl = activeBaseUrl, timeoutMs = 35000) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
-    if (await serverOnline()) return true;
+    if (await serverOnline(baseUrl)) return true;
     await new Promise((resolve) => setTimeout(resolve, 450));
   }
   return false;
@@ -242,34 +247,51 @@ async function ensureConfig() {
   return await openSetupWindow();
 }
 
-async function ensureDjango(config) {
-  if (await serverOnline()) return true;
-  if (REMOTE_CLIENT) {
-    dialog.showErrorBox("Mheibos", `Nao foi possivel acessar ${BASE_URL}. Verifique se o servidor esta aberto.`);
-    return false;
-  }
-
+function backendInvocation(args) {
   const packagedBackend = backendExePath();
-  let command;
-  let args;
-  let cwd;
   if (packagedBackend) {
-    command = packagedBackend;
-    args = ["runserver", `${HOST}:${PORT}`, "--noreload"];
-    cwd = path.dirname(packagedBackend);
-  } else {
-    if (!fs.existsSync(path.join(DEV_PROJECT_ROOT, "manage.py"))) {
-      dialog.showErrorBox("Mheibos", "Nao encontrei o backend do Mheibos Gestor.");
-      return false;
-    }
-    const py = pythonCommand();
-    command = py.command;
-    args = [...py.argsPrefix, "manage.py", "runserver", `${HOST}:${PORT}`, "--noreload"];
-    cwd = DEV_PROJECT_ROOT;
+    return { command: packagedBackend, args, cwd: path.dirname(packagedBackend), packaged: true };
   }
+  if (!fs.existsSync(path.join(DEV_PROJECT_ROOT, "manage.py"))) return null;
+  const py = pythonCommand();
+  return { command: py.command, args: [...py.argsPrefix, "manage.py", ...args], cwd: DEV_PROJECT_ROOT, packaged: false };
+}
 
-  djangoProcess = spawn(command, args, {
-    cwd,
+function runBackendCommand(config, args, stdinPayload = "") {
+  return new Promise((resolve) => {
+    const invocation = backendInvocation(args);
+    if (!invocation) return resolve(false);
+    const child = spawn(invocation.command, invocation.args, {
+      cwd: invocation.cwd,
+      windowsHide: true,
+      env: envFromConfig(config),
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+    child.on("error", () => resolve(false));
+    child.on("exit", (code) => resolve(code === 0));
+    child.stdin.on("error", () => resolve(false));
+    child.stdin.end(stdinPayload);
+  });
+}
+
+async function prepareOfflineBackend(config) {
+  const identity = readOfflineIdentity(config, safeStorage);
+  if (!identity) return null;
+  const offlineConfig = offlineRuntimeConfig(config);
+  const invocation = backendInvocation([]);
+  if (!invocation) return null;
+  if (!invocation.packaged && !(await runBackendCommand(offlineConfig, ["migrate", "--noinput"]))) return null;
+  if (!(await runBackendCommand(offlineConfig, ["bootstrap_identidade_offline"], JSON.stringify(identity)))) return null;
+  return offlineConfig;
+}
+
+async function startLocalDjango(config) {
+  if (await serverOnline(LOCAL_BASE_URL)) return true;
+  const invocation = backendInvocation(["runserver", `${HOST}:${LOCAL_PORT}`, "--noreload"]);
+  if (!invocation) return false;
+
+  djangoProcess = spawn(invocation.command, invocation.args, {
+    cwd: invocation.cwd,
     windowsHide: true,
     env: envFromConfig(config),
   });
@@ -277,7 +299,7 @@ async function ensureDjango(config) {
     djangoProcess = null;
   });
 
-  const ok = await waitForServer();
+  const ok = await waitForServer(LOCAL_BASE_URL);
   if (!ok) {
     dialog.showErrorBox(
       "Mheibos",
@@ -285,6 +307,24 @@ async function ensureDjango(config) {
     );
   }
   return ok;
+}
+
+async function ensureDjango(config) {
+  if (REMOTE_CLIENT && await serverOnline(REMOTE_URL)) {
+    activeBaseUrl = REMOTE_URL;
+    return { ok: true, config };
+  }
+  if (REMOTE_CLIENT) {
+    const offlineConfig = await prepareOfflineBackend(config);
+    if (!offlineConfig) {
+      dialog.showErrorBox("Mheibos", "A Central esta indisponivel e ainda nao existe uma identidade offline valida nesta Estacao.");
+      return { ok: false, config };
+    }
+    activeBaseUrl = LOCAL_BASE_URL;
+    return { ok: await startLocalDjango(offlineConfig), config: offlineConfig };
+  }
+  activeBaseUrl = LOCAL_BASE_URL;
+  return { ok: await startLocalDjango(config), config };
 }
 
 function abrirCaminhoLocal(url) {
@@ -356,7 +396,11 @@ function createWindow(config) {
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (event, url) => {
-    if (url.startsWith(BASE_URL)) return;
+    try {
+      if (new URL(url).origin === new URL(activeBaseUrl).origin) return;
+    } catch {
+      // URL invalida segue bloqueada como navegacao externa.
+    }
     if (url.startsWith("file://")) abrirCaminhoLocal(url);
     else shell.openExternal(url);
     event.preventDefault();
@@ -366,7 +410,7 @@ function createWindow(config) {
       win.reload();
     }
   });
-  win.loadURL(`${BASE_URL}${destinoInicial()}`);
+  win.loadURL(`${activeBaseUrl}${destinoInicial()}`);
   win.webContents.on("did-finish-load", () => cacheValidatedOfflineIdentity(win, config));
 }
 
@@ -406,7 +450,7 @@ app.whenReady().then(async () => {
       if (mainWindow) {
         mainWindow.show();
         mainWindow.focus();
-        if (targetUrl.startsWith("/")) mainWindow.loadURL(`${BASE_URL}${targetUrl}`);
+        if (targetUrl.startsWith("/")) mainWindow.loadURL(`${activeBaseUrl}${targetUrl}`);
       }
     });
     notification.show();
@@ -424,10 +468,11 @@ app.whenReady().then(async () => {
     return;
   }
   installStationHeaders(config);
-  if (!(await ensureDjango(config))) return;
-  createWindow(config);
+  const runtime = await ensureDjango(config);
+  if (!runtime.ok) return;
+  createWindow(runtime.config);
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow(config);
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(runtime.config);
   });
 });
 
