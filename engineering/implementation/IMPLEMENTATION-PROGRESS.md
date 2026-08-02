@@ -326,3 +326,13 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Cancelamento:** cancelar o Pedido foi validado separadamente e não altera estado, caminho ou nome do arquivo oficial.
 - **Testes:** 5 cenários novos cobrem preservação física real, identidade/metadados, autorização, idempotência, rollback, confirmação/interface e cancelamento; baseline completo aprovado com 118 testes.
 - **Fora desta fatia:** arquivamento em lote e “manter anos ativos” exigem definir normativamente qual data atribui o vínculo a um período; nenhum ano foi inferido silenciosamente.
+
+### IMP-009 — COMPLETED_WITH_GAPS
+
+- **Resultado consolidado:** IMP-009A–G entregam a fronteira oficial de vínculos, monitoramento, referência visual, anexos opacos, pesquisa, metadados raster e encerramento administrativo preservador.
+- **Auditoria de fontes:** RFC-0014, Inventário Oficial, diagnóstico, relatório funcional, mapa de migração, implementação Electron e preferências existentes foram comparados antes do encerramento do ciclo.
+- **DECISAO_HUMANA_NECESSARIA — criação física:** faltam raiz oficial, origem da data de Ano/Mês/Dia, programas/extensões admitidos e contrato determinístico para criar um arquivo vazio com as configurações padrão do software.
+- **DECISAO_HUMANA_NECESSARIA — backup:** faltam mecanismo por provedor, credenciais, destino, retenção e critério verificável de sucesso; nenhuma cópia foi presumida pela simples presença de pasta sincronizada.
+- **DECISAO_HUMANA_NECESSARIA — revisão anual:** falta definir qual data atribui cada vínculo ao período e a semântica de arquivar ou manter um ano ativo.
+- **Extratores especializados:** CDR/AI/SVG continuam não bloqueantes conforme “quando possível”; sua ampliação exige dependência segura e contrato determinístico, sem impedir formatos não suportados.
+- **Continuidade:** as lacunas são isoladas, não invalidam as capacidades entregues e não bloqueiam IMP-010; o ciclo segue como `COMPLETED_WITH_GAPS`.

@@ -12,8 +12,8 @@
 | IMP-007 | Pendências e intervenções determinísticas | RFC-0009, 0012 | IMP-003 | COMPLETED_WITH_GAPS | alto | estrutura determinística concluída; política temporal aguarda RFC-0012 | 7 |
 | IMP-007A | Gateway opcional de IA e adaptador Gemini | RFC-0003, 0004, 0006, 0011 | IMP-003, IMP-006 | COMPLETED_WITH_GAPS | alto | sugestão somente leitura funciona com provider real ou fallback sem alterar operação | 7A |
 | IMP-008 | Operação offline restrita e sincronização | RFC-0008 | IMP-002, IMP-003 | COMPLETED_WITH_GAPS | crítico | Ciclo técnico offline completo: partida, identidade, fila, transporte, confirmação e retorno seguro; falta smoke humano do instalador com duas instâncias reais | 8 |
-| IMP-009 | Arquivos e integrações oficiais | RFC-0014 | IMP-003, IMP-005 | IN_PROGRESS | alto | IMP-009A–G cobrem vínculos, integridade, referência, anexos, pesquisa, raster e encerramento preservador; faltam criação física, extratores especializados, backup e revisão por períodos/anos | 9 |
-| IMP-010 | Missões e Teamwork | RFC-0010 | IMP-002, IMP-005 | PENDING | médio | missão persistente sem duplicar Processo/Etapa | 10 |
+| IMP-009 | Arquivos e integrações oficiais | RFC-0014 | IMP-003, IMP-005 | COMPLETED_WITH_GAPS | alto | IMP-009A–G cobrem vínculos, integridade, referência, anexos, pesquisa, raster e encerramento preservador; criação física, backup e agrupamento anual aguardam decisões normativas registradas | 9 |
+| IMP-010 | Missões e Teamwork | RFC-0010 | IMP-002, IMP-005 | IN_PROGRESS | médio | missão persistente sem duplicar Processo/Etapa | 10 |
 | IMP-011 | Conhecimento e memória | RFC-0011 | IMP-003, IMP-010 | PENDING | alto | conhecimento fora do modelo, proveniência e validação | 11 |
 | IMP-012 | Analytics e simulação | RFC-0015 futura | IMP-003, IMP-005 | PENDING | alto | aguarda RFC-0015 | posterior |
 | IMP-013 | Governança e segurança da IA | RFC-0016 futura | IMP-002, IMP-003, IMP-011 | PENDING | crítico | aguarda RFC-0016 | posterior |

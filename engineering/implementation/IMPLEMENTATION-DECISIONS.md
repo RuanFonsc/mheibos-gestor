@@ -243,3 +243,16 @@
 - **Projeção:** encerrado deixa de abrir, verificar e aparecer em pesquisa operacional, mas permanece legível no detalhe histórico.
 - **Alternativas rejeitadas:** exclusão; mover/renomear arquivo; apagar metadados; exigir backup; inferir período anual pela data do Pedido ou pelo caminho.
 - **Situação:** definitiva para encerramento individual; agrupamento temporal é decisão pendente separada.
+
+## DEC-IMP-026 — Lacunas de configuração isolam o restante da RFC-0014
+
+- **Marcador:** `DECISAO_HUMANA_NECESSARIA` apenas para criação física, backup e agrupamento anual; as partes independentes permanecem válidas.
+- **Fontes consultadas:** RFC-0014; Inventário Oficial; diagnóstico e relatório funcional; `MAPA_MIGRACAO.md`; preferências persistentes; handlers Electron de arquivo; implementação IMP-009A–G.
+- **Criação física — pergunta:** qual é a raiz oficial, qual data forma Ano/Mês/Dia, quais programas/extensões podem ser escolhidos e como cada software deve criar um arquivo vazio com suas configurações padrão?
+- **Alternativas de criação, sem escolha:** raiz corporativa global ou raiz por estação/empresa; data do início da Etapa de Arte, data de criação do vínculo ou outra data normativa; automação específica por programa ou templates oficiais controlados.
+- **Backup — pergunta:** cada provedor será integrado por API ou por destino de arquivos já sincronizado/montado, e quais são retenção, credenciais e prova de conclusão?
+- **Alternativas de backup, sem escolha:** adaptadores por API; cópia para pasta/unidade configurada; orquestrador externo com confirmação verificável devolvida ao Mheibos.
+- **Revisão anual — pergunta:** qual data atribui o vínculo a um ano e o que “arquivar período” e “manter ano ativo” alteram operacionalmente?
+- **Alternativas anuais, sem escolha:** data do início da Etapa de Arte; data de criação do vínculo; data comercial do Pedido; competência administrativa explícita.
+- **Impacto:** não é seguro criar pastas/arquivos, declarar backup executado ou encerrar em lote por ano antes dessas respostas. Vínculo manual, integridade, pesquisa e encerramento individual continuam operacionais.
+- **Situação:** `COMPLETED_WITH_GAPS` para IMP-009; retomar as partes afetadas quando houver decisão normativa, sem bloquear IMP-010 e ciclos independentes.
