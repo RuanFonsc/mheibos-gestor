@@ -1,5 +1,15 @@
 # Decisões da Implementação
 
+## DEC-IMP-008 — Pendência estrutural sem política temporal presumida
+
+- **Decisão:** implementar a entidade Pendência e integrar bloqueios de Processo, mantendo scheduler, cadência, criticidade automática e escalonamento fora do código até aprovação da RFC-0012.
+- **Motivo:** RFC-0005 e Inventário fecham estrutura e invariantes, enquanto RFC-0012 v0.0 proíbe inventar as escolhas temporais.
+- **Fontes:** RFC-0005 §18; RFC-0009 §§10–14 e 30.8; INV-085 a INV-092; RFC-0012 v0.0.
+- **Fluxo:** bloqueio cria uma Pendência idempotente; retomada/conclusão resolve; cancelamento autorizado encerra; eventos preservam autoria e forma.
+- **Responsabilidade:** responsável da Etapa permanece responsável principal; destinatários adicionais não transferem automaticamente responsabilidade.
+- **Interface:** lista textual não bloqueante, acessível pelo módulo normal; usuário comum vê apenas itens próprios/destinados, administrador vê o conjunto autorizado.
+- **Situação:** definitiva para estrutura; política temporal é `DECISAO_HUMANA_NECESSARIA` registrada em Blockers.
+
 ## DEC-IMP-007 — Processo prevalece na projeção operacional
 
 - **Decisão:** todas as interfaces consomem `ProjecaoPedido`; quando existe Processo formal, seu estado é oficial, e `Pedido.status` só serve de fallback marcado para legado.

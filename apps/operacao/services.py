@@ -56,6 +56,9 @@ def iniciar_producao_pedido(*, pedido: Pedido, operador: OperadorGestor) -> Proc
     }:
         raise ProcessoEncerrado
     if not criado and processo.estado_operacional == EstadoProcesso.BLOQUEADO:
+        from apps.pendencias.models import FormaEncerramentoPendencia
+        from apps.pendencias.services import encerrar_pendencia_bloqueio
+
         etapa = processo.etapas.get(chave="PRODUZIR")
         processo.estado_operacional = EstadoProcesso.EM_ANDAMENTO
         processo.save(update_fields=["estado_operacional", "atualizado_em"])
@@ -72,6 +75,11 @@ def iniciar_producao_pedido(*, pedido: Pedido, operador: OperadorGestor) -> Proc
             valores_anteriores={"estado_operacional": EstadoProcesso.BLOQUEADO},
             valores_posteriores={"estado_operacional": processo.estado_operacional},
             metadados={"pedido_id": pedido.pk},
+        )
+        encerrar_pendencia_bloqueio(
+            processo=processo,
+            operador=operador,
+            forma=FormaEncerramentoPendencia.RESOLUCAO,
         )
         return processo
     if not criado:
@@ -107,6 +115,9 @@ def iniciar_producao_pedido(*, pedido: Pedido, operador: OperadorGestor) -> Proc
 
 @transaction.atomic
 def concluir_producao_pedido(*, pedido: Pedido, operador: OperadorGestor) -> Processo | None:
+    from apps.pendencias.models import FormaEncerramentoPendencia
+    from apps.pendencias.services import encerrar_pendencia_bloqueio
+
     processo = Processo.objects.filter(
         pedido=pedido, tipo=CODIGO_FLUXO_PRODUCAO
     ).first()
@@ -139,6 +150,11 @@ def concluir_producao_pedido(*, pedido: Pedido, operador: OperadorGestor) -> Pro
         valores_posteriores={"estado": etapa.estado},
         metadados={"processo_id": str(processo.pk), "pedido_id": pedido.pk},
     )
+    encerrar_pendencia_bloqueio(
+        processo=processo,
+        operador=operador,
+        forma=FormaEncerramentoPendencia.RESOLUCAO,
+    )
     return processo
 
 
@@ -146,6 +162,8 @@ def concluir_producao_pedido(*, pedido: Pedido, operador: OperadorGestor) -> Pro
 def bloquear_producao_pedido(
     *, pedido: Pedido, operador: OperadorGestor, motivo: str
 ) -> Processo | None:
+    from apps.pendencias.services import abrir_pendencia_bloqueio
+
     processo = Processo.objects.filter(
         pedido=pedido, tipo=CODIGO_FLUXO_PRODUCAO
     ).first()
@@ -169,6 +187,11 @@ def bloquear_producao_pedido(
         valores_posteriores={"estado_operacional": processo.estado_operacional},
         metadados={"motivo": motivo, "pedido_id": pedido.pk},
     )
+    abrir_pendencia_bloqueio(
+        processo=processo,
+        responsavel=etapa.responsavel or operador,
+        descricao=motivo,
+    )
     return processo
 
 
@@ -176,6 +199,9 @@ def bloquear_producao_pedido(
 def cancelar_producao_pedido(
     *, pedido: Pedido, operador: OperadorGestor, motivo: str
 ) -> Processo | None:
+    from apps.pendencias.models import FormaEncerramentoPendencia
+    from apps.pendencias.services import encerrar_pendencia_bloqueio
+
     processo = Processo.objects.filter(
         pedido=pedido, tipo=CODIGO_FLUXO_PRODUCAO
     ).first()
@@ -197,5 +223,10 @@ def cancelar_producao_pedido(
         valores_anteriores={"estado_operacional": estado_anterior},
         valores_posteriores={"estado_operacional": processo.estado_operacional},
         metadados={"motivo": motivo, "pedido_id": pedido.pk},
+    )
+    encerrar_pendencia_bloqueio(
+        processo=processo,
+        operador=operador,
+        forma=FormaEncerramentoPendencia.CANCELAMENTO_AUTORIZADO,
     )
     return processo

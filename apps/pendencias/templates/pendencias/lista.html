@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Pendencias{% endblock %}
+{% block page_title %}Pendencias{% endblock %}
+{% block content %}
+<div class="page-content w-full space-y-5">
+  <div class="page-heading">
+    <div>
+      <span class="kicker"><i data-lucide="circle-alert" class="h-4 w-4"></i> Acompanhamento</span>
+      <h2 class="section-title">Pendencias operacionais</h2>
+      <p>Obrigacoes abertas que exigem acompanhamento e encerramento consciente.</p>
+    </div>
+  </div>
+  <div class="flex gap-2">
+    <a class="btn-secondary" href="?estado=ABERTA">Abertas</a>
+    <a class="btn-secondary" href="?estado=ENCERRADA">Encerradas</a>
+  </div>
+  <section class="grid gap-3">
+    {% for pendencia in pendencias %}
+      <article class="card p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <span class="status-pill {% if pendencia.estado == 'ABERTA' %}is-work{% else %}is-ok{% endif %}">{{ pendencia.get_estado_display }}</span>
+            <h3 class="mt-2 font-semibold">{{ pendencia.descricao }}</h3>
+            <p class="mt-1 text-sm text-[var(--text-secondary)]">Pedido #{{ pendencia.pedido.legado_id|default:pendencia.pedido_id }} · {{ pendencia.pedido.cliente.nome }}</p>
+          </div>
+          <div class="text-right text-sm">
+            <p>Responsavel: <strong>{{ pendencia.responsavel_principal.nome }}</strong></p>
+            <a class="mt-2 inline-flex text-[#00e5ff]" href="{% url 'pedido_detail' pendencia.pedido_id %}">Abrir Pedido</a>
+          </div>
+        </div>
+        {% if pendencia.forma_encerramento %}<p class="mt-3 text-xs text-[var(--text-secondary)]">Encerramento: {{ pendencia.get_forma_encerramento_display }}</p>{% endif %}
+      </article>
+    {% empty %}
+      <div class="card p-8 text-center text-[var(--text-secondary)]">Nenhuma pendencia neste estado.</div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

@@ -1,9 +1,9 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** Fase 7 — pendências e intervenções determinísticas  
-**Ciclo atual:** IMP-007 — pendências e intervenções determinísticas  
-**Último ciclo concluído:** IMP-006 — projeções e interface operacional integrada  
+**Fase atual:** Fase 8 — operação offline restrita e sincronização  
+**Ciclo atual:** IMP-008 — comandos offline e reconciliação segura  
+**Último ciclo concluído:** IMP-007 — Pendências estruturais determinísticas  
 **Data:** 01/08/2026
 
 ## Contrato do ciclo IMP-003
@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-007 — auditar a suficiência normativa da RFC-0012 e implementar somente o contrato determinístico autorizado.
+IMP-008 — introduzir comandos offline idempotentes, fila local e reconciliação no escopo autorizado.
 
 ## Histórico resumido
 
@@ -115,4 +115,18 @@ IMP-007 — auditar a suficiência normativa da RFC-0012 e implementar somente o
 - **Quality Gates:** Fonte Normativa PASS; Arquitetura PASS; Domínio PASS; Interface PASS; Segurança PASS; Testes PASS.
 - **Lacunas não bloqueantes:** outras famílias de Processo ainda usarão fallback até serem formalizadas; Orquestrador de Interface completo pertence a ciclo posterior da RFC-0009.
 - **Teste humano:** abrir o mesmo Pedido no Gestor, Vendas e Produção; comparar estado e fonte; concluir Processo com status legado divergente e confirmar a fila correta.
+- **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.
+
+### IMP-007 — COMPLETED_WITH_GAPS
+
+- **Capacidade:** Pendência UUID com origem explícita, responsável principal, vários destinatários, estado e forma de encerramento.
+- **Fluxo vertical:** rejeição da Produção abre obrigação única; retomada/conclusão resolve; cancelamento autorizado encerra.
+- **Responsabilidade:** a pessoa responsável pela Etapa continua principal; destinatários não duplicam a Pendência nem transferem responsabilidade.
+- **Segurança:** usuário comum vê somente Pendências próprias/destinadas; administrador mantém visão global autorizada.
+- **Interface:** módulo textual e não bloqueante, sem depender de IA, popup, scheduler ou manipulação visual automática.
+- **Eventos:** criação e encerramento auditáveis na mesma transação; falha reverte a mudança operacional completa.
+- **Testes:** 38 aprovados, incluindo criação, encerramento, acesso e rollback; Django check, Ruff, mypy e migrations aprovados.
+- **Quality Gates:** Fonte Normativa PASS parcial; Arquitetura PASS; Domínio PASS; Eventos e Auditoria PASS; Segurança PASS; Migração PASS; Testes PASS.
+- **Lacuna formal:** política temporal, briefing, repetição e escalonamento permanecem `DECISAO_HUMANA_NECESSARIA` até RFC-0012 completa.
+- **Teste humano:** rejeitar Pedido em Produção, abrir Pendências, retomar Produção e conferir o item em Encerradas e na Auditoria.
 - **Commit:** commit atômico do próprio ciclo; hash registrado na retomada seguinte.
