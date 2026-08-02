@@ -162,3 +162,12 @@
 - **Recuperação:** estados intermediários são reelegíveis e o endpoint central responde idempotentemente; falha temporária recebe backoff e recusa normativa exige atenção humana.
 - **Alternativas rejeitadas:** remover da fila antes do POST; considerar qualquer HTTP 2xx como confirmação; repetir recusas permanentes indefinidamente.
 - **Situação:** definitiva para o ciclo local; transporte concreto pertence à próxima fatia.
+
+## DEC-IMP-017 — Transporte executado pelo backend offline, agendado pelo Electron
+
+- **Decisão:** o Electron dispara um comando periódico, mas o backend offline seleciona unidades, constrói envelopes, envia, valida respostas e persiste transições.
+- **Motivo:** mantém autoridade de negócio fora da interface e evita acesso direto do processo desktop ao SQLite.
+- **Segurança:** credencial da Estação vem do cofre, redirects são recusados e nenhuma resposta encerra unidade sem confirmação semântica coerente.
+- **Operação:** execução imediata e a cada 30 segundos não se sobrepõe; indisponibilidade não bloqueia criação de novos Pedidos locais.
+- **Alternativas rejeitadas:** manipular fila pelo JavaScript; apagar item após HTTP 2xx; seguir redirects; repetir em loop sem backoff.
+- **Situação:** definitiva para o transporte; comutação de sessão continua separada.

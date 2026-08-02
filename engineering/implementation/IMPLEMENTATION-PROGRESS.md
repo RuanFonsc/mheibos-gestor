@@ -223,3 +223,15 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Auditoria:** confirmação local gera `PedidoOfflineConfirmado` na mesma transação, com chave idempotente e sem segredo de Estação.
 - **Testes:** 10 cenários da fila cobrem preparação, confirmação, entidade divergente, backoff, recusa permanente, imutabilidade e rollback; migration explícita aprovada.
 - **Fora desta fatia:** cliente HTTP autenticado e acionamento periódico pelo Electron pertencem a IMP-008D.2.
+
+### IMP-008D.2 — COMPLETED
+
+- **Capacidade:** comando restrito ao Cliente offline envia envelopes elegíveis ao endpoint central, classifica a resposta e aplica a confirmação ou retentativa durável de IMP-008D.1.
+- **Autenticação:** UUID e segredo da Estação seguem em cabeçalhos; o segredo vem do cofre do Windows, não integra envelope, banco, saída do comando ou auditoria.
+- **Destino:** somente URL HTTP/HTTPS válida é aceita; redirecionamentos são bloqueados para impedir encaminhamento da credencial a outro host.
+- **Limites:** timeout de rede e resposta máxima de 2 MB evitam bloqueio indefinido e consumo sem limite; lote aceita de 1 a 100 unidades.
+- **Classificação:** 2xx ainda exige confirmação semântica válida; 4xx fica em atenção humana; indisponibilidade/5xx recebe backoff; falhas globais de credencial ou contrato interrompem o lote.
+- **Agendamento:** durante o modo offline, o processo principal dispara imediatamente e a cada 30 segundos, sem sobrepor execuções; o timer é encerrado junto com o aplicativo.
+- **Interface:** painel local mostra Pedido central e código de confirmação, e não oferece provisionamento de Estações no papel offline.
+- **Testes:** 7 testes de transporte/comando e 10 de fila aprovados; cobrem cabeçalhos, URL, bloqueio de redirect, confirmação, indisponibilidade, credencial recusada e isolamento de papel.
+- **Fora desta fatia:** smoke com duas instâncias reais e comutação de volta à Central pertencem a IMP-008D.3.

@@ -34,6 +34,8 @@ let activeBaseUrl = REMOTE_URL || LOCAL_BASE_URL;
 let djangoProcess = null;
 let mainWindow = null;
 let offlineIdentityCandidate = null;
+let syncTimer = null;
+let syncRunning = false;
 
 function modoAtual() {
   const args = process.argv.join(" ").toLowerCase();
@@ -117,6 +119,7 @@ function envFromConfig(config) {
   env.MHEIBOS_STATION_ID = config?.stationId || "";
   env.MHEIBOS_STATION_SECRET = decryptSecret(config?.stationSecretEncrypted, safeStorage);
   env.MHEIBOS_RUNTIME_ROLE = config?.runtimeRole || "central";
+  env.MHEIBOS_CENTRAL_URL = REMOTE_URL;
   return env;
 }
 
@@ -327,6 +330,22 @@ async function ensureDjango(config) {
   return { ok: await startLocalDjango(config), config };
 }
 
+async function synchronizeOfflineQueue(config) {
+  if (config?.runtimeRole !== "client_offline" || syncRunning) return;
+  syncRunning = true;
+  try {
+    await runBackendCommand(config, ["enviar_fila_offline", "--limite", "10"]);
+  } finally {
+    syncRunning = false;
+  }
+}
+
+function startOfflineSynchronization(config) {
+  if (config?.runtimeRole !== "client_offline") return;
+  synchronizeOfflineQueue(config);
+  syncTimer = setInterval(() => synchronizeOfflineQueue(config), 30000);
+}
+
 function abrirCaminhoLocal(url) {
   try {
     shell.openPath(fileURLToPath(url));
@@ -471,6 +490,7 @@ app.whenReady().then(async () => {
   const runtime = await ensureDjango(config);
   if (!runtime.ok) return;
   createWindow(runtime.config);
+  startOfflineSynchronization(runtime.config);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(runtime.config);
   });
@@ -481,6 +501,10 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  if (syncTimer) {
+    clearInterval(syncTimer);
+    syncTimer = null;
+  }
   if (djangoProcess) {
     djangoProcess.kill();
     djangoProcess = null;
