@@ -1,8 +1,10 @@
 import hashlib
 import json
 import uuid
+import secrets
 from dataclasses import dataclass
 
+from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
 
@@ -11,7 +13,7 @@ from apps.catalogo.models import OperadorGestor
 from apps.clientes.models import Cliente
 from apps.pedidos.models import PagamentoPedido, Pedido, PedidoItem
 
-from .models import IncorporacaoOffline, SequenciaOffline, UnidadeSincronizacao
+from .models import EstacaoCliente, IncorporacaoOffline, SequenciaOffline, UnidadeSincronizacao
 
 
 class SincronizacaoInvalida(Exception):
@@ -22,6 +24,20 @@ class SincronizacaoInvalida(Exception):
 class ResultadoIncorporacao:
     pedido: Pedido
     repetida: bool
+
+
+@dataclass(frozen=True)
+class CredencialEstacaoCriada:
+    estacao: EstacaoCliente
+    segredo: str
+
+
+def criar_estacao(*, nome: str) -> CredencialEstacaoCriada:
+    segredo = secrets.token_urlsafe(32)
+    estacao = EstacaoCliente.objects.create(
+        nome=nome.strip(), segredo_hash=make_password(segredo)
+    )
+    return CredencialEstacaoCriada(estacao=estacao, segredo=segredo)
 
 
 def _json_canonico(payload: dict) -> str:
@@ -125,8 +141,12 @@ def _validar_envelope(envelope: dict) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
 
 
 @transaction.atomic
-def incorporar_pedido_offline(envelope: dict) -> ResultadoIncorporacao:
+def incorporar_pedido_offline(
+    envelope: dict, *, estacao_autenticada: EstacaoCliente
+) -> ResultadoIncorporacao:
     chave, entidade, estacao = _validar_envelope(envelope)
+    if not estacao_autenticada.ativa or estacao != estacao_autenticada.pk:
+        raise SincronizacaoInvalida("Estacao do pacote nao corresponde a origem autenticada.")
     existente = IncorporacaoOffline.objects.select_related("pedido_global").filter(chave_idempotencia=chave).first()
     if existente:
         if existente.checksum != envelope["checksum"]:

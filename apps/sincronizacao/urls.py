@@ -1,6 +1,9 @@
 from django.urls import path
 
-from .views import painel
+from .views import incorporar, painel
 
 
-urlpatterns = [path("", painel, name="sincronizacao_painel")]
+urlpatterns = [
+    path("", painel, name="sincronizacao_painel"),
+    path("incorporar/", incorporar, name="sincronizacao_incorporar"),
+]

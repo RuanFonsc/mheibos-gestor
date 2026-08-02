@@ -11,7 +11,7 @@
 | IMP-006 | Projeções e interface operacional integrada | RFC-0003, 0009 | IMP-005 | COMPLETED_WITH_GAPS | médio | Gestor/Vendas/Produção como visões da mesma realidade | 6 |
 | IMP-007 | Pendências e intervenções determinísticas | RFC-0009, 0012 | IMP-003 | COMPLETED_WITH_GAPS | alto | estrutura determinística concluída; política temporal aguarda RFC-0012 | 7 |
 | IMP-007A | Gateway opcional de IA e adaptador Gemini | RFC-0003, 0004, 0006, 0011 | IMP-003, IMP-006 | COMPLETED_WITH_GAPS | alto | sugestão somente leitura funciona com provider real ou fallback sem alterar operação | 7A |
-| IMP-008 | Operação offline restrita e sincronização | RFC-0008 | IMP-002, IMP-003 | IN_PROGRESS | crítico | IMP-008A concluiu identidade, fila durável, incorporação idempotente e modo restrito; ainda faltam transporte, autenticação offline e reconexão automática | 8 |
+| IMP-008 | Operação offline restrita e sincronização | RFC-0008 | IMP-002, IMP-003 | IN_PROGRESS | crítico | IMP-008A/B concluíram fila, incorporação e transporte central autenticado por Estação; ainda faltam credencial offline local, envio automático e comutação Electron | 8 |
 | IMP-009 | Arquivos e integrações oficiais | RFC-0014 | IMP-003, IMP-005 | PENDING | alto | referências, integridade e integrações auditáveis | 9 |
 | IMP-010 | Missões e Teamwork | RFC-0010 | IMP-002, IMP-005 | PENDING | médio | missão persistente sem duplicar Processo/Etapa | 10 |
 | IMP-011 | Conhecimento e memória | RFC-0011 | IMP-003, IMP-010 | PENDING | alto | conhecimento fora do modelo, proveniência e validação | 11 |

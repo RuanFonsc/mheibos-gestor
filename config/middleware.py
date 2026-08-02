@@ -92,6 +92,7 @@ class OperadorLoginMiddleware:
             or caminho.startswith("/media/")
             or caminho.startswith("/admin/")
             or caminho.startswith("/api/launcher/")
+            or caminho == "/sincronizacao/incorporar/"
         )
         if not liberado and not sessao_possui_operador(request):
             if caminho.startswith("/producao/"):

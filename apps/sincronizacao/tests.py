@@ -1,4 +1,5 @@
 import copy
+import json
 import uuid
 from decimal import Decimal
 from unittest.mock import patch
@@ -10,10 +11,11 @@ from apps.catalogo.models import OperadorGestor, PapelOperador
 from apps.clientes.models import Cliente
 from apps.pedidos.models import Pedido, PedidoItem
 
-from .models import IncorporacaoOffline, SequenciaOffline, UnidadeSincronizacao
+from .models import EstacaoCliente, IncorporacaoOffline, SequenciaOffline, UnidadeSincronizacao
 from .services import (
     SincronizacaoInvalida,
     calcular_checksum,
+    criar_estacao,
     enfileirar_pedido_local,
     incorporar_pedido_offline,
     registrar_falha,
@@ -184,7 +186,7 @@ class IncorporacaoCentralTests(TestCase):
         self.envelope = {
             "chave_idempotencia": str(uuid.uuid4()),
             "entidade_local_id": str(uuid.uuid4()),
-            "estacao_id": str(uuid.uuid4()),
+            "estacao_id": "22222222-2222-2222-2222-222222222222",
             "operador_id": self.operador.pk,
             "codigo_origem": "AC",
             "codigo_visivel": "AC7",
@@ -194,9 +196,16 @@ class IncorporacaoCentralTests(TestCase):
             "payload": self.payload,
             "checksum": calcular_checksum(self.payload),
         }
+        self.estacao = EstacaoCliente.objects.create(
+            id=uuid.UUID(self.envelope["estacao_id"]),
+            nome="Estacao Central",
+            segredo_hash="nao-usado-no-servico",
+        )
 
     def test_incorporation_preserves_content_origin_and_audit(self):
-        resultado = incorporar_pedido_offline(self.envelope)
+        resultado = incorporar_pedido_offline(
+            self.envelope, estacao_autenticada=self.estacao
+        )
 
         pedido = resultado.pedido
         self.assertFalse(resultado.repetida)
@@ -209,8 +218,12 @@ class IncorporacaoCentralTests(TestCase):
         self.assertEqual(evento.operador, self.operador)
 
     def test_retry_returns_durable_confirmation_without_duplicate_effects(self):
-        primeira = incorporar_pedido_offline(self.envelope)
-        segunda = incorporar_pedido_offline(self.envelope)
+        primeira = incorporar_pedido_offline(
+            self.envelope, estacao_autenticada=self.estacao
+        )
+        segunda = incorporar_pedido_offline(
+            self.envelope, estacao_autenticada=self.estacao
+        )
 
         self.assertTrue(segunda.repetida)
         self.assertEqual(primeira.pedido.pk, segunda.pedido.pk)
@@ -224,7 +237,7 @@ class IncorporacaoCentralTests(TestCase):
         envelope["payload"]["pedido"]["tema"] = "Alterado depois do checksum"
 
         with self.assertRaises(SincronizacaoInvalida):
-            incorporar_pedido_offline(envelope)
+            incorporar_pedido_offline(envelope, estacao_autenticada=self.estacao)
 
         self.assertFalse(Pedido.objects.exists())
         self.assertFalse(Cliente.objects.exists())
@@ -234,8 +247,105 @@ class IncorporacaoCentralTests(TestCase):
         self.envelope["codigo_origem"] = "OUTRO"
 
         with self.assertRaises(SincronizacaoInvalida):
-            incorporar_pedido_offline(self.envelope)
+            incorporar_pedido_offline(
+                self.envelope, estacao_autenticada=self.estacao
+            )
 
+        self.assertFalse(Pedido.objects.exists())
+
+
+@override_settings(MHEIBOS_RUNTIME_ROLE="central")
+class IncorporacaoHttpTests(TestCase):
+    def setUp(self):
+        self.operador = OperadorGestor.objects.create(
+            nome="Autora HTTP",
+            senha="segura",
+            papel=PapelOperador.USUARIO,
+            codigo_origem_offline="AH",
+        )
+        credencial = criar_estacao(nome="Balcao HTTP")
+        self.estacao = credencial.estacao
+        self.segredo = credencial.segredo
+        payload = {
+            "pedido": {
+                "tema": "HTTP",
+                "data_pedido": "2026-08-01",
+                "data_entrega": "2026-08-03",
+                "hora_entrega": None,
+                "observacoes": "",
+                "valor_total": "10.00",
+                "valor_pago_legado": "0.00",
+                "desconto_ajuste": "0.00",
+                "forma_pagamento_legada": "PIX",
+                "prioridade": "NORMAL",
+                "status": "AGUARDANDO_ARTE",
+                "estado_comercial": "CONFIRMADO",
+                "estado_entrega": "PENDENTE",
+                "canal_atendimento": "PRESENCIAL",
+                "usuario_cadastro": self.operador.nome,
+            },
+            "cliente": {
+                "nome": "Cliente HTTP",
+                "email": "",
+                "telefone_principal": "",
+                "telefone_secundario": "",
+                "cpf_cnpj": "",
+                "endereco": "",
+            },
+            "itens": [],
+            "pagamentos": [],
+        }
+        self.envelope = {
+            "chave_idempotencia": str(uuid.uuid4()),
+            "entidade_local_id": str(uuid.uuid4()),
+            "estacao_id": str(self.estacao.pk),
+            "codigo_origem": "AH",
+            "codigo_visivel": "AH1",
+            "sequencia_local": 1,
+            "versao_esquema": 1,
+            "versao_politica": "politica-http",
+            "payload": payload,
+            "checksum": calcular_checksum(payload),
+        }
+
+    def enviar(self, *, segredo=None, envelope=None, estacao_id=None):
+        return self.client.post(
+            "/sincronizacao/incorporar/",
+            data=json.dumps(envelope or self.envelope),
+            content_type="application/json",
+            headers={
+                "Authorization": f"Bearer {segredo or self.segredo}",
+                "X-Mheibos-Station-ID": estacao_id or str(self.estacao.pk),
+            },
+        )
+
+    def test_station_secret_is_stored_only_as_hash(self):
+        self.assertNotEqual(self.estacao.segredo_hash, self.segredo)
+        self.assertTrue(self.estacao.verifica_segredo(self.segredo))
+
+    def test_authenticated_station_receives_durable_idempotent_confirmation(self):
+        primeira = self.enviar()
+        segunda = self.enviar()
+
+        self.assertEqual(primeira.status_code, 201)
+        self.assertEqual(primeira.json()["codigo"], "INCORPORADO")
+        self.assertEqual(segunda.status_code, 200)
+        self.assertEqual(segunda.json()["codigo"], "JA_INCORPORADO")
+        self.assertEqual(Pedido.objects.count(), 1)
+
+    def test_invalid_secret_is_rejected_without_persistence(self):
+        response = self.enviar(segredo="incorreto")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(Pedido.objects.exists())
+
+    def test_authenticated_station_cannot_submit_another_station_identity(self):
+        envelope = copy.deepcopy(self.envelope)
+        envelope["estacao_id"] = str(uuid.uuid4())
+
+        response = self.enviar(envelope=envelope)
+
+        self.assertEqual(response.status_code, 422)
         self.assertFalse(Pedido.objects.exists())
 
 

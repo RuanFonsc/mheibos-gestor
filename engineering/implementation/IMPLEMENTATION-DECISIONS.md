@@ -1,5 +1,14 @@
 # Decisões da Implementação
 
+## DEC-IMP-011 — Transporte central autenticado por Estação
+
+- **Decisão:** a incorporação HTTP usa UUID público da Estação e segredo Bearer de alta entropia, persistido na Central somente por hash do Django.
+- **Motivo:** sessão web do usuário não é prova suficiente da origem técnica offline; Estação e autoria humana precisam permanecer identidades separadas.
+- **Limite:** o segredo não será colocado no `.env` definitivo do Cliente. IMP-008C deve usar armazenamento protegido do sistema operacional antes de habilitar envio real.
+- **Validação:** Estação ativa, correspondência com envelope, checksum, schema, código permanente da autoria e idempotência são verificados antes de persistir.
+- **Resposta:** confirmação expõe somente código, ID global e UUID offline; não devolve payload ou segredo.
+- **Situação:** definitiva para a fronteira central; rotação, expiração e interface de provisionamento serão ampliadas sem alterar o envelope causal.
+
 ## DEC-IMP-010 — Um backend executável em papéis separados, sem banco compartilhado offline
 
 - **Decisão:** reutilizar casos de uso e schema do backend nos papéis `central` e `client_offline`, mantendo processos e bancos fisicamente separados por execução.

@@ -39,7 +39,7 @@
 
 ## Próximo ciclo recomendado
 
-IMP-008B — proteger identidade/credencial offline da última pessoa validada, provisionar Estação e conectar o Cliente Electron ao serviço local.
+IMP-008C — proteger no Cliente a última identidade validada, guardar a credencial da Estação fora de texto legível e conectar envio/reconexão automática.
 
 ## Histórico resumido
 
@@ -156,3 +156,14 @@ IMP-008B — proteger identidade/credencial offline da última pessoa validada, 
 - **Testes:** 14 testes específicos aprovados: atomicidade, rollback, sequência, imutabilidade, corrupção, autoria, idempotência, formulário real, bloqueio global e logout.
 - **Fora desta fatia:** transporte autenticado, provisionamento de Estação, cache de identidade/credencial, detecção de queda, comutação Electron, retentativa automática e confirmação cliente-servidor entram em IMP-008B/8C.
 - **Classificação:** `adicionar`; campos em Pedido/Operador são aditivos, sem backfill especulativo.
+
+### IMP-008B — COMPLETED
+
+- **Capacidade:** Estação autorizada com UUID e segredo verificado por hash, mais endpoint HTTP central para incorporação do pacote offline.
+- **Autenticação:** a Central persiste somente o hash; o segredo é retornado uma vez no provisionamento e nunca aparece em evento ou resposta posterior.
+- **Vinculação:** UUID do envelope deve coincidir com a Estação autenticada; um segredo válido não autoriza falsificar outra origem.
+- **Contrato:** endpoint aceita somente no papel `central`, limita pacote, valida JSON, esquema, checksum, autoria e unidade completa antes da transação.
+- **Confirmação:** primeira incorporação responde `INCORPORADO`; reenvio responde `JA_INCORPORADO` apontando o mesmo Pedido global, sem efeitos duplicados.
+- **Segurança:** endpoint técnico não depende de sessão web, mas permanece fechado por credencial de Estação; segredo inválido não persiste dados.
+- **Testes:** 8 cenários de serviço/transporte aprovados, incluindo segredo em hash, recusa, Estação divergente e confirmação idempotente.
+- **Fora desta fatia:** armazenamento protegido do segredo no Windows, provisionamento administrativo visível, transporte cliente e retentativa automática entram em IMP-008C.

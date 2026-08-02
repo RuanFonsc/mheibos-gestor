@@ -1,5 +1,6 @@
 import uuid
 
+from django.contrib.auth.hashers import check_password
 from django.db import models
 
 
@@ -11,6 +12,21 @@ class EstadoUnidade(models.TextChoices):
     INCORPORADA = "INCORPORADA", "Incorporada"
     FALHA_TEMPORARIA = "FALHA_TEMPORARIA", "Falha temporaria"
     REQUER_ATENCAO = "REQUER_ATENCAO", "Requer atencao"
+
+
+class EstacaoCliente(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nome = models.CharField(max_length=120, unique=True)
+    segredo_hash = models.CharField(max_length=128)
+    ativa = models.BooleanField(default=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nome"]
+
+    def verifica_segredo(self, segredo: str) -> bool:
+        return self.ativa and check_password(segredo, self.segredo_hash)
 
 
 class SequenciaOffline(models.Model):
