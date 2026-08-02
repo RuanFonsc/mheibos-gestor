@@ -8,12 +8,15 @@ from django.db import models
 from django.test import TestCase
 from PIL import Image, UnidentifiedImageError
 
-from apps.arquivos.models import ArquivoOficialArte
+from apps.arquivos.models import ArquivoOficialArte, EstadoPreparacaoArte, PreparacaoArtePedido
 from apps.arquivos.services import (
     ArquivoOficialInvalido,
     EncerramentoArquivoInvalido,
+    PreparacaoArteInvalida,
     TemaPedidoImutavel,
+    concluir_arte_pedido,
     criar_arquivo_oficial,
+    decidir_alteracao_pos_conclusao,
     encerrar_vinculo_arquivo_oficial,
     reconhecer_alerta_arquivo,
     validar_alteracao_tema,
@@ -103,6 +106,97 @@ class ArquivoOficialArteTests(TestCase):
             criar_arquivo_oficial(
                 pedido=self.pedido, programa="coreldraw", operador=self.operador
             )
+
+    def test_criacao_inicia_agregado_sem_concluir_automaticamente(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+
+            preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+            self.assertEqual(preparacao.estado, EstadoPreparacaoArte.NAO_INICIADA)
+            self.assertEqual(preparacao.responsavel, self.operador)
+
+    def test_conclusao_humana_bloqueia_novos_arquivos(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            preparacao = concluir_arte_pedido(pedido=self.pedido, operador=self.operador)
+
+            self.assertEqual(preparacao.estado, EstadoPreparacaoArte.CONCLUIDA)
+            with self.assertRaisesMessage(PreparacaoArteInvalida, "concluida"):
+                criar_arquivo_oficial(
+                    pedido=self.pedido, programa="photoshop", operador=self.operador
+                )
+
+    def test_modificacao_pos_conclusao_exige_decisao_e_pode_reabrir(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            arquivo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+            concluir_arte_pedido(pedido=self.pedido, operador=self.operador)
+            Path(arquivo.caminho_oficial).write_bytes(b"conteudo da arte")
+
+            verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+            arquivo.refresh_from_db()
+            self.assertTrue(arquivo.alteracao_pos_conclusao_pendente)
+            self.assertEqual(arquivo.ultima_modificacao_por, self.operador)
+
+            preparacao = decidir_alteracao_pos_conclusao(
+                arquivo=arquivo, operador=self.operador, manter_concluida=False
+            )
+            self.assertEqual(preparacao.estado, EstadoPreparacaoArte.EM_PREPARACAO)
+            arquivo.refresh_from_db()
+            self.assertFalse(arquivo.alteracao_pos_conclusao_pendente)
+
+    def test_modificacao_confirmada_pode_manter_conclusao(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            arquivo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="pdf", operador=self.operador
+            )
+            verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+            concluir_arte_pedido(pedido=self.pedido, operador=self.operador)
+            Path(arquivo.caminho_oficial).write_bytes(b"pdf atualizado")
+            verificar_arquivo_oficial(arquivo=arquivo, operador=self.operador)
+
+            preparacao = decidir_alteracao_pos_conclusao(
+                arquivo=arquivo, operador=self.operador, manter_concluida=True
+            )
+            self.assertEqual(preparacao.estado, EstadoPreparacaoArte.CONCLUIDA)
+
+    def test_conclusao_sem_verificacao_previa_cria_linha_de_base(self):
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            arquivo = criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+            concluir_arte_pedido(pedido=self.pedido, operador=self.operador)
+
+            Path(arquivo.caminho_oficial).write_text(
+                "primeira alteracao", encoding="utf-8"
+            )
+            arquivo.refresh_from_db()
+            arquivo = verificar_arquivo_oficial(
+                arquivo=arquivo, operador=self.operador
+            )
+
+            self.assertTrue(arquivo.alteracao_pos_conclusao_pendente)
 
     def test_mesmo_caminho_e_idempotente(self):
         primeiro = vincular_arquivo_oficial(

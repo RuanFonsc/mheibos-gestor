@@ -12,8 +12,10 @@ from .metadados import extrair_metadados_graficos
 from .models import (
     ArquivoOficialArte,
     EstadoIntegridadeArquivo,
+    EstadoPreparacaoArte,
     EstadoVinculoArquivo,
     OrigemArquivoOficial,
+    PreparacaoArtePedido,
 )
 
 from apps.catalogo.models import PerfilEmpresa
@@ -42,6 +44,21 @@ class EncerramentoArquivoInvalido(Exception):
     pass
 
 
+class PreparacaoArteInvalida(Exception):
+    pass
+
+
+def obter_preparacao_arte(*, pedido, operador=None) -> PreparacaoArtePedido:
+    preparacao, criada = PreparacaoArtePedido.objects.get_or_create(
+        pedido=pedido,
+        defaults={"responsavel": operador},
+    )
+    if not criada and operador and preparacao.responsavel_id is None:
+        preparacao.responsavel = operador
+        preparacao.save(update_fields=["responsavel", "atualizado_em"])
+    return preparacao
+
+
 def _componente_seguro(valor: str, *, padrao: str) -> str:
     limpo = re.sub(r'[<>:"/\\|?*\x00-\x1f]', " ", str(valor or ""))
     limpo = re.sub(r"\s+", " ", limpo).strip(" .")
@@ -62,6 +79,11 @@ def criar_arquivo_oficial(*, pedido, programa: str, operador) -> ArquivoOficialA
     if programa not in PROGRAMAS_ARTE:
         raise ArquivoOficialInvalido("Selecione um programa ou formato oficial valido.")
     perfil_empresa, _ = PerfilEmpresa.objects.get_or_create(chave="global")
+    preparacao = obter_preparacao_arte(pedido=pedido, operador=operador)
+    if preparacao.estado == EstadoPreparacaoArte.CONCLUIDA:
+        raise PreparacaoArteInvalida(
+            "A arte do Pedido esta concluida. Reabra a preparacao antes de criar outro arquivo oficial."
+        )
     raiz = (perfil_empresa.diretorio_artes_raiz or "").strip()
     if not raiz:
         raise ArquivoOficialInvalido(
@@ -141,6 +163,11 @@ def normalizar_caminho_oficial(valor: str) -> tuple[str, str, str]:
 
 @transaction.atomic
 def vincular_arquivo_oficial(*, pedido, caminho: str, operador) -> ArquivoOficialArte:
+    preparacao = obter_preparacao_arte(pedido=pedido, operador=operador)
+    if preparacao.estado == EstadoPreparacaoArte.CONCLUIDA:
+        raise PreparacaoArteInvalida(
+            "A arte do Pedido esta concluida. Novos arquivos oficiais nao podem ser vinculados."
+        )
     caminho, nome, extensao = normalizar_caminho_oficial(caminho)
     existente = ArquivoOficialArte.objects.filter(
         pedido=pedido, caminho_oficial__iexact=caminho, estado_vinculo="ATIVO"
@@ -187,6 +214,7 @@ def validar_alteracao_tema(*, pedido, novo_tema: str) -> None:
 def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> ArquivoOficialArte:
     discrepancias = []
     tamanho = None
+    modificado_em_ns = None
     largura_px = arquivo.largura_px
     altura_px = arquivo.altura_px
     resolucao_dpi = arquivo.resolucao_dpi
@@ -199,6 +227,11 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
         discrepancias.append({"codigo": "CAMINHO_INACESSIVEL", "mensagem": "O caminho oficial nao pode ser acessado.", "detalhe": str(exc)})
     else:
         tamanho = dados.st_size
+        modificado_em_ns = getattr(
+            dados,
+            "st_mtime_ns",
+            int(getattr(dados, "st_mtime", 0) * 1_000_000_000),
+        )
         if os.path.basename(arquivo.caminho_oficial).casefold() != arquivo.nome_oficial.casefold():
             discrepancias.append({"codigo": "NOME_DIVERGENTE", "mensagem": "O nome encontrado diverge da identidade oficial."})
         leitura = extrair_metadados_graficos(
@@ -214,9 +247,29 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
             discrepancias.append(leitura.discrepancia)
 
     estado_anterior = arquivo.estado_integridade
+    tamanho_anterior = arquivo.tamanho_bytes
+    modificado_anterior = arquivo.modificado_em_ns
+    mudanca_conteudo = (
+        modificado_anterior is not None
+        and (modificado_anterior != modificado_em_ns or tamanho_anterior != tamanho)
+    )
+    preparacao = obter_preparacao_arte(pedido=arquivo.pedido, operador=operador)
+    if tamanho and preparacao.estado == EstadoPreparacaoArte.NAO_INICIADA:
+        preparacao.estado = EstadoPreparacaoArte.EM_PREPARACAO
+        preparacao.iniciado_em = preparacao.iniciado_em or timezone.now()
+    if mudanca_conteudo:
+        preparacao.ultima_atividade_em = timezone.now()
+        arquivo.ultima_modificacao_por = operador
+        arquivo.modificacao_detectada_em = timezone.now()
+        if preparacao.estado == EstadoPreparacaoArte.CONCLUIDA:
+            arquivo.alteracao_pos_conclusao_pendente = True
+    preparacao.save(
+        update_fields=["estado", "iniciado_em", "ultima_atividade_em", "atualizado_em"]
+    )
     arquivo.estado_integridade = EstadoIntegridadeArquivo.ALERTA if discrepancias else EstadoIntegridadeArquivo.INTEGRO
     arquivo.discrepancias = discrepancias
     arquivo.tamanho_bytes = tamanho
+    arquivo.modificado_em_ns = modificado_em_ns
     arquivo.largura_px = largura_px
     arquivo.altura_px = altura_px
     arquivo.resolucao_dpi = resolucao_dpi
@@ -224,14 +277,91 @@ def verificar_arquivo_oficial(*, arquivo: ArquivoOficialArte, operador) -> Arqui
     arquivo.verificado_em = timezone.now()
     arquivo.alerta_reconhecido_em = None
     arquivo.alerta_reconhecido_por = None
-    arquivo.save(update_fields=["estado_integridade", "discrepancias", "tamanho_bytes", "largura_px", "altura_px", "resolucao_dpi", "propriedades_tecnicas", "verificado_em", "alerta_reconhecido_em", "alerta_reconhecido_por", "atualizado_em"])
+    arquivo.save(update_fields=["estado_integridade", "discrepancias", "tamanho_bytes", "modificado_em_ns", "modificacao_detectada_em", "alteracao_pos_conclusao_pendente", "ultima_modificacao_por", "largura_px", "altura_px", "resolucao_dpi", "propriedades_tecnicas", "verificado_em", "alerta_reconhecido_em", "alerta_reconhecido_por", "atualizado_em"])
     registrar_evento(
         tipo="ArquivoOficialArteVerificado", operador=operador, origem="gestor_web",
         alvo_tipo="ArquivoOficialArte", alvo_id=str(arquivo.pk), acao="verificar_integridade_arquivo",
         valores_anteriores={"estado_integridade": estado_anterior},
-        valores_posteriores={"estado_integridade": arquivo.estado_integridade, "discrepancias": discrepancias, "tamanho_bytes": tamanho, "largura_px": largura_px, "altura_px": altura_px, "resolucao_dpi": str(resolucao_dpi) if resolucao_dpi else None, "propriedades_tecnicas": propriedades_tecnicas},
+        valores_posteriores={"estado_integridade": arquivo.estado_integridade, "discrepancias": discrepancias, "tamanho_bytes": tamanho, "modificacao_conteudo": mudanca_conteudo, "alteracao_pos_conclusao_pendente": arquivo.alteracao_pos_conclusao_pendente, "largura_px": largura_px, "altura_px": altura_px, "resolucao_dpi": str(resolucao_dpi) if resolucao_dpi else None, "propriedades_tecnicas": propriedades_tecnicas},
     )
     return arquivo
+
+
+@transaction.atomic
+def concluir_arte_pedido(*, pedido, operador) -> PreparacaoArtePedido:
+    arquivos = list(
+        ArquivoOficialArte.objects.filter(
+            pedido=pedido, estado_vinculo=EstadoVinculoArquivo.ATIVO
+        )
+    )
+    if not arquivos:
+        raise PreparacaoArteInvalida("Crie ou vincule pelo menos um arquivo oficial antes de concluir a arte.")
+    for arquivo in arquivos:
+        if not os.path.isfile(arquivo.caminho_oficial):
+            raise PreparacaoArteInvalida(
+                f"O arquivo oficial {arquivo.nome_oficial} nao esta acessivel."
+            )
+        if os.path.basename(arquivo.caminho_oficial).casefold() != arquivo.nome_oficial.casefold():
+            raise PreparacaoArteInvalida(
+                f"O arquivo oficial {arquivo.nome_oficial} apresenta nome divergente."
+            )
+        if arquivo.alteracao_pos_conclusao_pendente:
+            raise PreparacaoArteInvalida(
+                "Resolva as modificacoes posteriores antes de confirmar a conclusao."
+            )
+        dados = os.stat(arquivo.caminho_oficial)
+        arquivo.tamanho_bytes = dados.st_size
+        arquivo.modificado_em_ns = getattr(
+            dados,
+            "st_mtime_ns",
+            int(getattr(dados, "st_mtime", 0) * 1_000_000_000),
+        )
+        arquivo.save(
+            update_fields=["tamanho_bytes", "modificado_em_ns", "atualizado_em"]
+        )
+    preparacao = PreparacaoArtePedido.objects.select_for_update().filter(pedido=pedido).first()
+    if preparacao is None:
+        preparacao = PreparacaoArtePedido.objects.create(pedido=pedido, responsavel=operador)
+    if preparacao.estado == EstadoPreparacaoArte.CONCLUIDA:
+        return preparacao
+    estado_anterior = preparacao.estado
+    preparacao.estado = EstadoPreparacaoArte.CONCLUIDA
+    preparacao.concluido_em = timezone.now()
+    preparacao.concluido_por = operador
+    preparacao.responsavel = preparacao.responsavel or operador
+    preparacao.save(update_fields=["estado", "concluido_em", "concluido_por", "responsavel", "atualizado_em"])
+    registrar_evento(
+        tipo="ArtePedidoConcluida", operador=operador, origem="gestor_web",
+        alvo_tipo="PreparacaoArtePedido", alvo_id=str(preparacao.pk), acao="concluir_arte_pedido",
+        valores_anteriores={"estado": estado_anterior},
+        valores_posteriores={"estado": preparacao.estado, "pedido_id": pedido.pk, "arquivos_oficiais": len(arquivos)},
+        chave_idempotencia=f"arte-pedido-concluir:{preparacao.pk}:{preparacao.concluido_em.isoformat()}",
+    )
+    return preparacao
+
+
+@transaction.atomic
+def decidir_alteracao_pos_conclusao(*, arquivo: ArquivoOficialArte, operador, manter_concluida: bool) -> PreparacaoArtePedido:
+    arquivo = ArquivoOficialArte.objects.select_for_update().get(pk=arquivo.pk)
+    if not arquivo.alteracao_pos_conclusao_pendente:
+        raise PreparacaoArteInvalida("Nao existe modificacao posterior pendente para este arquivo.")
+    preparacao = PreparacaoArtePedido.objects.select_for_update().get(pedido=arquivo.pedido)
+    estado_anterior = preparacao.estado
+    arquivo.alteracao_pos_conclusao_pendente = False
+    arquivo.save(update_fields=["alteracao_pos_conclusao_pendente", "atualizado_em"])
+    if not manter_concluida:
+        preparacao.estado = EstadoPreparacaoArte.EM_PREPARACAO
+        preparacao.concluido_em = None
+        preparacao.concluido_por = None
+        preparacao.ultima_atividade_em = timezone.now()
+        preparacao.save(update_fields=["estado", "concluido_em", "concluido_por", "ultima_atividade_em", "atualizado_em"])
+    registrar_evento(
+        tipo="AlteracaoArteConcluidaConfirmada", operador=operador, origem="gestor_web",
+        alvo_tipo="ArquivoOficialArte", alvo_id=str(arquivo.pk), acao="decidir_alteracao_pos_conclusao",
+        valores_anteriores={"estado_arte": estado_anterior, "pendente": True},
+        valores_posteriores={"estado_arte": preparacao.estado, "pendente": False, "manter_concluida": manter_concluida},
+    )
+    return preparacao
 
 
 @transaction.atomic

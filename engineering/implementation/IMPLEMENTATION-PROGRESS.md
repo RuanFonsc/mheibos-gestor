@@ -392,7 +392,7 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Testes e visual:** 38 testes direcionados e 10 combinações visuais aprovados.
 - **Lacuna:** Pendência formal, scheduler, cadência e escalonamento dependem da RFC-0012 completa; não bloqueiam a trava nem a fila atuais.
 
-### IMP-009H — IN_PROGRESS
+### IMP-009H — COMPLETED
 
 - **Capacidade:** criação física vazia pela interface, nome oficial numerado, estrutura compartilhada por usuário/ano/mês/dia, escolha de programa/formato e vínculo auditado sem binário no banco.
 - **Preferências:** Perfil recebe programa de arte padrão; Perfil da Empresa recebe raiz compartilhada e retenção de cópias locais; gestão de usuários é apresentada apenas na área Usuários.
@@ -400,3 +400,15 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Validação:** lint, type checking, Django check, migração e 150 testes aprovados; detalhe, Perfil e Usuários validados em navegador real nas cinco combinações oficiais, sem overflow horizontal. Evidências em `IMP-009H-VISUAL-VALIDATION.md`.
 - **Estado:** COMPLETED para a fatia de criação; as capacidades seguintes permanecem separadas e rastreadas abaixo.
 - **Próximas fatias:** estado agregado da arte, monitoramento de inatividade, confirmação de conclusão, restauração crítica, autorização gerencial, transferência e sincronização offline conforme DEC-IMP-033.
+
+### IMP-009I — COMPLETED
+
+- **Estado agregado:** cada Pedido possui uma preparação de arte própria em `NÃO INICIADA`, `EM PREPARAÇÃO` ou `CONCLUÍDA`, com responsável, atividade e confirmação humana rastreáveis.
+- **Conclusão humana:** existência, tamanho ou conteúdo nunca concluem a arte automaticamente. A pessoa autorizada confirma a conclusão do conjunto inteiro somente quando há arquivo oficial ativo, acessível e com o nome preservado.
+- **Linha de base:** no instante da conclusão, o Mheibos registra tamanho e data técnica de modificação de todos os arquivos oficiais, inclusive quando ainda não houve verificação manual.
+- **Proteção:** enquanto a arte estiver concluída, criar ou vincular outro arquivo oficial é recusado no serviço e não é oferecido pela interface.
+- **Alteração posterior:** verificação física detecta mudança de conteúdo depois da conclusão, registra pessoa e instante e exige a escolha explícita entre manter o conjunto concluído ou voltar à preparação.
+- **Auditoria:** conclusão e decisão posterior geram eventos transacionais; voltar à preparação remove a confirmação anterior sem apagar o histórico.
+- **Teste real:** criação vazia, conclusão sem verificação prévia, alteração física, alerta persistente e retorno à preparação foram exercitados no Pedido #1. O teste revelou e corrigiu a ausência inicial da linha de base.
+- **Validação:** lint, type checking, Django check, migration check, testes direcionados e gate visual aprovados; evidências em `IMP-009I-VISUAL-VALIDATION.md`.
+- **Próxima fatia:** alerta por duas horas de inatividade, cadência, lembrete, adiamento condicionado e prazo crítico conforme DEC-IMP-033.

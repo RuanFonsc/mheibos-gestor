@@ -24,6 +24,46 @@ class EstadoVinculoArquivo(models.TextChoices):
     ENCERRADO = "ENCERRADO", "Encerrado"
 
 
+class EstadoPreparacaoArte(models.TextChoices):
+    NAO_INICIADA = "NAO_INICIADA", "Arte nao iniciada"
+    EM_PREPARACAO = "EM_PREPARACAO", "Arte em preparacao"
+    CONCLUIDA = "CONCLUIDA", "Arte concluida"
+
+
+class PreparacaoArtePedido(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    pedido = models.OneToOneField(
+        "pedidos.Pedido", related_name="preparacao_arte", on_delete=models.PROTECT
+    )
+    estado = models.CharField(
+        max_length=24,
+        choices=EstadoPreparacaoArte.choices,
+        default=EstadoPreparacaoArte.NAO_INICIADA,
+    )
+    responsavel = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="preparacoes_arte_responsavel",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    iniciado_em = models.DateTimeField(null=True, blank=True)
+    ultima_atividade_em = models.DateTimeField(null=True, blank=True)
+    concluido_em = models.DateTimeField(null=True, blank=True)
+    concluido_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="preparacoes_arte_concluidas",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-atualizado_em"]
+
+
 class ArquivoOficialArte(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     pedido = models.ForeignKey(
@@ -44,6 +84,16 @@ class ArquivoOficialArte(models.Model):
         default=EstadoVinculoArquivo.ATIVO,
     )
     tamanho_bytes = models.PositiveBigIntegerField(null=True, blank=True)
+    modificado_em_ns = models.PositiveBigIntegerField(null=True, blank=True)
+    modificacao_detectada_em = models.DateTimeField(null=True, blank=True)
+    alteracao_pos_conclusao_pendente = models.BooleanField(default=False)
+    ultima_modificacao_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="arquivos_oficiais_modificados",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
     largura_px = models.PositiveIntegerField(null=True, blank=True)
     altura_px = models.PositiveIntegerField(null=True, blank=True)
     resolucao_dpi = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)

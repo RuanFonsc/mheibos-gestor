@@ -16,9 +16,12 @@ from apps.arquivos.services import (
     AlertaArquivoInvalido,
     ArquivoOficialInvalido,
     EncerramentoArquivoInvalido,
+    PreparacaoArteInvalida,
     TemaPedidoImutavel,
     criar_arquivo_oficial,
     encerrar_vinculo_arquivo_oficial,
+    concluir_arte_pedido,
+    decidir_alteracao_pos_conclusao,
     reconhecer_alerta_arquivo,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
@@ -35,7 +38,7 @@ from apps.arquivos.anexos import (
     desvincular_anexo,
 )
 from apps.arquivos.models import AnexoPedido
-from apps.arquivos.models import ArquivoOficialArte, EstadoVinculoArquivo
+from apps.arquivos.models import ArquivoOficialArte, EstadoVinculoArquivo, PreparacaoArtePedido
 from apps.arquivos.pesquisa import pesquisar_pedidos_por_artes
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.ui_prefs import PROGRAMAS_ARTE, carregar_preferencias
@@ -200,6 +203,7 @@ def pedido_detail(request, pk):
             "arquivos_oficiais": pedido.arquivos_oficiais_arte.all(),
             "programas_arte": PROGRAMAS_ARTE,
             "programa_arte_padrao": preferencias["programa_arte"],
+            "preparacao_arte": PreparacaoArtePedido.objects.filter(pedido=pedido).first(),
             "anexos_ativos": pedido.anexos.filter(desvinculado_em__isnull=True),
             "status_form": PedidoStatusForm(initial={"status": pedido.status}),
             "categorias_tabs": CategoriaServico.objects.filter(ativa=True),
@@ -495,7 +499,7 @@ def pedido_vincular_arquivo_oficial(request, pk):
             caminho=request.POST.get("caminho_oficial", ""),
             operador=operador,
         )
-    except ArquivoOficialInvalido as exc:
+    except (ArquivoOficialInvalido, PreparacaoArteInvalida) as exc:
         messages.error(request, str(exc))
     else:
         messages.success(request, "Arquivo oficial de arte vinculado.")
@@ -516,10 +520,53 @@ def pedido_criar_arquivo_oficial(request, pk):
             programa=request.POST.get("programa_arte", ""),
             operador=operador,
         )
-    except ArquivoOficialInvalido as exc:
+    except (ArquivoOficialInvalido, PreparacaoArteInvalida) as exc:
         messages.error(request, str(exc))
     else:
         messages.success(request, f"Arquivo oficial {arquivo.nome_oficial} criado vazio.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_concluir_arte(request, pk):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode concluir a arte deste Pedido.")
+        return redirect("pedido_detail", pk=pk)
+    try:
+        concluir_arte_pedido(pedido=pedido, operador=operador)
+    except PreparacaoArteInvalida as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Arte do Pedido marcada como concluida.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_decidir_alteracao_arte(request, pk, arquivo_id):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode confirmar alteracoes desta arte.")
+        return redirect("pedido_detail", pk=pk)
+    arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)
+    decisao = request.POST.get("decisao")
+    if decisao not in {"manter", "reabrir"}:
+        messages.error(request, "Escolha se a arte permanece concluida ou volta para preparacao.")
+        return redirect("pedido_detail", pk=pk)
+    try:
+        decidir_alteracao_pos_conclusao(
+            arquivo=arquivo,
+            operador=operador,
+            manter_concluida=decisao == "manter",
+        )
+    except PreparacaoArteInvalida as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Decisao sobre a modificacao registrada.")
     return redirect("pedido_detail", pk=pk)
 
 
