@@ -20,6 +20,7 @@ from apps.arquivos.services import (
     PreparacaoArteInvalida,
     RestauracaoArquivoInvalida,
     TemaPedidoImutavel,
+    TransferenciaResponsabilidadeArteInvalida,
     criar_arquivo_oficial,
     avaliar_alerta_inatividade_arte,
     encerrar_vinculo_arquivo_oficial,
@@ -27,6 +28,7 @@ from apps.arquivos.services import (
     decidir_alteracao_pos_conclusao,
     reconhecer_alerta_arquivo,
     responder_alerta_inatividade_arte,
+    transferir_responsabilidade_arte,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
@@ -75,6 +77,14 @@ from apps.pedidos.use_cases import (
 from apps.operacao.services import ProcessoEncerrado
 from apps.operacao.projections import projetar_lista, projetar_pedido, queryset_com_projecao
 from apps.sincronizacao.services import SincronizacaoInvalida, enfileirar_pedido_local
+
+
+def pode_operar_preparacao_arte(pedido, operador) -> bool:
+    if pode_editar_pedido(pedido, operador):
+        return True
+    return PreparacaoArtePedido.objects.filter(
+        pedido=pedido, responsavel=operador
+    ).exists()
 
 
 def pedido_list(request):
@@ -202,6 +212,8 @@ def pedido_detail(request, pk):
         for arquivo in arquivos_oficiais
         if arquivo.estado_vinculo == EstadoVinculoArquivo.ATIVO
     )
+    preparacao_arte = PreparacaoArtePedido.objects.filter(pedido=pedido).first()
+    pode_operar_arte = pode_operar_preparacao_arte(pedido, operador)
     return render(
         request,
         "pedidos/detail.html",
@@ -209,6 +221,7 @@ def pedido_detail(request, pk):
             "active": "pedidos",
             "pedido": pedido,
             "pode_editar": pode_editar_pedido(pedido, operador),
+            "pode_operar_arte": pode_operar_arte,
             "pode_cancelar": operador.pode_cancelar_pedido,
             "pode_desvincular_anexo": operador.is_admin,
             "pode_encerrar_arquivo_oficial": operador.is_admin,
@@ -217,9 +230,12 @@ def pedido_detail(request, pk):
             "gerentes_ativos": OperadorGestor.objects.filter(
                 ativo=True, papel__in=["ADMIN", "ADMIN_GERAL"]
             ).order_by("nome"),
+            "profissionais_arte_ativos": OperadorGestor.objects.filter(
+                ativo=True
+            ).exclude(papel="TEMPORARIO").order_by("nome"),
             "programas_arte": PROGRAMAS_ARTE,
             "programa_arte_padrao": preferencias["programa_arte"],
-            "preparacao_arte": PreparacaoArtePedido.objects.filter(pedido=pedido).first(),
+            "preparacao_arte": preparacao_arte,
             "alerta_inatividade_arte": avaliar_alerta_inatividade_arte(pedido=pedido),
             "anexos_ativos": pedido.anexos.filter(desvinculado_em__isnull=True),
             "status_form": PedidoStatusForm(initial={"status": pedido.status}),
@@ -539,7 +555,7 @@ def pedido_vincular_arquivo_oficial(request, pk):
         return redirect("pedido_detail", pk=pk)
     pedido = get_object_or_404(Pedido, pk=pk)
     operador = operador_atual(request)
-    if not pode_editar_pedido(pedido, operador):
+    if not pode_operar_preparacao_arte(pedido, operador):
         messages.error(request, "Seu perfil nao pode vincular arquivos a este Pedido.")
         return redirect("pedido_detail", pk=pk)
     try:
@@ -560,7 +576,7 @@ def pedido_criar_arquivo_oficial(request, pk):
         return redirect("pedido_detail", pk=pk)
     pedido = get_object_or_404(Pedido.objects.select_related("cliente"), pk=pk)
     operador = operador_atual(request)
-    if not pode_editar_pedido(pedido, operador):
+    if not pode_operar_preparacao_arte(pedido, operador):
         messages.error(request, "Seu perfil nao pode criar arquivos para este Pedido.")
         return redirect("pedido_detail", pk=pk)
     try:
@@ -581,7 +597,7 @@ def pedido_concluir_arte(request, pk):
         return redirect("pedido_detail", pk=pk)
     pedido = get_object_or_404(Pedido, pk=pk)
     operador = operador_atual(request)
-    if not pode_editar_pedido(pedido, operador):
+    if not pode_operar_preparacao_arte(pedido, operador):
         messages.error(request, "Seu perfil nao pode concluir a arte deste Pedido.")
         return redirect("pedido_detail", pk=pk)
     try:
@@ -598,7 +614,7 @@ def pedido_responder_alerta_inatividade_arte(request, pk):
         return redirect("pedido_detail", pk=pk)
     pedido = get_object_or_404(Pedido, pk=pk)
     operador = operador_atual(request)
-    if not pode_editar_pedido(pedido, operador):
+    if not pode_operar_preparacao_arte(pedido, operador):
         messages.error(request, "Seu perfil nao pode responder por esta arte.")
         return redirect("pedido_detail", pk=pk)
     try:
@@ -621,12 +637,41 @@ def pedido_responder_alerta_inatividade_arte(request, pk):
     return redirect("pedido_detail", pk=pk)
 
 
+def pedido_transferir_responsabilidade_arte(request, pk):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    solicitante = operador_atual(request)
+    novo_responsavel = get_object_or_404(
+        OperadorGestor, pk=request.POST.get("novo_responsavel"), ativo=True
+    )
+    gerente = get_object_or_404(
+        OperadorGestor, pk=request.POST.get("gerente_autorizador"), ativo=True
+    )
+    try:
+        transferir_responsabilidade_arte(
+            pedido=pedido,
+            solicitante=solicitante,
+            novo_responsavel=novo_responsavel,
+            gerente=gerente,
+            senha=request.POST.get("senha_gerente", ""),
+        )
+    except TransferenciaResponsabilidadeArteInvalida as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(
+            request,
+            f"Responsabilidade da arte transferida para {novo_responsavel.nome}. A pasta e a autoria originais foram preservadas.",
+        )
+    return redirect("pedido_detail", pk=pk)
+
+
 def pedido_decidir_alteracao_arte(request, pk, arquivo_id):
     if request.method != "POST":
         return redirect("pedido_detail", pk=pk)
     pedido = get_object_or_404(Pedido, pk=pk)
     operador = operador_atual(request)
-    if not pode_editar_pedido(pedido, operador):
+    if not pode_operar_preparacao_arte(pedido, operador):
         messages.error(request, "Seu perfil nao pode confirmar alteracoes desta arte.")
         return redirect("pedido_detail", pk=pk)
     arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)
@@ -652,7 +697,7 @@ def pedido_verificar_arquivo_oficial(request, pk, arquivo_id):
         return redirect("pedido_detail", pk=pk)
     pedido = get_object_or_404(Pedido, pk=pk)
     operador = operador_atual(request)
-    if not pode_editar_pedido(pedido, operador):
+    if not pode_operar_preparacao_arte(pedido, operador):
         messages.error(request, "Seu perfil nao pode verificar arquivos deste Pedido.")
         return redirect("pedido_detail", pk=pk)
     arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)
@@ -669,7 +714,7 @@ def pedido_vincular_arquivo_restaurado(request, pk, arquivo_id):
         return redirect("pedido_detail", pk=pk)
     pedido = get_object_or_404(Pedido, pk=pk)
     operador = operador_atual(request)
-    if not pode_editar_pedido(pedido, operador):
+    if not pode_operar_preparacao_arte(pedido, operador):
         messages.error(request, "Seu perfil nao pode confirmar esta restauracao.")
         return redirect("pedido_detail", pk=pk)
     arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)
@@ -695,7 +740,7 @@ def pedido_reconhecer_alerta_arquivo(request, pk, arquivo_id):
         return redirect("pedido_detail", pk=pk)
     pedido = get_object_or_404(Pedido, pk=pk)
     operador = operador_atual(request)
-    if not pode_editar_pedido(pedido, operador):
+    if not pode_operar_preparacao_arte(pedido, operador):
         messages.error(request, "Seu perfil nao pode reconhecer alertas deste Pedido.")
         return redirect("pedido_detail", pk=pk)
     arquivo = get_object_or_404(pedido.arquivos_oficiais_arte, pk=arquivo_id)

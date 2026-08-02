@@ -435,3 +435,14 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Auditoria:** restauração e exceção gerencial geram eventos transacionais; a exceção integra a mesma transação da mudança de estado, impedindo autorização órfã quando a operação falha.
 - **Validação:** migration check, Django check, lint, type checking, tokens visuais, 46 testes focados e baseline completo de 167 testes aprovados. Matriz visual oficial sem overflow; evidências em `IMP-009K-VISUAL-VALIDATION.md`.
 - **Próxima fatia:** transferência gerencial de responsabilidade e continuidade da preparação conforme DEC-IMP-033.
+
+### IMP-009L — COMPLETED
+
+- **Transferência crítica:** durante alerta de inatividade em prazo crítico, o responsável atual pode solicitar transferência imediata para outro profissional ativo.
+- **Autorização:** a ação exige gerente ou administrador ativo e sua própria senha; usuário temporário, destino inativo, senha incorreta, mesmo responsável ou solicitante alheio são recusados.
+- **Separação de conceitos:** muda somente a responsabilidade atual da preparação. Criador, autoria, nome, caminho e pasta física dos arquivos permanecem inalterados.
+- **Continuidade:** o novo responsável recebe acesso às ações da preparação de arte mesmo quando não cadastrou o Pedido; pode abrir, verificar, criar, vincular, restaurar, responder alertas e concluir o conjunto.
+- **Cadência:** a transferência registra atividade e concede duas horas ao novo responsável antes de outro alerta; o número histórico de alertas não é apagado.
+- **Auditoria:** `ResponsabilidadeArteTransferida` registra responsável anterior, destino, solicitante e gerente autorizador. Falha do evento reverte integralmente a troca.
+- **Validação:** lint, type checking, Django check, migration check, tokens, 37 testes focados e baseline completo de 170 testes aprovados; matriz visual oficial sem overflow. Evidência em `IMP-009L-VISUAL-VALIDATION.md`.
+- **Próxima fatia:** criação provisória offline, transferência posterior e política de cópia local conforme DEC-IMP-033.

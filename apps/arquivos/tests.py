@@ -18,6 +18,7 @@ from apps.arquivos.services import (
     EncerramentoArquivoInvalido,
     PreparacaoArteInvalida,
     RestauracaoArquivoInvalida,
+    TransferenciaResponsabilidadeArteInvalida,
     TemaPedidoImutavel,
     concluir_arte_pedido,
     criar_arquivo_oficial,
@@ -26,6 +27,7 @@ from apps.arquivos.services import (
     encerrar_vinculo_arquivo_oficial,
     reconhecer_alerta_arquivo,
     responder_alerta_inatividade_arte,
+    transferir_responsabilidade_arte,
     validar_alteracao_tema,
     verificar_arquivo_oficial,
     vincular_arquivo_oficial,
@@ -57,6 +59,130 @@ class ArquivoOficialArteTests(TestCase):
         session = self.client.session
         session["operador_id"] = (operador or self.operador).pk
         session.save()
+
+    def preparar_alerta_critico(self):
+        categoria = CategoriaServico.objects.create(
+            nome="Critica transferencia", alerta_dias_uteis=2
+        )
+        self.pedido.data_entrega = timezone.localdate() + timedelta(days=1)
+        self.pedido.save(update_fields=["data_entrega"])
+        PedidoItem.objects.create(
+            pedido=self.pedido,
+            nome="Item critico transferencia",
+            categoria_servico=categoria,
+        )
+        with tempfile.TemporaryDirectory() as raiz:
+            PerfilEmpresa.objects.update_or_create(
+                chave="global", defaults={"diretorio_artes_raiz": raiz}
+            )
+            criar_arquivo_oficial(
+                pedido=self.pedido, programa="coreldraw", operador=self.operador
+            )
+        agora = timezone.now()
+        preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+        preparacao.proximo_alerta_em = agora - timedelta(seconds=1)
+        preparacao.save(update_fields=["proximo_alerta_em"])
+        return agora, preparacao
+
+    def test_transferencia_gerencial_preserva_criador_pasta_e_troca_responsavel(self):
+        agora, preparacao = self.preparar_alerta_critico()
+        arquivo = ArquivoOficialArte.objects.get(pedido=self.pedido)
+        caminho_original = arquivo.caminho_oficial
+        criador_original = arquivo.criado_por
+        novo = OperadorGestor.objects.create(
+            nome="Designer substituto", senha="segura", papel=PapelOperador.USUARIO
+        )
+        gerente = OperadorGestor.objects.create(
+            nome="Gerente da arte", senha="senha-gerente", papel=PapelOperador.ADMIN
+        )
+
+        preparacao = transferir_responsabilidade_arte(
+            pedido=self.pedido,
+            solicitante=self.operador,
+            novo_responsavel=novo,
+            gerente=gerente,
+            senha="senha-gerente",
+            agora=agora,
+        )
+
+        arquivo.refresh_from_db()
+        self.assertEqual(preparacao.responsavel, novo)
+        self.assertEqual(preparacao.proximo_alerta_em, agora + timedelta(hours=2))
+        self.assertEqual(arquivo.caminho_oficial, caminho_original)
+        self.assertEqual(arquivo.criado_por, criador_original)
+        evento = EventoOperacional.objects.get(tipo="ResponsabilidadeArteTransferida")
+        self.assertEqual(evento.operador, gerente)
+        self.assertTrue(evento.valores_posteriores["pasta_do_criador_preservada"])
+
+        alerta_futuro = avaliar_alerta_inatividade_arte(
+            pedido=self.pedido, agora=agora + timedelta(hours=2, seconds=1)
+        )
+        self.assertTrue(alerta_futuro.ativo)
+        responder_alerta_inatividade_arte(
+            pedido=self.pedido,
+            operador=novo,
+            acao="AINDA_TRABALHANDO",
+            agora=agora + timedelta(hours=2, seconds=1),
+        )
+
+    def test_transferencia_recusa_senha_invalida_e_reverte_falha_de_auditoria(self):
+        agora, preparacao = self.preparar_alerta_critico()
+        novo = OperadorGestor.objects.create(
+            nome="Designer destino", senha="segura", papel=PapelOperador.USUARIO
+        )
+        gerente = OperadorGestor.objects.create(
+            nome="Gerente seguranca", senha="senha-gerente", papel=PapelOperador.ADMIN
+        )
+        with self.assertRaises(TransferenciaResponsabilidadeArteInvalida):
+            transferir_responsabilidade_arte(
+                pedido=self.pedido,
+                solicitante=self.operador,
+                novo_responsavel=novo,
+                gerente=gerente,
+                senha="errada",
+                agora=agora,
+            )
+        with patch("apps.arquivos.services.registrar_evento", side_effect=RuntimeError):
+            with self.assertRaises(RuntimeError):
+                transferir_responsabilidade_arte(
+                    pedido=self.pedido,
+                    solicitante=self.operador,
+                    novo_responsavel=novo,
+                    gerente=gerente,
+                    senha="senha-gerente",
+                    agora=agora,
+                )
+        preparacao.refresh_from_db()
+        self.assertEqual(preparacao.responsavel, self.operador)
+
+    def test_interface_transfere_responsabilidade_com_senha_gerencial(self):
+        self.preparar_alerta_critico()
+        novo = OperadorGestor.objects.create(
+            nome="Designer pela interface", senha="segura", papel=PapelOperador.USUARIO
+        )
+        gerente = OperadorGestor.objects.create(
+            nome="Gerente pela interface", senha="senha-gerente", papel=PapelOperador.ADMIN
+        )
+        self.entrar()
+        resposta = self.client.get(f"/pedidos/{self.pedido.pk}/")
+        self.assertContains(
+            resposta, "Transferir responsabilidade com autorização gerencial"
+        )
+        resposta = self.client.post(
+            f"/pedidos/{self.pedido.pk}/arte/transferir-responsabilidade/",
+            {
+                "novo_responsavel": novo.pk,
+                "gerente_autorizador": gerente.pk,
+                "senha_gerente": "senha-gerente",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        preparacao = PreparacaoArtePedido.objects.get(pedido=self.pedido)
+        self.assertEqual(preparacao.responsavel, novo)
+        self.entrar(novo)
+        resposta = self.client.get(f"/pedidos/{self.pedido.pk}/")
+        self.assertContains(resposta, "Marcar arte do Pedido como concluida")
+        self.assertContains(resposta, "Criar arquivo oficial")
 
     def test_ausencia_critica_persiste_ate_vinculo_explicito_da_restauracao(self):
         with tempfile.TemporaryDirectory() as raiz:

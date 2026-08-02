@@ -66,6 +66,10 @@ class ExcecaoAusenciaArquivoInvalida(Exception):
     pass
 
 
+class TransferenciaResponsabilidadeArteInvalida(Exception):
+    pass
+
+
 def _sha256_arquivo(caminho: str) -> str:
     digest = hashlib.sha256()
     with open(caminho, "rb") as arquivo_fisico:
@@ -195,6 +199,84 @@ def responder_alerta_inatividade_arte(
         chave_idempotencia=(
             f"arte-inatividade:{preparacao.pk}:{alerta.numero}:{acao}"
         ),
+    )
+    return preparacao
+
+
+@transaction.atomic
+def transferir_responsabilidade_arte(
+    *, pedido, solicitante, novo_responsavel, gerente, senha: str, agora=None
+) -> PreparacaoArtePedido:
+    agora = agora or timezone.now()
+    preparacao = (
+        PreparacaoArtePedido.objects.select_for_update()
+        .select_related("responsavel")
+        .get(pedido=pedido)
+    )
+    alerta = avaliar_alerta_inatividade_arte(pedido=pedido, agora=agora)
+    if not alerta.ativo or not alerta.prazo_critico:
+        raise TransferenciaResponsabilidadeArteInvalida(
+            "A transferencia imediata e oferecida durante um alerta em prazo critico."
+        )
+    if preparacao.responsavel_id != solicitante.pk:
+        raise TransferenciaResponsabilidadeArteInvalida(
+            "Somente o responsavel atual pode solicitar a transferencia."
+        )
+    if not gerente.ativo or not gerente.is_admin:
+        raise TransferenciaResponsabilidadeArteInvalida(
+            "A transferencia exige um gerente ou administrador ativo."
+        )
+    if not validar_senha_operador(gerente, senha):
+        raise TransferenciaResponsabilidadeArteInvalida(
+            "A senha do gerente autorizador e invalida."
+        )
+    if (
+        not novo_responsavel.ativo
+        or novo_responsavel.papel == "TEMPORARIO"
+    ):
+        raise TransferenciaResponsabilidadeArteInvalida(
+            "Escolha um profissional ativo para assumir a arte."
+        )
+    if novo_responsavel.pk == preparacao.responsavel_id:
+        raise TransferenciaResponsabilidadeArteInvalida(
+            "O profissional escolhido ja e o responsavel atual."
+        )
+    responsavel_anterior = preparacao.responsavel
+    preparacao.responsavel = novo_responsavel
+    preparacao.ultima_atividade_em = agora
+    preparacao.proximo_alerta_em = agora + timedelta(hours=2)
+    preparacao.adiado_para_data = None
+    preparacao.ajuda_urgente_solicitada_em = None
+    preparacao.save(
+        update_fields=[
+            "responsavel",
+            "ultima_atividade_em",
+            "proximo_alerta_em",
+            "adiado_para_data",
+            "ajuda_urgente_solicitada_em",
+            "atualizado_em",
+        ]
+    )
+    registrar_evento(
+        tipo="ResponsabilidadeArteTransferida",
+        operador=gerente,
+        origem="gestor_web",
+        alvo_tipo="PreparacaoArtePedido",
+        alvo_id=str(preparacao.pk),
+        acao="transferir_responsabilidade_arte",
+        valores_anteriores={
+            "responsavel_id": responsavel_anterior.pk if responsavel_anterior else None,
+            "responsavel_nome": responsavel_anterior.nome if responsavel_anterior else "",
+        },
+        valores_posteriores={
+            "responsavel_id": novo_responsavel.pk,
+            "responsavel_nome": novo_responsavel.nome,
+            "solicitante_id": solicitante.pk,
+            "gerente_autorizador_id": gerente.pk,
+            "arquivo_movido": False,
+            "pasta_do_criador_preservada": True,
+            "proximo_alerta_em": preparacao.proximo_alerta_em.isoformat(),
+        },
     )
     return preparacao
 

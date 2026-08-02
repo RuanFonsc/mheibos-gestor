@@ -67,7 +67,7 @@
             <span class="block text-xs text-[var(--text-secondary)]">Somente vinculos e metadados; nenhum binario no banco.</span>
           </div>
         </div>
-        {% if alerta_inatividade_arte.ativo and pode_editar and not runtime_offline %}
+        {% if alerta_inatividade_arte.ativo and pode_operar_arte and not runtime_offline %}
           <section class="mt-4 rounded-lg border border-[#ffb347] bg-[#ffb347]/10 p-4" aria-labelledby="alertaInatividadeArte">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div class="min-w-0">
@@ -96,6 +96,38 @@
                 </form>
               {% endif %}
             </div>
+            {% if alerta_inatividade_arte.prazo_critico %}
+              <details class="mt-3 border-t border-[#ffb347]/40 pt-3">
+                <summary class="cursor-pointer text-sm font-semibold">Transferir responsabilidade com autorização gerencial</summary>
+                <form method="post" action="{% url 'pedido_transferir_responsabilidade_arte' pedido.pk %}" class="mt-3 grid gap-3 md:grid-cols-2">
+                  {% csrf_token %}
+                  <div>
+                    <label for="novoResponsavelArte">Novo responsável</label>
+                    <select id="novoResponsavelArte" name="novo_responsavel" required>
+                      <option value="">Selecione</option>
+                      {% for profissional in profissionais_arte_ativos %}
+                        {% if profissional.pk != preparacao_arte.responsavel_id %}<option value="{{ profissional.pk }}">{{ profissional.nome }}</option>{% endif %}
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label for="gerenteTransferenciaArte">Gerente autorizador</label>
+                    <select id="gerenteTransferenciaArte" name="gerente_autorizador" required>
+                      <option value="">Selecione</option>
+                      {% for gerente in gerentes_ativos %}<option value="{{ gerente.pk }}">{{ gerente.nome }}</option>{% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label for="senhaGerenteTransferenciaArte">Senha do gerente</label>
+                    <input id="senhaGerenteTransferenciaArte" type="password" name="senha_gerente" autocomplete="current-password" required>
+                  </div>
+                  <div class="flex items-end">
+                    <button type="submit" class="btn-danger w-full">Transferir agora</button>
+                  </div>
+                  <p class="md:col-span-2 text-xs text-[var(--text-secondary)]">A responsabilidade atual muda imediatamente. Criador, autoria e pasta física dos arquivos permanecem inalterados.</p>
+                </form>
+              </details>
+            {% endif %}
             {% if alerta_inatividade_arte.pode_adiar_amanha %}
               <details class="mt-3 border-t border-[#ffb347]/40 pt-3">
                 <summary class="cursor-pointer text-sm font-semibold">Deixar a arte para amanha</summary>
@@ -130,7 +162,7 @@
                   <strong class="block text-sm text-red-400">ALERTA CRITICO - AUSENCIA DE ARTE OFICIAL DO PEDIDO #{{ pedido.pk }}</strong>
                   <p class="mt-2 text-sm">O arquivo oficial não foi encontrado. Este alerta permanece ativo até a restauração ser confirmada pelo Mheibos.</p>
                   <p class="mt-2 break-all text-xs text-[var(--text-secondary)]">Restaure <strong>{{ arquivo.nome_oficial }}</strong> no caminho oficial: {{ arquivo.caminho_oficial }}</p>
-                  {% if pode_editar %}
+                  {% if pode_operar_arte %}
                     <form method="post" action="{% url 'pedido_vincular_arquivo_restaurado' pedido.pk arquivo.pk %}" class="mt-4 space-y-3">
                       {% csrf_token %}
                       <div data-corel-field>
@@ -187,7 +219,7 @@
                   {% for discrepancia in arquivo.discrepancias %}<p>{{ discrepancia.mensagem }}</p>{% endfor %}
                   {% if arquivo.alerta_reconhecido_em %}
                     <p class="mt-2 text-xs text-[var(--text-secondary)]">Reconhecido por {{ arquivo.alerta_reconhecido_por.nome }} em {{ arquivo.alerta_reconhecido_em|date:"d/m/Y H:i" }}.</p>
-                  {% elif pode_editar and not arquivo.ausencia_critica_ativa %}
+                  {% elif pode_operar_arte and not arquivo.ausencia_critica_ativa %}
                     <form method="post" action="{% url 'pedido_reconhecer_alerta_arquivo' pedido.pk arquivo.pk %}" class="mt-2">
                       {% csrf_token %}<button type="submit" class="btn-danger">Eu entendi</button>
                     </form>
@@ -200,7 +232,7 @@
                   {% if arquivo.backup_previo_confirmado %}<p>Backup prévio declarado pelo administrador.</p>{% endif %}
                   {% if arquivo.encerramento_observacao %}<p class="mt-1">{{ arquivo.encerramento_observacao }}</p>{% endif %}
                 </div>
-              {% elif pode_editar and not runtime_offline %}
+              {% elif pode_operar_arte and not runtime_offline %}
                 <form method="post" action="{% url 'pedido_verificar_arquivo_oficial' pedido.pk arquivo.pk %}" class="mt-3">
                   {% csrf_token %}<button type="submit" class="btn-secondary">Verificar agora</button>
                 </form>
@@ -221,7 +253,7 @@
             </div>
           {% empty %}<p class="text-sm text-[var(--text-secondary)]">Nenhum arquivo oficial vinculado.</p>{% endfor %}
         </div>
-        {% if pode_editar and not runtime_offline %}
+        {% if pode_operar_arte and not runtime_offline %}
           {% if preparacao_arte.estado == 'CONCLUIDA' %}
             <p class="mt-4 border-t border-[#2d3154] pt-4 text-sm text-[#00c896]">Conclusao confirmada por {{ preparacao_arte.concluido_por.nome }} em {{ preparacao_arte.concluido_em|date:"d/m/Y H:i" }}. Novos arquivos oficiais estao bloqueados.</p>
           {% else %}
