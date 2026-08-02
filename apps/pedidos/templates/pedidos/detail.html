@@ -110,6 +110,41 @@
       </div>
 
       <div class="card p-5">
+        <div class="flex items-center justify-between gap-3">
+          <div><span class="kicker">RFC-0014</span><h2 class="font-semibold">Anexos do pedido</h2></div>
+          <span class="text-xs text-[var(--text-secondary)]">Lista única; o Mheibos não interpreta, descriptografa ou solicita senhas.</span>
+        </div>
+        <div class="mt-4 space-y-2">
+          {% for anexo in anexos_ativos %}
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#2d3154] bg-[#22253a] p-3">
+              <div class="min-w-0">
+                <a href="{% url 'pedido_baixar_anexo' pedido.pk anexo.pk %}" class="break-all font-semibold text-[#00e5ff]">{{ anexo.nome_original }}</a>
+                <p class="mt-1 text-xs text-[var(--text-secondary)]">{{ anexo.tamanho_bytes|filesizeformat }} · adicionado por {{ anexo.criado_por.nome }}</p>
+              </div>
+              {% if pode_desvincular_anexo %}
+                <form method="post" action="{% url 'pedido_desvincular_anexo' pedido.pk anexo.pk %}">
+                  {% csrf_token %}<button type="submit" class="btn-danger">Remover vínculo</button>
+                </form>
+              {% endif %}
+            </div>
+          {% empty %}<p class="text-sm text-[var(--text-secondary)]">Nenhum anexo vinculado.</p>{% endfor %}
+        </div>
+        {% if pode_editar and not runtime_offline %}
+          <form method="post" enctype="multipart/form-data" action="{% url 'pedido_adicionar_anexos' pedido.pk %}" class="mt-4 border-t border-[#2d3154] pt-4">
+            {% csrf_token %}
+            <label for="anexosPedido">Adicionar por explorador ou arrastar arquivos</label>
+            <input id="anexosPedido" type="file" name="anexos" multiple class="mt-2">
+            <label class="mt-3 flex items-start gap-2 text-sm">
+              <input type="checkbox" name="manter_duplicados" value="1" class="mt-1">
+              <span>Se o conteúdo já estiver vinculado, decido manter também a nova cópia.</span>
+            </label>
+            <p class="mt-2 text-xs text-[var(--text-secondary)]">Sem esta decisão, duplicidades detectadas por hash serão recusadas e os demais arquivos continuarão sendo processados.</p>
+            <button type="submit" class="btn-primary mt-3">Vincular anexos</button>
+          </form>
+        {% endif %}
+      </div>
+
+      <div class="card p-5">
         <h2 class="mb-4 font-semibold">Itens do pedido</h2>
         <div class="table-wrap">
           <table class="data-table">

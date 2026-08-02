@@ -206,3 +206,13 @@
 - **Compatibilidade:** o nome técnico legado permanece até migração própria; `Pedido.artes_ativas` torna a intenção explícita nos consumidores.
 - **Alternativas rejeitadas:** renomear tabela/modelo na mesma fatia; apagar o arquivo físico; reutilizar `ArquivoOficialArte`; ocultar vínculos encerrados por gerenciador implícito.
 - **Situação:** definitiva para o ciclo de vida; nomenclatura física ainda temporária.
+
+## DEC-IMP-022 — Anexo é conteúdo opaco com duplicidade decidida por pessoa
+
+- **Decisão:** representar anexos gerais em entidade própria, sem interpretação, usando SHA-256 apenas como metadado técnico para detectar conteúdo repetido.
+- **Motivo:** RFC-0014 exige lista única, não interpretação e decisão humana sobre duplicidades; arquivo oficial e referência visual possuem responsabilidades diferentes.
+- **Duplicidade:** recusar por padrão e exigir marcação explícita para manter outra cópia; a decisão é persistida no evento de vínculo.
+- **Preservação:** desvinculação mantém o arquivo físico e o registro histórico; falha anterior à constituição do vínculo pode limpar somente a cópia órfã criada pela tentativa.
+- **Segurança:** armazenamento privado não expõe URL de mídia; o download autorizado força resposta como anexo e recurso alheio não revela existência.
+- **Alternativas rejeitadas:** analisar extensão/conteúdo; abrir arquivo para validar senha; fundir com arte oficial; sobrescrever duplicado; apagar físico ao remover da lista.
+- **Situação:** definitiva.

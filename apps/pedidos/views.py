@@ -6,6 +6,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from django.db.models import Prefetch, Q
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -25,6 +26,12 @@ from apps.arquivos.referencias import (
     adicionar_arte_referencia,
     desvincular_arte_referencia,
 )
+from apps.arquivos.anexos import (
+    AnexoInvalido,
+    adicionar_anexo,
+    desvincular_anexo,
+)
+from apps.arquivos.models import AnexoPedido
 from apps.catalogo.models import CategoriaServico, OperadorGestor, PerfilEmpresa, ProdutoServico
 from apps.catalogo.os_config import css_linha_cabecalho, normalizar_campos_os
 from apps.catalogo.permissions import operador_atual, pode_editar_pedido
@@ -168,7 +175,7 @@ def entrega_list(request):
 def pedido_detail(request, pk):
     pedido = get_object_or_404(
         Pedido.objects.select_related("cliente").prefetch_related(
-            "itens", "artes", "arquivos_oficiais_arte", "pagamentos", "processos__etapas__responsavel"
+            "itens", "artes", "anexos", "arquivos_oficiais_arte", "pagamentos", "processos__etapas__responsavel"
         ),
         pk=pk,
     )
@@ -181,7 +188,9 @@ def pedido_detail(request, pk):
             "pedido": pedido,
             "pode_editar": pode_editar_pedido(pedido, operador),
             "pode_cancelar": operador.pode_cancelar_pedido,
+            "pode_desvincular_anexo": operador.is_admin,
             "arquivos_oficiais": pedido.arquivos_oficiais_arte.all(),
+            "anexos_ativos": pedido.anexos.filter(desvinculado_em__isnull=True),
             "status_form": PedidoStatusForm(initial={"status": pedido.status}),
             "categorias_tabs": CategoriaServico.objects.filter(ativa=True),
         },
@@ -496,6 +505,69 @@ def pedido_reconhecer_alerta_arquivo(request, pk, arquivo_id):
     else:
         messages.success(request, "Confirmacao 'Eu entendi' registrada na auditoria.")
     return redirect("pedido_detail", pk=pk)
+
+
+def pedido_adicionar_anexos(request, pk):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        messages.error(request, "Seu perfil nao pode adicionar anexos a este Pedido.")
+        return redirect("pedido_detail", pk=pk)
+    uploads = request.FILES.getlist("anexos")
+    if not uploads:
+        messages.error(request, "Selecione pelo menos um arquivo para anexar.")
+        return redirect("pedido_detail", pk=pk)
+    manter_duplicados = request.POST.get("manter_duplicados") == "1"
+    adicionados = 0
+    for upload in uploads:
+        try:
+            adicionar_anexo(
+                pedido=pedido,
+                upload=upload,
+                operador=operador,
+                manter_duplicado=manter_duplicados,
+            )
+        except AnexoInvalido as exc:
+            messages.warning(request, str(exc))
+        else:
+            adicionados += 1
+    if adicionados:
+        messages.success(request, f"{adicionados} anexo(s) vinculado(s) sem interpretar o conteudo.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_desvincular_anexo(request, pk, anexo_id):
+    if request.method != "POST":
+        return redirect("pedido_detail", pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    try:
+        desvincular_anexo(anexo_id=anexo_id, pedido=pedido, operador=operador)
+    except AnexoInvalido as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Vinculo do anexo removido; arquivo fisico preservado.")
+    return redirect("pedido_detail", pk=pk)
+
+
+def pedido_baixar_anexo(request, pk, anexo_id):
+    pedido = get_object_or_404(Pedido, pk=pk)
+    operador = operador_atual(request)
+    if not pode_editar_pedido(pedido, operador):
+        raise Http404
+    anexo = get_object_or_404(
+        AnexoPedido,
+        pk=anexo_id,
+        pedido=pedido,
+        desvinculado_em__isnull=True,
+    )
+    return FileResponse(
+        anexo.arquivo.open("rb"),
+        as_attachment=True,
+        filename=anexo.nome_original,
+    )
 
 
 def pedido_create(request):

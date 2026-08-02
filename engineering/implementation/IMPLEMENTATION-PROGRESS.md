@@ -282,3 +282,15 @@ IMP-008C.2b — inicializar no banco local somente a identidade protegida da Est
 - **Interface:** criação, edição, detalhe e listas passam a chamar o conteúdo de “arte de referência” e explicam que ele não substitui o arquivo oficial.
 - **Testes:** 5 cenários novos cobrem autoria/hash/evento, autorização no serviço, preservação física e histórica, proteção do Pedido, rollback de auditoria e rota administrativa de desvinculação; baseline completo aprovado com 102 testes.
 - **Fora desta fatia:** anexos gerais e sua decisão de duplicidade são entidade e fluxo separados; não foram fundidos à referência visual.
+
+### IMP-009D — COMPLETED
+
+- **Capacidade:** `AnexoPedido` mantém uma lista única de arquivos anexados, separada de arte oficial e arte de referência, guardando arquivo físico fora do banco e somente referência/metadados no registro.
+- **Conteúdo opaco:** o serviço não tenta interpretar, descriptografar, solicitar senha, renderizar ou extrair significado; calcula apenas SHA-256 técnico para integridade e duplicidade.
+- **Duplicidade:** conteúdo já conhecido é recusado por padrão com explicação; uma nova cópia só é vinculada quando a pessoa marca explicitamente a decisão de manter duplicados, registrada no evento.
+- **Ciclo de vida:** administrador remove apenas o vínculo; arquivo físico, metadados, autoria e histórico permanecem. O `Pedido` é protegido contra exclusão enquanto o histórico do anexo existir.
+- **Autorização e auditoria:** autor do Pedido ou administrador adiciona; somente administrador desvincula; regras vivem no serviço. Inclusão e desvinculação geram eventos transacionais, e falha de auditoria elimina apenas a cópia órfã ainda não vinculada.
+- **Acesso:** anexos usam armazenamento privado sem URL pública; download sempre passa por endpoint que revalida a autorização do Pedido e força `Content-Disposition: attachment`.
+- **Interface:** detalhe do Pedido lista anexos, permite seleção múltipla e apresenta a decisão explícita para duplicidades; informa que o Mheibos não interpreta conteúdo.
+- **Testes:** 6 cenários cobrem opacidade, metadados, ausência de URL pública, duplicidade com decisão humana, autorização e download forçado, preservação física/histórica, proteção do Pedido, rollback e interface; baseline completo aprovado com 108 testes.
+- **Fora desta fatia:** Ctrl+V binário genérico depende de contrato seguro do navegador/Electron; seleção múltipla e drag-and-drop nativo do campo já funcionam sem criar interpretação de conteúdo.

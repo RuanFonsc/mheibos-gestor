@@ -1,6 +1,10 @@
 import uuid
+from pathlib import Path
 
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.db import models
+from django.utils.deconstruct import deconstructible
 
 
 class OrigemArquivoOficial(models.TextChoices):
@@ -87,3 +91,57 @@ class ArquivoOficialArte(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("O vinculo oficial deve ser encerrado, nunca apagado.")
+
+
+def anexo_upload_to(instance, filename):
+    return f"pedidos/{instance.pedido_id}/{instance.id}/{filename}"
+
+
+@deconstructible
+class ArmazenamentoAnexos(FileSystemStorage):
+    def __init__(self):
+        super().__init__(
+            location=Path(settings.DATA_DIR) / "anexos_privados",
+            base_url=None,
+        )
+
+    def url(self, name):
+        raise ValueError("Anexos privados nao possuem URL publica.")
+
+
+class AnexoPedido(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    pedido = models.ForeignKey(
+        "pedidos.Pedido", related_name="anexos", on_delete=models.PROTECT
+    )
+    arquivo = models.FileField(
+        upload_to=anexo_upload_to,
+        storage=ArmazenamentoAnexos(),
+    )
+    nome_original = models.CharField(max_length=255)
+    tamanho_bytes = models.PositiveBigIntegerField(default=0)
+    conteudo_sha256 = models.CharField(max_length=64)
+    criado_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="anexos_pedido_adicionados",
+        on_delete=models.PROTECT,
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    desvinculado_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="anexos_pedido_desvinculados",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    desvinculado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["criado_em", "nome_original"]
+        indexes = [
+            models.Index(fields=["pedido", "desvinculado_em"]),
+            models.Index(fields=["pedido", "conteudo_sha256"]),
+        ]
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("O anexo deve ser desvinculado, nunca apagado.")
