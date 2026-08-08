@@ -5,8 +5,9 @@ const http = require("http");
 const path = require("path");
 const { fileURLToPath } = require("url");
 
-const HOST = "127.0.0.1";
-const PORT = Number(process.env.MHEIBOS_PORT || 8765);
+const ACCESS_HOST = process.env.MHEIBOS_ACCESS_HOST || "127.0.0.1";
+const BIND_HOST = process.env.MHEIBOS_BIND_HOST || "0.0.0.0";
+const PORT = Number(process.env.MHEIBOS_PORT || 8001);
 const DEV_PROJECT_ROOT = path.resolve(process.env.MHEIBOS_PROJECT_ROOT || path.join(__dirname, ".."));
 function readClientConfig() {
   const candidates = [
@@ -23,8 +24,9 @@ function readClientConfig() {
   return {};
 }
 const CLIENT_CONFIG = readClientConfig();
-const REMOTE_BASE_URL = process.env.MHEIBOS_BASE_URL || CLIENT_CONFIG.serverUrl || "";
-const BASE_URL = (REMOTE_BASE_URL || `http://${HOST}:${PORT}`).replace(/\/$/, "");
+const REMOTE_BASE_URL =
+  process.env.MHEIBOS_BASE_URL || (modoAtual() === "cliente" ? CLIENT_CONFIG.serverUrl : "") || "";
+const BASE_URL = (REMOTE_BASE_URL || `http://${ACCESS_HOST}:${PORT}`).replace(/\/$/, "");
 const REMOTE_CLIENT = Boolean(REMOTE_BASE_URL);
 let djangoProcess = null;
 let mainWindow = null;
@@ -32,6 +34,7 @@ let mainWindow = null;
 function modoAtual() {
   const args = process.argv.join(" ").toLowerCase();
   const appName = app.getName().toLowerCase();
+  if (args.includes("--cliente") || appName.includes("cliente")) return "cliente";
   if (args.includes("--producao") || appName.includes("producao")) return "producao";
   return "gestor";
 }
@@ -42,6 +45,7 @@ function destinoInicial() {
 }
 
 function tituloJanela() {
+  if (modoAtual() === "cliente") return "Mheibos Gestor Cliente";
   return modoAtual() === "producao" ? "Mheibos Producao" : "Mheibos Gestor";
 }
 
@@ -86,7 +90,7 @@ function pythonCommand() {
 function envFromConfig(config) {
   const env = {
     ...process.env,
-    DJANGO_ALLOWED_HOSTS: process.env.DJANGO_ALLOWED_HOSTS || "localhost,127.0.0.1",
+    DJANGO_ALLOWED_HOSTS: process.env.DJANGO_ALLOWED_HOSTS || "*",
     PYTHONUNBUFFERED: "1",
     MHEIBOS_DATA_DIR: dataDir(),
   };
@@ -192,7 +196,7 @@ async function ensureDjango(config) {
   let cwd;
   if (packagedBackend) {
     command = packagedBackend;
-    args = ["runserver", `${HOST}:${PORT}`, "--noreload"];
+    args = ["runserver", `${BIND_HOST}:${PORT}`, "--noreload"];
     cwd = path.dirname(packagedBackend);
   } else {
     if (!fs.existsSync(path.join(DEV_PROJECT_ROOT, "manage.py"))) {
@@ -201,7 +205,7 @@ async function ensureDjango(config) {
     }
     const py = pythonCommand();
     command = py.command;
-    args = [...py.argsPrefix, "manage.py", "runserver", `${HOST}:${PORT}`, "--noreload"];
+    args = [...py.argsPrefix, "manage.py", "runserver", `${BIND_HOST}:${PORT}`, "--noreload"];
     cwd = DEV_PROJECT_ROOT;
   }
 

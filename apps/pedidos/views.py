@@ -65,7 +65,9 @@ def pedido_list(request):
             Q(itens__categoria_servico_id=categoria) | Q(itens__produto__categoria_servico_id=categoria)
         ).distinct()
 
-    pedidos_lista = preparar_categorias_pedidos(pedidos[:80])
+    limite_lista = None if status == StatusPedido.ENTREGUE else 80
+    pedidos_para_exibir = pedidos if limite_lista is None else pedidos[:limite_lista]
+    pedidos_lista = preparar_categorias_pedidos(pedidos_para_exibir)
     for pedido in pedidos_lista:
         pedido.alerta_prazo = pedido_em_alerta(pedido)
 
@@ -83,6 +85,7 @@ def pedido_list(request):
         "pre_producao": Pedido.objects.filter(status__in=STATUS_PRE_PRODUCAO).count(),
         "em_producao": Pedido.objects.filter(status__in=STATUS_FUNIL_GESTOR).count(),
         "prontos": Pedido.objects.filter(status=StatusPedido.PRONTO).count(),
+        "entregues": Pedido.objects.filter(status=StatusPedido.ENTREGUE).count(),
         "cancelados": Pedido.objects.filter(status=StatusPedido.CANCELADO).count(),
         "pode_acoes_admin": operador.is_admin,
     }
@@ -465,8 +468,13 @@ def _criar_pedido(form, arquivos):
     cliente, _ = Cliente.objects.get_or_create(
         nome=dados["nome_cliente"].upper(),
         defaults={
+            "cpf_cnpj": "",
+            "email": "",
             "telefone_principal": dados.get("telefone_1", ""),
             "telefone_secundario": dados.get("telefone_2", ""),
+            "endereco": "",
+            "observacoes": "",
+            "status_cadastro": StatusCadastroCliente.NAO_CADASTRADO,
         },
     )
 

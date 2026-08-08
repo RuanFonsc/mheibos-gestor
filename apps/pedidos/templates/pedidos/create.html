@@ -12,6 +12,7 @@
   <a href="{% url 'pedido_create' %}" class="top-tab active"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
   <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
+  <a href="{% url 'pedido_list' %}?status=ENTREGUE" class="top-tab"><i data-lucide="package-check" class="h-5 w-5"></i> Entregues</a>
   <a href="{% url 'pedido_list' %}?status=CANCELADO" class="top-tab"><i data-lucide="x" class="h-5 w-5"></i> Cancelados</a>
 {% endblock %}
 {% block content %}

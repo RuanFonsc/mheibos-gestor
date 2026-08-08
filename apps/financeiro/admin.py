@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.financeiro.models import CategoriaFinanceira, ContaFinanceira, LancamentoFinanceiro, MetaVendasUsuario
+from apps.financeiro.models import CategoriaFinanceira, ContaFinanceira, LancamentoFinanceiro, MetaVendasGeral, MetaVendasUsuario
 
 
 @admin.register(CategoriaFinanceira)
@@ -28,3 +28,9 @@ class MetaVendasUsuarioAdmin(admin.ModelAdmin):
     list_display = ("operador", "mes", "ano", "valor")
     list_filter = ("ano", "mes", "operador")
     search_fields = ("operador__nome",)
+
+
+@admin.register(MetaVendasGeral)
+class MetaVendasGeralAdmin(admin.ModelAdmin):
+    list_display = ("mes", "ano", "valor")
+    list_filter = ("ano", "mes")

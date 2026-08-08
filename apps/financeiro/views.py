@@ -1,5 +1,6 @@
-from decimal import Decimal
-from datetime import timedelta
+from calendar import monthrange
+from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 from django.contrib import messages
@@ -20,11 +21,23 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 from apps.financeiro.crm import MESES_CURTOS, relatorio_crm
 from apps.financeiro.forms import LancamentoCRMForm
-from apps.financeiro.models import CategoriaFinanceira, LancamentoFinanceiro, MetaVendasUsuario, StatusLancamento, TipoLancamento
+from apps.financeiro.models import CategoriaFinanceira, LancamentoFinanceiro, MetaVendasGeral, MetaVendasUsuario, StatusLancamento, TipoLancamento
 from apps.financeiro.services import garantir_categorias_financeiras
 from apps.catalogo.models import CategoriaUsuario, OperadorGestor
 from apps.catalogo.permissions import operador_atual
 from apps.pedidos.models import CanalAtendimentoPedido, Pedido, PedidoItem, StatusPedido
+
+
+def _decimal_moeda(valor_txt):
+    valor_txt = (valor_txt or "0").strip()
+    if "," in valor_txt and "." in valor_txt:
+        valor_txt = valor_txt.replace(".", "").replace(",", ".")
+    elif "," in valor_txt:
+        valor_txt = valor_txt.replace(",", ".")
+    try:
+        return max(Decimal("0.00"), Decimal(valor_txt or "0"))
+    except (InvalidOperation, ValueError):
+        raise ValueError("Valor invalido")
 
 
 def dashboard(request):
@@ -46,6 +59,11 @@ def dashboard(request):
         pass
     hoje = timezone.localdate()
     inicio_mes = hoje.replace(day=1)
+    mes_meta = hoje.month
+    inicio_mes_meta = date(ano, mes_meta, 1)
+    fim_mes_meta = date(ano, mes_meta, monthrange(ano, mes_meta)[1])
+    if ano == hoje.year and mes_meta == hoje.month:
+        fim_mes_meta = hoje
     data_inicio_txt = request.GET.get("inicio") or ""
     data_fim_txt = request.GET.get("fim") or ""
     periodo_inicio = inicio_mes
@@ -77,29 +95,43 @@ def dashboard(request):
             operador_ids = request.POST.getlist("meta_operador_ids")
             categoria_redirect = request.POST.get("categoria_usuario") or ""
             if not operador_ids:
-                messages.error(request, "Selecione pelo menos um usuario para salvar a meta.")
-                return redirect(f"{request.path}?aba=metas&ano={ano}&categoria_usuario={categoria_redirect}")
+                operador_ids = [
+                    chave.removeprefix("meta_valor_")
+                    for chave in request.POST
+                    if chave.startswith("meta_valor_")
+                ]
             salvos = 0
             for usuario_meta in OperadorGestor.objects.filter(pk__in=operador_ids, ativo=True):
                 valor_txt = (request.POST.get(f"meta_valor_{usuario_meta.pk}") or "0").strip()
-                if "," in valor_txt and "." in valor_txt:
-                    valor_txt = valor_txt.replace(".", "").replace(",", ".")
-                elif "," in valor_txt:
-                    valor_txt = valor_txt.replace(",", ".")
                 try:
-                    valor = max(Decimal("0.00"), Decimal(valor_txt or "0"))
-                except (ValueError, ArithmeticError):
+                    valor = _decimal_moeda(valor_txt)
+                except ValueError:
                     messages.error(request, f"Meta invalida para {usuario_meta.nome}.")
                     return redirect(f"{request.path}?aba=metas&ano={ano}&categoria_usuario={categoria_redirect}")
                 MetaVendasUsuario.objects.update_or_create(
                     operador=usuario_meta,
-                    ano=inicio_mes.year,
-                    mes=inicio_mes.month,
+                    ano=ano,
+                    mes=mes_meta,
                     defaults={"valor": valor},
                 )
                 salvos += 1
             messages.success(request, f"Metas atualizadas para {salvos} usuario(s).")
             return redirect(f"{request.path}?aba=metas&ano={ano}&categoria_usuario={categoria_redirect}")
+        if acao == "salvar_meta_geral":
+            if not operador.is_admin_geral:
+                raise PermissionDenied("Somente administradores gerais definem metas.")
+            try:
+                valor = _decimal_moeda(request.POST.get("meta_geral_valor"))
+            except ValueError:
+                messages.error(request, "Meta geral invalida.")
+                return redirect(f"{request.path}?aba=metas&ano={ano}")
+            MetaVendasGeral.objects.update_or_create(
+                ano=ano,
+                mes=mes_meta,
+                defaults={"valor": valor},
+            )
+            messages.success(request, "Meta geral atualizada.")
+            return redirect(f"{request.path}?aba=metas&ano={ano}")
         if acao == "criar_lancamento":
             form = LancamentoCRMForm(request.POST)
             if form.is_valid():
@@ -319,6 +351,11 @@ def dashboard(request):
     meta_geral_progresso = Decimal("0.00")
     meta_geral_falta = Decimal("0.00")
     if aba == "metas":
+        meta_geral, _ = MetaVendasGeral.objects.get_or_create(
+            ano=ano,
+            mes=mes_meta,
+            defaults={"valor": Decimal("0.00")},
+        )
         usuarios_meta_qs = OperadorGestor.objects.select_related("categoria_usuario").filter(ativo=True).order_by("nome")
         if categoria_usuario_atual.isdigit():
             usuarios_meta_qs = usuarios_meta_qs.filter(categoria_usuario_id=int(categoria_usuario_atual))
@@ -326,15 +363,15 @@ def dashboard(request):
         metas_mes = {
             meta.operador_id: meta
             for meta in MetaVendasUsuario.objects.filter(
-                ano=inicio_mes.year,
-                mes=inicio_mes.month,
+                ano=ano,
+                mes=mes_meta,
                 operador__in=usuarios_meta,
             )
         }
         vendas_por_nome = {
             (row["usuario_cadastro"] or "").casefold(): row["total"] or Decimal("0.00")
             for row in Pedido.objects.exclude(status=StatusPedido.CANCELADO)
-            .filter(data_pedido__range=(inicio_mes, hoje))
+            .filter(data_pedido__range=(inicio_mes_meta, fim_mes_meta))
             .exclude(usuario_cadastro="")
             .values("usuario_cadastro")
             .annotate(total=Sum("valor_total"))
@@ -358,7 +395,7 @@ def dashboard(request):
             metas_valores.append(float(valor_meta))
             metas_realizado_valores.append(float(realizado))
             metas_fotos.append(usuario_meta.foto.url if usuario_meta.foto else "")
-        meta_geral_total = sum((item["valor_meta"] for item in metas_usuarios), Decimal("0.00"))
+        meta_geral_total = meta_geral.valor
         meta_geral_realizado = sum((item["realizado"] for item in metas_usuarios), Decimal("0.00"))
         meta_geral_progresso = (meta_geral_realizado / meta_geral_total * 100) if meta_geral_total else Decimal("0.00")
         meta_geral_falta = max(Decimal("0.00"), meta_geral_total - meta_geral_realizado)
@@ -426,9 +463,11 @@ def dashboard(request):
         "metas_realizado_valores": metas_realizado_valores,
         "metas_fotos": metas_fotos,
         "meta_geral_total": meta_geral_total,
+        "meta_geral_total_valor": float(meta_geral_total),
         "meta_geral_realizado": meta_geral_realizado,
         "meta_geral_progresso": meta_geral_progresso,
         "meta_geral_falta": meta_geral_falta,
+        "mes_meta": mes_meta,
     }
     return render(request, "financeiro/dashboard.html", contexto)
 

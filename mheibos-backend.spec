@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_submodules
+
 ROOT = Path.cwd()
 
 
@@ -22,6 +24,7 @@ a = Analysis(
     hiddenimports=[
         "apps.catalogo",
         "apps.catalogo.apps",
+        "apps.catalogo.views",
         "apps.clientes",
         "apps.clientes.apps",
         "apps.financeiro",
@@ -34,7 +37,10 @@ a = Analysis(
         "psycopg_binary",
         "PIL",
         "decouple",
-    ],
+    ]
+    + collect_submodules("cryptography")
+    + collect_submodules("openpyxl")
+    + collect_submodules("reportlab"),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

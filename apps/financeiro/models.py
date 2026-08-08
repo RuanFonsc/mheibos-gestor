@@ -130,3 +130,19 @@ class MetaVendasUsuario(models.Model):
 
     def __str__(self):
         return f"{self.operador} - {self.mes:02d}/{self.ano} - {self.valor}"
+
+
+class MetaVendasGeral(models.Model):
+    ano = models.PositiveIntegerField()
+    mes = models.PositiveSmallIntegerField()
+    valor = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-ano", "-mes"]
+        constraints = [
+            models.UniqueConstraint(fields=["ano", "mes"], name="uniq_meta_vendas_geral_mes")
+        ]
+
+    def __str__(self):
+        return f"Meta geral - {self.mes:02d}/{self.ano} - {self.valor}"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Open Mheibos Gestor"
+  short_description: "Start Mheibos Gestor quickly"
+  default_prompt: "Use $open-mheibos-gestor to start the Gestor server and report the local and LAN URLs."

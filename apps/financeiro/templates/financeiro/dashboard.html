@@ -244,7 +244,7 @@
     <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
       <div>
         <h2 class="text-xl font-black">Metas do mês</h2>
-        <p class="mt-1 text-sm text-[var(--text-secondary)]">Acompanhamento consolidado ou individual dos usuarios filtrados.</p>
+        <p class="mt-1 text-sm text-[var(--text-secondary)]">Acompanhamento consolidado ou individual dos usuarios no mes {{ mes_meta }}/{{ ano }}.</p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <div class="goal-mode-switch" role="group" aria-label="Tipo de meta">
@@ -298,6 +298,24 @@
     </div>
   </section>
 
+  <form method="post" class="card p-5">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="salvar_meta_geral">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h3 class="text-lg font-semibold">Configurar meta geral</h3>
+        <p class="mt-1 text-sm text-[#8892b0]">Define a meta mensal total da empresa, independente da soma das metas individuais.</p>
+      </div>
+      <div class="flex flex-wrap items-end gap-3">
+        <div>
+          <label class="field-label" for="metaGeralValor">Meta geral</label>
+          <input id="metaGeralValor" name="meta_geral_valor" type="number" min="0" step="0.01" value="{{ meta_geral_total|unlocalize }}" class="min-w-[180px]">
+        </div>
+        <button class="btn-primary min-h-[42px]" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Salvar meta geral</button>
+      </div>
+    </div>
+  </form>
+
   <form method="post" class="card p-5" id="metas-usuarios">
     {% csrf_token %}
     <input type="hidden" name="acao" value="salvar_metas_usuarios">
@@ -305,7 +323,7 @@
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h3 class="text-lg font-semibold">Definir metas dos usuarios</h3>
-        <p class="mt-1 text-sm text-[#8892b0]">Selecione os usuarios, ajuste os valores e salve tudo de uma vez.</p>
+        <p class="mt-1 text-sm text-[#8892b0]">Ajuste os valores e salve tudo de uma vez. As caixas permitem salvar apenas alguns usuarios.</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button class="btn-secondary min-h-[36px] text-xs" type="button" id="btnSelecionarMetas">Selecionar todos</button>
@@ -741,6 +759,7 @@
 {{ metas_valores|json_script:"goal-targets-data" }}
 {{ metas_realizado_valores|json_script:"goal-realized-data" }}
 {{ metas_fotos|json_script:"goal-photos-data" }}
+{{ meta_geral_total_valor|json_script:"goal-total-target-data" }}
 <script>
   const goalLabels = JSON.parse(document.getElementById("goal-labels-data").textContent);
   const goalTargets = JSON.parse(document.getElementById("goal-targets-data").textContent);
@@ -748,7 +767,7 @@
   const goalPhotos = JSON.parse(document.getElementById("goal-photos-data").textContent);
   const goalGrid = { color: "rgba(136,146,176,.18)" };
   const goalTicks = { color: "#8892b0" };
-  const totalTarget = goalTargets.reduce((sum, value) => sum + Number(value || 0), 0);
+  const totalTarget = Number(JSON.parse(document.getElementById("goal-total-target-data").textContent) || 0);
   const totalRealized = goalRealized.reduce((sum, value) => sum + Number(value || 0), 0);
   let currentGoalMode = "geral";
   let currentGoalIndexes = goalLabels.map((_, index) => index);
