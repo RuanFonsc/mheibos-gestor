@@ -355,3 +355,184 @@ def concluir_missao(*, missao, operador, resultado_alcancado, pendencias_remanes
     missao.save(update_fields=["estado", "resultado_alcancado", "pendencias_remanescentes", "concluida_em", "concluida_por", "atualizada_em"])
     _evento_transicao(missao, operador, anterior, "MissaoConcluida", "concluir", {"resultado_alcancado": resultado, "pendencias_remanescentes": missao.pendencias_remanescentes})
     return missao
+
+
+@transaction.atomic
+def criar_missao_atribuida(
+    *, gerente, responsavel, titulo, objetivo, criterio_conclusao, resultado_esperado=""
+):
+    if not gerente or not gerente.ativo or not gerente.is_admin:
+        raise PermissionDenied("A atribuição de missão exige um gerente ou administrador ativo.")
+    if not responsavel or not responsavel.ativo or responsavel.papel == PapelOperador.TEMPORARIO:
+        raise ValidationError("O responsável principal deve ser uma identidade ativa válida.")
+    campos = {
+        "titulo": (titulo or "").strip(),
+        "objetivo": (objetivo or "").strip(),
+        "criterio_conclusao": (criterio_conclusao or "").strip(),
+    }
+    if not all(campos.values()):
+        raise ValidationError("Título, objetivo e critério de conclusão são obrigatórios.")
+    missao = Missao.objects.create(
+        **campos,
+        tipo=TipoMissao.INDIVIDUAL_ATRIBUIDA,
+        resultado_esperado=(resultado_esperado or "").strip(),
+        origem=OrigemMissao.ADMINISTRATIVA,
+        estado=EstadoMissao.PLANEJADA,
+        criador=gerente,
+        autoridade_responsavel=gerente,
+        responsavel_principal=responsavel,
+    )
+    ParticipacaoMissao.objects.create(
+        missao=missao,
+        operador=responsavel,
+        papel=PapelParticipacao.PARTICIPANTE,
+        estado_participacao=EstadoParticipacao.ATRIBUIDO,
+        respondido_em=timezone.now(),
+    )
+    registrar_evento(
+        tipo="MissaoAtribuidaCriada",
+        operador=gerente,
+        origem="missoes_web",
+        alvo_tipo="Missao",
+        alvo_id=str(missao.pk),
+        acao="criar_missao_atribuida",
+        valores_anteriores={},
+        valores_posteriores={
+            "autoridade_id": gerente.pk,
+            "responsavel_principal_id": responsavel.pk,
+            "tipo": missao.tipo,
+        },
+    )
+    return missao
+
+
+@transaction.atomic
+def adicionar_tarefa_missao(*, missao, operador, titulo, descricao="", responsavel=None):
+    if not operador or not operador.ativo:
+        raise PermissionDenied("Identidade inválida para adicionar tarefa.")
+    missao = Missao.objects.select_for_update().get(pk=missao.pk)
+    if missao.estado in {EstadoMissao.CONCLUIDA, EstadoMissao.CANCELADA, EstadoMissao.ARQUIVADA}:
+        raise ValidationError("Não é possível adicionar tarefa a uma missão encerrada.")
+    titulo = (titulo or "").strip()
+    if not titulo:
+        raise ValidationError("O título da tarefa é obrigatório.")
+    ordem_atual = missao.tarefas.count() + 1
+    from .models import TarefaMissao, EstadoTarefaMissao
+    tarefa = TarefaMissao.objects.create(
+        missao=missao,
+        titulo=titulo,
+        descricao=(descricao or "").strip(),
+        responsavel=responsavel or operador,
+        ordem=ordem_atual,
+    )
+    registrar_evento(
+        tipo="TarefaMissaoAdicionada",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="TarefaMissao",
+        alvo_id=str(tarefa.pk),
+        acao="adicionar_tarefa_missao",
+        valores_anteriores={},
+        valores_posteriores={"missao_id": str(missao.pk), "titulo": titulo},
+    )
+    return tarefa
+
+
+@transaction.atomic
+def concluir_tarefa_missao(*, tarefa, operador):
+    if not operador or not operador.ativo:
+        raise PermissionDenied("Identidade inválida para concluir tarefa.")
+    from .models import TarefaMissao, EstadoTarefaMissao
+    tarefa = TarefaMissao.objects.select_for_update().select_related("missao").get(pk=tarefa.pk)
+    if tarefa.estado == EstadoTarefaMissao.CONCLUIDA:
+        return tarefa
+    tarefa.estado = EstadoTarefaMissao.CONCLUIDA
+    tarefa.concluida_em = timezone.now()
+    tarefa.concluida_por = operador
+    tarefa.save(update_fields=["estado", "concluida_em", "concluida_por", "atualizada_em"])
+    registrar_evento(
+        tipo="TarefaMissaoConcluida",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="TarefaMissao",
+        alvo_id=str(tarefa.pk),
+        acao="concluir_tarefa_missao",
+        valores_anteriores={"estado": EstadoTarefaMissao.PENDENTE},
+        valores_posteriores={"estado": EstadoTarefaMissao.CONCLUIDA},
+    )
+    return tarefa
+
+
+@transaction.atomic
+def adicionar_nota_missao(*, missao, operador, titulo, conteudo):
+    if not operador or not operador.ativo:
+        raise PermissionDenied("Identidade inválida para adicionar nota.")
+    missao = Missao.objects.select_for_update().get(pk=missao.pk)
+    if missao.estado in {EstadoMissao.CONCLUIDA, EstadoMissao.CANCELADA, EstadoMissao.ARQUIVADA}:
+        raise ValidationError("Não é possível adicionar notas a uma missão encerrada.")
+    titulo = (titulo or "").strip()
+    conteudo = (conteudo or "").strip()
+    if not titulo or not conteudo:
+        raise ValidationError("Título e conteúdo da nota são obrigatórios.")
+    from .models import NotaMissao
+    nota = NotaMissao.objects.create(
+        missao=missao,
+        titulo=titulo,
+        conteudo=conteudo,
+        autor=operador,
+    )
+    registrar_evento(
+        tipo="NotaMissaoAdicionada",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="NotaMissao",
+        alvo_id=str(nota.pk),
+        acao="adicionar_nota_missao",
+        valores_anteriores={},
+        valores_posteriores={"missao_id": str(missao.pk), "titulo": titulo},
+    )
+    return nota
+
+
+@transaction.atomic
+def enviar_mensagem_chat_missao(*, missao, operador, conteudo):
+    if not operador or not operador.ativo:
+        raise PermissionDenied("Identidade inválida para enviar mensagem.")
+    missao = Missao.objects.select_for_update().get(pk=missao.pk)
+    if missao.estado in {EstadoMissao.CONCLUIDA, EstadoMissao.CANCELADA, EstadoMissao.ARQUIVADA}:
+        raise ValidationError("Não é possível enviar mensagens em uma missão encerrada.")
+    conteudo = (conteudo or "").strip()
+    if not conteudo:
+        raise ValidationError("O conteúdo da mensagem é obrigatório.")
+    from .models import MensagemChatMissao
+    mensagem = MensagemChatMissao.objects.create(
+        missao=missao,
+        autor=operador,
+        conteudo=conteudo,
+    )
+    registrar_evento(
+        tipo="MensagemChatMissaoEnviada",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="MensagemChatMissao",
+        alvo_id=str(mensagem.pk),
+        acao="enviar_mensagem_chat_missao",
+        valores_anteriores={},
+        valores_posteriores={"missao_id": str(missao.pk)},
+    )
+    return mensagem
+
+
+@transaction.atomic
+def solicitar_revisao_missao(*, missao, operador):
+    missao = _obter_missao_bloqueada(missao, operador)
+    if missao.estado == EstadoMissao.EM_REVISAO:
+        return missao
+    if missao.estado != EstadoMissao.ATIVA:
+        raise TransicaoMissaoInvalida("Somente missão ativa pode ser enviada para revisão.")
+    anterior = missao.estado
+    missao.estado = EstadoMissao.EM_REVISAO
+    missao.save(update_fields=["estado", "atualizada_em"])
+    _evento_transicao(missao, operador, anterior, "MissaoEnviadaParaRevisao", "solicitar_revisao")
+    return missao
+

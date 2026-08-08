@@ -302,3 +302,76 @@ class ParticipacaoEspontaneaTests(TestCase):
                 convidado=self.outra,
                 operador=self.lider,
             )
+
+
+class MissaoAtribuidaETarefasTests(TestCase):
+    def setUp(self):
+        self.gerente = OperadorGestor.objects.create(nome="Gerente Silva", senha="segura", papel=PapelOperador.ADMIN)
+        self.responsavel = OperadorGestor.objects.create(nome="Analista Santos", senha="segura", papel=PapelOperador.USUARIO)
+        self.outro_usuario = OperadorGestor.objects.create(nome="Analista Costa", senha="segura", papel=PapelOperador.USUARIO)
+
+    def test_criar_missao_atribuida_e_tarefas(self):
+        from .services import (
+            criar_missao_atribuida,
+            adicionar_tarefa_missao,
+            concluir_tarefa_missao,
+            adicionar_nota_missao,
+            enviar_mensagem_chat_missao,
+            solicitar_revisao_missao,
+        )
+        missao = criar_missao_atribuida(
+            gerente=self.gerente,
+            responsavel=self.responsavel,
+            titulo="Missão Atribuída Estratégica",
+            objetivo="Alcançar indicador de produção",
+            criterio_conclusao="Meta 100% atingida",
+        )
+        self.assertEqual(missao.tipo, TipoMissao.INDIVIDUAL_ATRIBUIDA)
+        self.assertEqual(missao.autoridade_responsavel, self.gerente)
+        self.assertEqual(missao.responsavel_principal, self.responsavel)
+
+        tarefa = adicionar_tarefa_missao(
+            missao=missao,
+            operador=self.responsavel,
+            titulo="Levantamento inicial",
+            descricao="Coletar dados",
+        )
+        self.assertEqual(tarefa.titulo, "Levantamento inicial")
+        self.assertEqual(tarefa.ordem, 1)
+
+        concluir_tarefa_missao(tarefa=tarefa, operador=self.responsavel)
+        tarefa.refresh_from_db()
+        from .models import EstadoTarefaMissao
+        self.assertEqual(tarefa.estado, EstadoTarefaMissao.CONCLUIDA)
+
+        nota = adicionar_nota_missao(
+            missao=missao,
+            operador=self.responsavel,
+            titulo="Nota de progresso",
+            conteudo="Dados coletados com sucesso",
+        )
+        self.assertEqual(nota.titulo, "Nota de progresso")
+
+        msg = enviar_mensagem_chat_missao(
+            missao=missao,
+            operador=self.responsavel,
+            conteudo="Chat: tarefa inicial concluída",
+        )
+        self.assertEqual(msg.conteudo, "Chat: tarefa inicial concluída")
+
+        iniciar_missao(missao=missao, operador=self.responsavel)
+        solicitar_revisao_missao(missao=missao, operador=self.responsavel)
+        missao.refresh_from_db()
+        self.assertEqual(missao.estado, EstadoMissao.EM_REVISAO)
+
+    def test_usuario_comum_nao_pode_criar_missao_atribuida(self):
+        from .services import criar_missao_atribuida
+        with self.assertRaises(PermissionDenied):
+            criar_missao_atribuida(
+                gerente=self.responsavel,
+                responsavel=self.outro_usuario,
+                titulo="Inválida",
+                objetivo="Teste",
+                criterio_conclusao="Teste",
+            )
+

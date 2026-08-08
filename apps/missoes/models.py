@@ -137,3 +137,76 @@ class ParticipacaoMissao(models.Model):
                 name="missoes_participacao_corrente_unica",
             )
         ]
+
+
+class EstadoTarefaMissao(models.TextChoices):
+    PENDENTE = "PENDENTE", "Pendente"
+    EM_ANDAMENTO = "EM_ANDAMENTO", "Em andamento"
+    CONCLUIDA = "CONCLUIDA", "Concluída"
+    CANCELADA = "CANCELADA", "Cancelada"
+
+
+class TarefaMissao(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    missao = models.ForeignKey(Missao, related_name="tarefas", on_delete=models.PROTECT)
+    titulo = models.CharField(max_length=160)
+    descricao = models.TextField(blank=True)
+    responsavel = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="tarefas_missao_responsaveis",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    estado = models.CharField(
+        max_length=24,
+        choices=EstadoTarefaMissao.choices,
+        default=EstadoTarefaMissao.PENDENTE,
+    )
+    ordem = models.PositiveIntegerField(default=0)
+    concluida_em = models.DateTimeField(null=True, blank=True)
+    concluida_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="tarefas_missao_concluidas",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["ordem", "criada_em"]
+
+
+class NotaMissao(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    missao = models.ForeignKey(Missao, related_name="notas", on_delete=models.PROTECT)
+    titulo = models.CharField(max_length=160)
+    conteudo = models.TextField()
+    autor = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="notas_missao_autor",
+        on_delete=models.PROTECT,
+    )
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-atualizada_em"]
+
+
+class MensagemChatMissao(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    missao = models.ForeignKey(Missao, related_name="mensagens_chat", on_delete=models.PROTECT)
+    autor = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="mensagens_chat_missao",
+        on_delete=models.PROTECT,
+    )
+    conteudo = models.TextField()
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["criada_em"]
+
