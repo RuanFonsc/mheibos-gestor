@@ -15,6 +15,7 @@
 - `/financeiro/dashboard/` preserva a consulta financeira legada como superfície compatível, sem definir o centro do produto.
 - `/dashboard/analytics/` oferece curadoria visível para evidências, análises e simulações.
 - Todas as rotas funcionam sem modelo de IA.
+- O Dashboard projeta fatos operacionais atuais (pedidos ativos, arte, produção, entrega, urgência e prazo próximo) com fonte explícita, sem inferência.
 
 ## Quality Gates desta fatia
 
@@ -26,7 +27,7 @@
 | Auditoria | `PASS` | criação de evidência, análise e simulação, além da promoção, são eventos transacionais. |
 | Segurança | `PASS` | identidade ativa obrigatória; promoção exige autor ou administrador; sem autoridade implícita da IA. |
 | Migração | `PASS` | `0001_initial` do app Analytics; `makemigrations --check` sem alterações. |
-| Testes | `PASS` | 6 testes do Analytics e 9 do Aprendizado aprovados; Django check aprovado. |
+| Testes | `PASS` | 7 testes do Analytics e 9 do Aprendizado aprovados; Django check aprovado. |
 | Interface | `PASS_WITH_GAP` | rotas e templates renderizam; matriz visual multi-resolução e integração completa de widgets ainda pendentes. |
 | IA desligada | `PASS` | nenhum serviço, formulário ou rota depende de modelo externo. |
 

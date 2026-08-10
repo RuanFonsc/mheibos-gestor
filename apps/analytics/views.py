@@ -12,7 +12,7 @@ from apps.missoes.models import EstadoMissao, EstadoTarefaMissao, Missao, Tarefa
 from apps.pendencias.models import EstadoPendencia, Pendencia
 
 from .models import Analise, EvidenciaAnalitica, Simulacao, TipoEvidencia
-from .services import criar_analise_deterministica, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao
+from .services import criar_analise_deterministica, obter_metricas_operacionais, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao
 
 
 def _operador_missoes(operador):
@@ -28,7 +28,7 @@ def dashboard(request):
     tarefas = TarefaMissao.objects.filter(missao__in=missoes, estado__in={EstadoTarefaMissao.PENDENTE, EstadoTarefaMissao.EM_ANDAMENTO}).select_related("missao")[:8]
     pendencias = Pendencia.objects.filter(Q(responsavel_principal=operador) | Q(destinatarios=operador), estado=EstadoPendencia.ABERTA).select_related("pedido")[:8]
     simulacoes = Simulacao.objects.filter(autor=operador).select_related("missao")[:5]
-    return render(request, "analytics/dashboard.html", {"operador_atual": operador, "missoes": missoes[:8], "tarefas": tarefas, "pendencias": pendencias, "simulacoes": simulacoes, "active": "dashboard"})
+    return render(request, "analytics/dashboard.html", {"operador_atual": operador, "missoes": missoes[:8], "tarefas": tarefas, "pendencias": pendencias, "simulacoes": simulacoes, "metricas": obter_metricas_operacionais(operador=operador), "active": "dashboard"})
 
 
 def analytics_home(request):

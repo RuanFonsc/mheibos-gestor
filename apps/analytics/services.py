@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -5,6 +7,7 @@ from django.utils import timezone
 from apps.auditoria.services import registrar_evento
 from apps.catalogo.models import PapelOperador
 from apps.missoes.services import criar_missao_individual_voluntaria
+from apps.pedidos.models import Pedido, PrioridadePedido, StatusPedido
 
 from .models import Analise, EstadoSimulacao, EvidenciaAnalitica, Simulacao, TipoEvidencia
 
@@ -12,6 +15,26 @@ from .models import Analise, EstadoSimulacao, EvidenciaAnalitica, Simulacao, Tip
 def _exigir_operador(operador):
     if not operador or not operador.ativo or operador.papel == PapelOperador.TEMPORARIO:
         raise PermissionDenied("Somente uma identidade ativa pode usar o Analytics.")
+
+
+def obter_metricas_operacionais(*, operador):
+    """Projeta fatos atuais do domínio; não interpreta nem chama IA."""
+    _exigir_operador(operador)
+    pedidos = Pedido.objects.exclude(status=StatusPedido.CANCELADO)
+    if not operador.is_admin:
+        pedidos = pedidos.filter(usuario_cadastro__iexact=operador.nome)
+    hoje = timezone.localdate()
+    limite = hoje + timedelta(days=2)
+    return {
+        "pedidos_ativos": pedidos.count(),
+        "aguardando_arte": pedidos.filter(status=StatusPedido.AGUARDANDO_ARTE).count(),
+        "em_preparacao_arte": pedidos.filter(status=StatusPedido.ARTE_EM_PREPARO).count(),
+        "em_producao": pedidos.filter(status=StatusPedido.EM_PRODUCAO).count(),
+        "prontos_entrega": pedidos.filter(status=StatusPedido.PRONTO).count(),
+        "prioridade_urgente": pedidos.filter(prioridade=PrioridadePedido.URGENTE).count(),
+        "prazo_proximo": pedidos.filter(data_entrega__isnull=False, data_entrega__range=(hoje, limite)).count(),
+        "fonte": "Pedido/Processo oficial",
+    }
 
 
 @transaction.atomic

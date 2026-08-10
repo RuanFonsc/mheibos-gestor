@@ -6,11 +6,13 @@ from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
 from apps.catalogo.models import OperadorGestor, PapelOperador
+from apps.catalogo.authentication import SESSION_OPERATOR_ID
 from apps.missoes.models import EstadoMissao
 
 from .models import EstadoSimulacao, TipoEvidencia
 from .services import (
     criar_analise_deterministica,
+    obter_metricas_operacionais,
     promover_simulacao_para_missao,
     registrar_evidencia,
     salvar_simulacao,
@@ -104,10 +106,17 @@ class AnalyticsDeterministicoTests(TestCase):
     def test_dashboard_oficial_e_analytics_renderizam(self):
         dashboard_request = RequestFactory().get("/dashboard/")
         analytics_request = RequestFactory().get("/dashboard/analytics/")
-        dashboard_request.session = cast(Any, {})
-        analytics_request.session = cast(Any, {})
+        dashboard_request.session = cast(Any, {SESSION_OPERATOR_ID: self.usuario.pk})
+        analytics_request.session = cast(Any, {SESSION_OPERATOR_ID: self.usuario.pk})
         dashboard_response = dashboard(dashboard_request)
         analytics_response = analytics_home(analytics_request)
 
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertEqual(analytics_response.status_code, 200)
+
+    def test_metricas_operacionais_sao_fatos_deterministicos(self):
+        metricas = obter_metricas_operacionais(operador=self.usuario)
+
+        self.assertEqual(metricas["pedidos_ativos"], 0)
+        self.assertEqual(metricas["aguardando_arte"], 0)
+        self.assertEqual(metricas["fonte"], "Pedido/Processo oficial")
