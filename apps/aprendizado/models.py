@@ -132,3 +132,21 @@ class Conhecimento(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class MemoriaOperacional(models.Model):
+    operador = models.ForeignKey("catalogo.OperadorGestor", on_delete=models.PROTECT, related_name="memorias_operacionais")
+    chave = models.CharField(max_length=160)
+    conteudo = models.JSONField(default=dict)
+    curta = models.BooleanField(default=True)
+    expira_em = models.DateTimeField(null=True, blank=True)
+    fonte = models.CharField(max_length=240, default="sessao_mheibos")
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["operador", "chave"], name="aprendizado_memoria_operador_chave_unica")]
+        indexes = [models.Index(fields=["operador", "curta"]), models.Index(fields=["expira_em"])]
+
+    def __str__(self):
+        return f"{self.operador} · {self.chave}"

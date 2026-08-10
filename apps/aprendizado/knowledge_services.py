@@ -1,10 +1,11 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.auditoria.services import registrar_evento
 from apps.catalogo.models import PapelOperador
-from .models import CamadaConhecimento, Conhecimento, EstadoConhecimento
+from .models import CamadaConhecimento, Conhecimento, EstadoConhecimento, MemoriaOperacional
 
 
 def buscar_conhecimento(*, consulta, operador=None, camadas=None, limite=20):
@@ -19,8 +20,8 @@ def buscar_conhecimento(*, consulta, operador=None, camadas=None, limite=20):
     if camadas:
         queryset = queryset.filter(camada__in=list(camadas))
     agora = timezone.now()
-    queryset = queryset.filter(valido_de__isnull=True) | queryset.filter(valido_de__lte=agora)
-    queryset = queryset.exclude(valido_ate__lt=agora)
+    queryset = queryset.filter(Q(valido_de__isnull=True) | Q(valido_de__lte=agora))
+    queryset = queryset.filter(Q(valido_ate__isnull=True) | Q(valido_ate__gt=agora))
     itens = list(queryset.order_by("-atualizado_em")[:200])
     ordenados = sorted(
         itens,
@@ -69,3 +70,76 @@ def aprovar_conhecimento(*, conhecimento, operador):
         valores_anteriores={"estado": anterior}, valores_posteriores={"estado": item.estado, "versao": item.versao},
     )
     return item
+
+
+@transaction.atomic
+def guardar_memoria(*, operador, chave, conteudo, curta=True, expira_em=None, fonte="sessao_mheibos"):
+    if not operador or not operador.ativo:
+        raise PermissionDenied("Somente uma identidade ativa pode guardar memória.")
+    chave = (chave or "").strip()
+    if not chave or not isinstance(conteudo, dict):
+        raise ValidationError("Chave e conteúdo estruturado são obrigatórios.")
+    anterior = MemoriaOperacional.objects.filter(operador=operador, chave=chave).first()
+    memoria, criada = MemoriaOperacional.objects.update_or_create(
+        operador=operador,
+        chave=chave,
+        defaults={
+            "conteudo": conteudo,
+            "curta": bool(curta),
+            "expira_em": expira_em,
+            "fonte": fonte or "sessao_mheibos",
+        },
+    )
+    registrar_evento(
+        tipo="MemoriaOperacionalGuardada",
+        operador=operador,
+        origem="aprendizado_servico",
+        alvo_tipo="MemoriaOperacional",
+        alvo_id=str(memoria.pk),
+        acao="criar_memoria" if criada else "atualizar_memoria",
+        valores_anteriores=(
+            {}
+            if anterior is None
+            else {"conteudo": anterior.conteudo, "curta": anterior.curta, "expira_em": anterior.expira_em.isoformat() if anterior.expira_em else None}
+        ),
+        valores_posteriores={"curta": memoria.curta, "expira_em": memoria.expira_em.isoformat() if memoria.expira_em else None},
+    )
+    return memoria
+
+
+def recuperar_memorias(*, operador, curta=None, chave=None):
+    if not operador or not operador.ativo:
+        raise PermissionDenied("Identidade inválida para recuperar memória.")
+    queryset = MemoriaOperacional.objects.filter(operador=operador)
+    if curta is not None:
+        queryset = queryset.filter(curta=curta)
+    if chave:
+        queryset = queryset.filter(chave=chave)
+    agora = timezone.now()
+    return queryset.filter(Q(expira_em__isnull=True) | Q(expira_em__gt=agora)).order_by("-atualizada_em", "-id")
+
+
+def recuperar_contexto(
+    *, operador, consulta, camadas=None, contexto_atual=None,
+    limite_conhecimento=20, limite_memorias=20,
+):
+    """Monta contexto transversal determinístico sem depender de um modelo de IA."""
+    consulta = (consulta or "").strip()
+    conhecimento = buscar_conhecimento(
+        consulta=consulta,
+        operador=operador,
+        camadas=camadas,
+        limite=limite_conhecimento,
+    )
+    memorias = list(recuperar_memorias(operador=operador)[:limite_memorias])
+    return {
+        "consulta": consulta,
+        "conhecimento": conhecimento,
+        "memorias": memorias,
+        "contexto_atual": contexto_atual if isinstance(contexto_atual, dict) else {},
+        "ia_necessaria": False,
+        "fontes": [
+            *({"tipo": "conhecimento", "id": item.pk, "camada": item.camada} for item in conhecimento),
+            *({"tipo": "memoria", "id": item.pk, "curta": item.curta} for item in memorias),
+        ],
+    }

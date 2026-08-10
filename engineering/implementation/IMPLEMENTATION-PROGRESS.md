@@ -1,8 +1,8 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** IMP-010 — Missões e Teamwork  
-**Ciclo atual:** IMP-010  
+**Fase atual:** IMP-012 — Dashboard, Analytics e Simulação  
+**Ciclo atual:** IMP-012 (preparação)  
 **Último ciclo concluído:** IMP-009M — criação provisória de arte oficial, transferência e consolidação de IMP-009  
 **Data:** 02/08/2026
 
@@ -454,4 +454,22 @@ IMP-009M — materializar a criação provisória de Arte Oficial quando o compa
 - **Retenção e decisão humana:** a cópia local é preservada até decisão humana explícita (`REMOVER` ou `MOVER` para `artes_copias_locais`). A remoção antecipada exige comprovação de integridade do oficial.
 - **Resiliência transacional:** caso ocorra falha de commit ou evento de auditoria, qualquer arquivo em staging ou cópia parcial no sistema de arquivos é desfeito sem deixar órfãos.
 - **Validação:** suíte completa de 180 testes aprovados, `makemigrations --check` sem alterações, lint ruff em `apps/` aprovado e validação visual em 5 combinações de resolução sem overflow. Evidências em `IMP-009M-VISUAL-VALIDATION.md`.
+
+
+### IMP-010 — COMPLETED_WITH_GAPS
+
+- **Capacidade:** Missões persistentes com workspace individual/coletivo, participantes, tarefas, notas e chat contextual, sem duplicar Pedido, Processo, Etapa ou Pendência.
+- **Autoridade:** acesso ao workspace é derivado de criador, responsável, participante ativo ou administrador autorizado; conclusão de tarefa respeita responsável e autoridade da missão.
+- **Interface:** detalhe de Missão expõe objetivo, critério, estado, tarefas, notas e conversa contextual em uma única superfície.
+- **Auditoria:** mutações relevantes permanecem transacionais e auditáveis; falha do evento reverte a operação.
+- **Validação:** 26 testes direcionados, Django check, migrações e validação visual real do workspace aprovados. Relatórios em IMP-010-FINAL-REPORT.md e IMP-010-VISUAL-VALIDATION-STATUS.md.
+- **Lacunas:** matriz completa de autoridade, integração com Pendências e cobertura visual em todas as resoluções permanecem documentadas e não bloqueiam IMP-011/IMP-012.
+
+### IMP-011 — COMPLETED_WITH_GAPS
+
+- **Capacidade:** base de conhecimento fora da IA, registro pendente, aprovação humana, busca determinística por validade e camadas, memória operacional curta/longa por operador e contexto transversal combinável.
+- **Proveniência e segurança:** fonte, autoria, estado, versão e eventos de registro/aprovação são preservados; memória exige identidade ativa e não cruza operadores.
+- **Interface:** curadoria de conhecimento está disponível em /aprendizado/conhecimento/; nenhuma tela ou serviço depende de modelo de IA.
+- **Validação:** 9 testes de apps.aprendizado, Django check, migração, Ruff e mypy aprovados. Evidência em IMP-011-CHECKPOINT-2026-08-10.md.
+- **Lacunas:** governança detalhada, escopos finos, memória de missão/relacionamento, retenção e avaliação por IA aguardam RFC-0016 ou ciclos proprietários; nada é promovido automaticamente.
 
