@@ -96,3 +96,39 @@ class AmostraTreinamento(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} - {self.conversa}"
+
+
+class CamadaConhecimento(models.TextChoices):
+    UNIVERSAL = "UNIVERSAL", "Universal do Mheibos"
+    INSTITUCIONAL = "INSTITUCIONAL", "Institucional da empresa"
+    OPERACIONAL = "OPERACIONAL", "Operacional"
+    MEMORIA_LONGA = "MEMORIA_LONGA", "Memória de longo prazo"
+    MEMORIA_CURTA = "MEMORIA_CURTA", "Memória de curto prazo"
+
+
+class EstadoConhecimento(models.TextChoices):
+    PENDENTE = "PENDENTE", "Pendente"
+    APROVADO = "APROVADO", "Aprovado"
+    REJEITADO = "REJEITADO", "Rejeitado"
+    ARQUIVADO = "ARQUIVADO", "Arquivado"
+
+
+class Conhecimento(models.Model):
+    titulo = models.CharField(max_length=200)
+    conteudo = models.TextField()
+    camada = models.CharField(max_length=24, choices=CamadaConhecimento.choices)
+    estado = models.CharField(max_length=16, choices=EstadoConhecimento.choices, default=EstadoConhecimento.PENDENTE)
+    fonte = models.CharField(max_length=240)
+    autor = models.ForeignKey("catalogo.OperadorGestor", null=True, blank=True, on_delete=models.PROTECT)
+    versao = models.PositiveIntegerField(default=1)
+    valido_de = models.DateTimeField(null=True, blank=True)
+    valido_ate = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-atualizado_em", "-id"]
+        indexes = [models.Index(fields=["camada", "estado"]), models.Index(fields=["fonte"])]
+
+    def __str__(self):
+        return self.titulo
