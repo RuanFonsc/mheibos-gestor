@@ -15,7 +15,7 @@
 | IMP-007A | Gateway opcional de IA e adaptador Gemini | RFC-0003, 0004, 0006, 0011 | IMP-003, IMP-006 | COMPLETED_WITH_GAPS | alto | sugestão somente leitura funciona com provider real ou fallback sem alterar operação | 7A |
 | IMP-008 | Operação offline restrita e sincronização | RFC-0008 | IMP-002, IMP-003 | COMPLETED_WITH_GAPS | crítico | Ciclo técnico completo e smoke HTTP real com duas bases aprovado; resta somente smoke humano do instalador Windows empacotado, ainda ausente do repositório | 8 |
 | IMP-009 | Arquivos e integrações oficiais | RFC-0014 | IMP-003, IMP-005 | COMPLETED | alto | IMP-009A–M cobrem vínculo, criação oficial, criação provisória local, transferência, retenção, monitoramento, conclusão, restauração crítica e transferência autorizada | 9 |
-| IMP-010 | Missões e Teamwork | RFC-0010 | IMP-002, IMP-005 | IN_PROGRESS | médio | missão persistente sem duplicar Processo/Etapa | 10 |
+| IMP-010 | Missões e Teamwork | RFC-0010 | IMP-002, IMP-005 | COMPLETED_WITH_GAPS | médio | missão persistente sem duplicar Processo/Etapa | 10 |
 | IMP-011 | Conhecimento e memória | RFC-0011 | IMP-003, IMP-010 | PENDING | alto | conhecimento fora do modelo, proveniência e validação | 11 |
 | IMP-012 | Dashboard, analytics e simulação | RFC-0015 | IMP-003, IMP-005, IMP-010, IMP-011 | PENDING | alto | dashboard individual e modular; análises explicáveis/auditáveis; simulações salvas, autorizadas e promovíveis a Missão | 12 |
 | IMP-013 | Governança e segurança da IA | RFC-0016 futura | IMP-002, IMP-003, IMP-011 | PENDING | crítico | aguarda RFC-0016 | posterior |
