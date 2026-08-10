@@ -238,6 +238,19 @@ def _obter_missao_bloqueada(missao, operador):
     return atual
 
 
+def _autorizar_colaborador(missao, operador):
+    if not operador or not operador.ativo:
+        raise PermissionDenied("Identidade inválida para colaborar na missão.")
+    if missao.responsavel_principal_id == operador.pk or missao.criador_id == operador.pk:
+        return
+    if not missao.participacoes.filter(
+        operador=operador,
+        estado_participacao__in=[EstadoParticipacao.ACEITO, EstadoParticipacao.ATRIBUIDO],
+        encerrado_em__isnull=True,
+    ).exists():
+        raise PermissionDenied("Somente participantes ativos podem colaborar na missão.")
+
+
 def _evento_transicao(missao, operador, estado_anterior, tipo, acao, metadados=None):
     registrar_evento(
         tipo=tipo,
@@ -408,9 +421,8 @@ def criar_missao_atribuida(
 
 @transaction.atomic
 def adicionar_tarefa_missao(*, missao, operador, titulo, descricao="", responsavel=None):
-    if not operador or not operador.ativo:
-        raise PermissionDenied("Identidade inválida para adicionar tarefa.")
     missao = Missao.objects.select_for_update().get(pk=missao.pk)
+    _autorizar_colaborador(missao, operador)
     if missao.estado in {EstadoMissao.CONCLUIDA, EstadoMissao.CANCELADA, EstadoMissao.ARQUIVADA}:
         raise ValidationError("Não é possível adicionar tarefa a uma missão encerrada.")
     titulo = (titulo or "").strip()
@@ -440,10 +452,11 @@ def adicionar_tarefa_missao(*, missao, operador, titulo, descricao="", responsav
 
 @transaction.atomic
 def concluir_tarefa_missao(*, tarefa, operador):
-    if not operador or not operador.ativo:
-        raise PermissionDenied("Identidade inválida para concluir tarefa.")
     from .models import TarefaMissao, EstadoTarefaMissao
     tarefa = TarefaMissao.objects.select_for_update().select_related("missao").get(pk=tarefa.pk)
+    _autorizar_colaborador(tarefa.missao, operador)
+    if tarefa.responsavel_id and tarefa.responsavel_id != operador.pk and tarefa.missao.responsavel_principal_id != operador.pk:
+        raise PermissionDenied("Somente o responsável da tarefa ou da missão pode concluí-la.")
     if tarefa.estado == EstadoTarefaMissao.CONCLUIDA:
         return tarefa
     tarefa.estado = EstadoTarefaMissao.CONCLUIDA
@@ -465,9 +478,8 @@ def concluir_tarefa_missao(*, tarefa, operador):
 
 @transaction.atomic
 def adicionar_nota_missao(*, missao, operador, titulo, conteudo):
-    if not operador or not operador.ativo:
-        raise PermissionDenied("Identidade inválida para adicionar nota.")
     missao = Missao.objects.select_for_update().get(pk=missao.pk)
+    _autorizar_colaborador(missao, operador)
     if missao.estado in {EstadoMissao.CONCLUIDA, EstadoMissao.CANCELADA, EstadoMissao.ARQUIVADA}:
         raise ValidationError("Não é possível adicionar notas a uma missão encerrada.")
     titulo = (titulo or "").strip()
@@ -496,9 +508,8 @@ def adicionar_nota_missao(*, missao, operador, titulo, conteudo):
 
 @transaction.atomic
 def enviar_mensagem_chat_missao(*, missao, operador, conteudo):
-    if not operador or not operador.ativo:
-        raise PermissionDenied("Identidade inválida para enviar mensagem.")
     missao = Missao.objects.select_for_update().get(pk=missao.pk)
+    _autorizar_colaborador(missao, operador)
     if missao.estado in {EstadoMissao.CONCLUIDA, EstadoMissao.CANCELADA, EstadoMissao.ARQUIVADA}:
         raise ValidationError("Não é possível enviar mensagens em uma missão encerrada.")
     conteudo = (conteudo or "").strip()
@@ -535,4 +546,3 @@ def solicitar_revisao_missao(*, missao, operador):
     missao.save(update_fields=["estado", "atualizada_em"])
     _evento_transicao(missao, operador, anterior, "MissaoEnviadaParaRevisao", "solicitar_revisao")
     return missao
-
