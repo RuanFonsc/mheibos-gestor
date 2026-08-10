@@ -6,6 +6,7 @@ urlpatterns = [
     path("nova/", views.criar_missao, name="missao_criar"),
     path("nova-coletiva/", views.criar_missao_coletiva, name="missao_criar_coletiva"),
     path("<uuid:missao_id>/", views.detalhe_missao, name="missao_detalhe"),
+    path("workspace/<uuid:missao_id>/", views.detalhe_missao, name="missao_workspace"),
     path("<uuid:missao_id>/convidar/", views.convidar_na_missao, name="missao_convidar"),
     path("<uuid:missao_id>/tarefas/adicionar/", views.adicionar_tarefa_view, name="missao_tarefa_adicionar"),
     path("tarefas/<uuid:tarefa_id>/concluir/", views.concluir_tarefa_view, name="missao_tarefa_concluir"),

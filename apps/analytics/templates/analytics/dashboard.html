@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block top_tabs %}
+  <a href="{% url 'dashboard' %}" class="top-tab active"><i data-lucide="layout-dashboard" class="h-5 w-5"></i> Meu painel</a>
+  <a href="{% url 'analytics_home' %}" class="top-tab"><i data-lucide="chart-no-axes-combined" class="h-5 w-5"></i> Analytics e simulação</a>
+{% endblock %}
+{% block content %}
+<div class="page-content w-full space-y-5">
+  <header class="page-heading">
+    <div>
+      <span class="kicker"><i data-lucide="orbit" class="h-4 w-4"></i> Centro de comando</span>
+      <h2 class="section-title">Olá, {{ operador_atual.nome }}</h2>
+      <p class="text-sm text-[var(--text-secondary)]">O painel mostra o presente e destaca o que precisa de atenção agora.</p>
+    </div>
+    <div class="page-actions"><a class="btn-secondary" href="{% url 'analytics_home' %}"><i data-lucide="chart-no-axes-combined" class="h-4 w-4"></i> Analisar e simular</a></div>
+  </header>
+
+  <section class="grid gap-4 md:grid-cols-3">
+    <article class="card p-5"><p class="text-xs uppercase text-[var(--text-secondary)]">Missões ativas</p><strong class="mt-2 block text-3xl">{{ missoes|length }}</strong><a class="mt-3 inline-flex text-sm text-[var(--accent)]" href="{% url 'missoes_lista' %}">Abrir missões →</a></article>
+    <article class="card p-5"><p class="text-xs uppercase text-[var(--text-secondary)]">Tarefas em atenção</p><strong class="mt-2 block text-3xl">{{ tarefas|length }}</strong><span class="mt-3 block text-sm text-[var(--text-secondary)]">Pendências de execução</span></article>
+    <article class="card p-5"><p class="text-xs uppercase text-[var(--text-secondary)]">Pendências abertas</p><strong class="mt-2 block text-3xl">{{ pendencias|length }}</strong><a class="mt-3 inline-flex text-sm text-[var(--accent)]" href="{% url 'pendencias_lista' %}">Ver fila →</a></article>
+  </section>
+
+  <section class="grid gap-5 xl:grid-cols-2">
+    <article class="card p-5"><div class="mb-4 flex items-center justify-between"><div><span class="kicker">Fila de atenção</span><h3 class="mt-1 text-xl font-bold">O que pede ação</h3></div><i data-lucide="list-checks" class="h-6 w-6 text-[var(--accent)]"></i></div>
+      <div class="space-y-2">{% for tarefa in tarefas %}<a href="{% url 'missao_workspace' tarefa.missao.pk %}" class="block rounded-lg border border-[var(--border)] bg-[var(--bg-input)] p-3 hover:border-[var(--accent)]"><div class="flex justify-between gap-3"><strong>{{ tarefa.titulo }}</strong><span class="text-xs text-[var(--text-secondary)]">{{ tarefa.missao.titulo }}</span></div><p class="mt-1 text-xs text-[var(--text-secondary)]">{{ tarefa.get_estado_display }}</p></a>{% empty %}<p class="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">Nenhuma tarefa exige atenção imediata.</p>{% endfor %}</div>
+    </article>
+    <article class="card p-5"><div class="mb-4 flex items-center justify-between"><div><span class="kicker">Missões</span><h3 class="mt-1 text-xl font-bold">Trabalho em andamento</h3></div><i data-lucide="target" class="h-6 w-6 text-[var(--accent)]"></i></div>
+      <div class="space-y-2">{% for missao in missoes %}<a href="{% url 'missao_workspace' missao.pk %}" class="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-input)] p-3 hover:border-[var(--accent)]"><div><strong>{{ missao.titulo }}</strong><p class="mt-1 text-xs text-[var(--text-secondary)]">{{ missao.get_estado_display }}</p></div><i data-lucide="chevron-right" class="h-4 w-4"></i></a>{% empty %}<p class="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">Nenhuma missão ativa.</p>{% endfor %}</div>
+    </article>
+  </section>
+
+  <section class="card p-5"><div class="mb-4 flex items-center justify-between"><div><span class="kicker">Simulações recentes</span><h3 class="mt-1 text-xl font-bold">Cenários salvos</h3></div><a class="btn-secondary" href="{% url 'analytics_home' %}">Abrir Analytics</a></div><div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{% for simulacao in simulacoes %}<div class="rounded-lg border border-[var(--border)] bg-[var(--bg-input)] p-4"><div class="flex items-center justify-between gap-2"><strong>{{ simulacao.titulo }}</strong><span class="text-xs text-[var(--text-secondary)]">{{ simulacao.get_estado_display }}</span></div><p class="mt-2 text-sm text-[var(--text-secondary)]">{{ simulacao.objetivo|truncatechars:120 }}</p>{% if simulacao.missao %}<a class="mt-3 inline-flex text-xs text-[var(--accent)]" href="{% url 'missao_workspace' simulacao.missao.pk %}">Ver missão criada →</a>{% endif %}</div>{% empty %}<p class="text-sm text-[var(--text-secondary)]">Nenhuma simulação salva ainda.</p>{% endfor %}</div></section>
+</div>
+{% endblock %}

@@ -51,7 +51,7 @@ flowchart TD
 
 ## Dependências bloqueadas ou incompletas
 
-- RFC-0015 e RFC-0016 são referenciadas pelo Inventário, mas não existem.
+- RFC-0015 está aprovada e RFC-0016 está recebida como Draft 0.1 em `docs/RFC-0016-Governanca-da-IA-Autonomia-e-Autoridade-Humana.md`; ambas permanecem fontes com escopo próprio e não tornam a IA obrigatória.
 - RFC-0002 e RFC-0003 a RFC-0011/RFC-0013 aguardam aprovação explícita conforme seus próprios metadados.
 - A numeração da RFC-0012 foi corrigida; seu conteúdo normativo detalhado ainda precisa ser elaborado.
 - O baseline executa Ruff e mypy por `tools/quality.ps1`.

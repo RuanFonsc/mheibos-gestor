@@ -473,3 +473,18 @@ IMP-009M — materializar a criação provisória de Arte Oficial quando o compa
 - **Validação:** 9 testes de apps.aprendizado, Django check, migração, Ruff e mypy aprovados. Evidência em IMP-011-CHECKPOINT-2026-08-10.md.
 - **Lacunas:** governança detalhada, escopos finos, memória de missão/relacionamento, retenção e avaliação por IA aguardam RFC-0016 ou ciclos proprietários; nada é promovido automaticamente.
 
+
+### RFC-0016 — RECEBIDA COMO DRAFT
+
+- A fonte foi preservada em docs/RFC-0016-Governanca-da-IA-Autonomia-e-Autoridade-Humana.md.
+- O impacto foi registrado em engineering/implementation/IMP-013-IMPACT-ASSESSMENT.md.
+- A RFC-0016 passa a orientar o IMP-013, mas não autoriza autonomia da IA nem substitui o documento futuro de decisões autônomas.
+
+
+### IMP-012 — IN_PROGRESS
+
+- Dashboard oficial individual em /dashboard/; consulta financeira compatível preservada em /financeiro/dashboard/.
+- Analytics e Simulação determinísticos em /dashboard/analytics/, com evidências, confiança, validade, promoção explícita para Missão e auditoria.
+- 6 testes do Analytics e 9 do Aprendizado aprovados; checkpoint em engineering/implementation/IMP-012-CHECKPOINT-2026-08-10.md.
+- Pendências: métricas derivadas, comparações, causas, cenários compostos e matriz visual real.
+

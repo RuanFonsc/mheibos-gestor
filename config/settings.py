@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "apps.pedidos",
     "apps.vendas",
     "apps.financeiro",
+    "apps.analytics",
     "apps.aprendizado",
     "apps.auditoria",
     "apps.operacao",

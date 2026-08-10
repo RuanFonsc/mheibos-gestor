@@ -49,7 +49,7 @@ Esse arquivo não deve ser apagado. Deve ser revisado contra as telas realmente 
 | IMP-009 / 009A–009M | `COMPLETED` | Arquivos oficiais, criação, vinculação, monitoramento, restauração, transferência e provisório local implementados. |
 | IMP-010 | `COMPLETED_WITH_GAPS` | Missões, Teamwork, tarefas, notas e chat contextual; validação visual real registrada. O backend foi recuperado no commit `77872a1`; a validação final da fatia ainda precisa ser confirmada. |
 | IMP-011 | `COMPLETED_WITH_GAPS` | Conhecimento, memória e contexto transversal determinísticos; governança detalhada permanece posterior. |
-| IMP-012 | `PENDING` | Dashboard, analytics e simulação conforme RFC-0015. |
+| IMP-012 | `IN_PROGRESS` | Dashboard oficial individual, evidências, análises e simulações; checkpoint IMP-012 em andamento. |
 | IMP-013 | `PENDING` | Governança e segurança da IA; aguarda RFC-0016. |
 | IMP-014 | `PENDING` | IA cognitiva final; última fase. |
 
@@ -86,6 +86,7 @@ Depois disso, seguir para IMP-011. O IMP-012 somente deve começar com a RFC-001
 - `docs/RFC-0011-Conhecimento-Memoria-e-Aprendizado.md`
 - `docs/RFC-0014-Arquivos-e-Integracoes.md`
 - `docs/RFC-0015-Dashboard-Analytics-e-Simulacao.md`
+- `docs/RFC-0016-Governanca-da-IA-Autonomia-e-Autoridade-Humana.md` — Draft 0.1 recebido; orienta IMP-013 sem bloquear a IA desligada.
 - `docs/engineering/ENG-MIGRACAO-CLIENTE-TAURI2-REACT-TYPESCRIPT.md` — diretriz futura; não interrompe os IMPs atuais.
 
 Nenhum agente deve usar os snapshots `imp002`, `imp003`, `implementation-work` ou `work` como destino de implementação. Eles podem ser consultados apenas para investigação histórica, quando necessário.

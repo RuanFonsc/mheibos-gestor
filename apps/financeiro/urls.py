@@ -4,5 +4,5 @@ from apps.financeiro import views
 
 
 urlpatterns = [
-    path("dashboard/", views.dashboard, name="dashboard"),
+    path("dashboard/", views.dashboard, name="dashboard_financeiro"),
 ]
