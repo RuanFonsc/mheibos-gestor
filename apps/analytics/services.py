@@ -61,11 +61,31 @@ def criar_analise_deterministica(*, operador, pergunta, resumo, evidencias=(), c
     if not 0 <= int(confianca) <= 100:
         raise ValidationError("A confiança deve estar entre 0 e 100.")
     evidencias = list(evidencias or [])
+    if not evidencias:
+        raise ValidationError("Uma análise precisa preservar ao menos uma evidência.")
     if any(not isinstance(item, EvidenciaAnalitica) for item in evidencias):
         raise ValidationError("As evidências precisam ser registros oficiais do Analytics.")
     analise = Analise.objects.create(pergunta=pergunta, resumo=resumo, confianca=int(confianca), autor=operador)
     analise.evidencias.set(evidencias)
     registrar_evento(tipo="AnaliseDeterministicaCriada", operador=operador, origem="analytics_deterministico", alvo_tipo="Analise", alvo_id=str(analise.pk), acao="criar_analise", valores_anteriores={}, valores_posteriores={"confianca": analise.confianca, "evidencias": [item.pk for item in evidencias]})
+    return analise
+
+
+@transaction.atomic
+def validar_analise(*, analise, operador):
+    _exigir_operador(operador)
+    if not operador.is_admin:
+        raise PermissionDenied("Somente gerente ou administrador pode validar uma análise.")
+    analise = Analise.objects.select_for_update().get(pk=analise.pk)
+    if not analise.evidencias.exists():
+        raise ValidationError("Não é possível validar análise sem evidências.")
+    analise.estado = "VALIDADA"
+    analise.save(update_fields=["estado", "atualizada_em"])
+    registrar_evento(
+        tipo="AnaliseValidada", operador=operador, origem="analytics_deterministico",
+        alvo_tipo="Analise", alvo_id=str(analise.pk), acao="validar_analise",
+        valores_anteriores={"estado": "RASCUNHO"}, valores_posteriores={"estado": analise.estado},
+    )
     return analise
 
 

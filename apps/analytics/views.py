@@ -12,7 +12,7 @@ from apps.missoes.models import EstadoMissao, EstadoTarefaMissao, Missao, Tarefa
 from apps.pendencias.models import EstadoPendencia, Pendencia
 
 from .models import Analise, EvidenciaAnalitica, Simulacao, TipoEvidencia
-from .services import criar_analise_deterministica, obter_metricas_operacionais, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao
+from .services import criar_analise_deterministica, obter_metricas_operacionais, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao, validar_analise
 
 
 def _operador_missoes(operador):
@@ -54,6 +54,9 @@ def analytics_home(request):
             elif acao == "promover":
                 promover_simulacao_para_missao(simulacao=get_object_or_404(Simulacao, pk=request.POST.get("simulacao_id")), operador=operador)
                 messages.success(request, "Simulação promovida para uma Missão explícita.")
+            elif acao == "validar_analise":
+                validar_analise(analise=get_object_or_404(Analise, pk=request.POST.get("analise_id")), operador=operador)
+                messages.success(request, "Análise validada com suas evidências preservadas.")
         except (ValueError, TypeError, json.JSONDecodeError, ValidationError) as exc:
             messages.error(request, str(exc))
         return redirect("analytics_home")

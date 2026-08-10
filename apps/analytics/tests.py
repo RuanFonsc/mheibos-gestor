@@ -9,13 +9,14 @@ from apps.catalogo.models import OperadorGestor, PapelOperador
 from apps.catalogo.authentication import SESSION_OPERATOR_ID
 from apps.missoes.models import EstadoMissao
 
-from .models import EstadoSimulacao, TipoEvidencia
+from .models import EstadoAnalise, EstadoSimulacao, TipoEvidencia
 from .services import (
     criar_analise_deterministica,
     obter_metricas_operacionais,
     promover_simulacao_para_missao,
     registrar_evidencia,
     salvar_simulacao,
+    validar_analise,
 )
 from .views import analytics_home, dashboard
 
@@ -120,3 +121,14 @@ class AnalyticsDeterministicoTests(TestCase):
         self.assertEqual(metricas["pedidos_ativos"], 0)
         self.assertEqual(metricas["aguardando_arte"], 0)
         self.assertEqual(metricas["fonte"], "Pedido/Processo oficial")
+
+    def test_validacao_de_analise_exige_autoridade_humana(self):
+        evidencia = registrar_evidencia(operador=self.usuario, titulo="Fato", descricao="Fato observado", tipo=TipoEvidencia.FATO, fonte="pedido:1")
+        analise = criar_analise_deterministica(operador=self.usuario, pergunta="O que ocorreu?", resumo="O fato ocorreu.", evidencias=[evidencia], confianca=70)
+
+        with self.assertRaises(PermissionDenied):
+            validar_analise(analise=analise, operador=self.usuario)
+        validar_analise(analise=analise, operador=self.admin)
+
+        analise.refresh_from_db()
+        self.assertEqual(analise.estado, EstadoAnalise.VALIDADA)
