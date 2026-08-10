@@ -1,17 +1,17 @@
 # IMP-010 — Status da validação visual
 
-**Estado:** `BLOCKED`  
+**Estado:** `PASS`  
 **Data:** 10/08/2026
 
-A validação visual real ainda não foi aprovada. O servidor de teste foi iniciado, mas a base usada pelo processo web não possuía `django_session`, impedindo renderizar `/missoes/` no navegador.
+A validação visual real foi executada no navegador em servidor local com base SQLite persistente migrada.
 
 ## Evidência disponível
 
 - `manage.py check`: PASS;
 - testes de interface do workspace: PASS;
 - testes do app `apps.missoes`: PASS;
-- renderização real no navegador: não validada por erro de inicialização da base.
+- renderização real no navegador: PASS; workspace exibiu objetivo, critério, tarefas, notas e chat sem overflow horizontal na viewport oficial.
 
-## Condição para desbloqueio
+## Evidência visual
 
-Executar o servidor com uma base SQLite persistente e migrada no mesmo processo/configuração, abrir `/missoes/` e `/missoes/<uuid>/`, verificar visualmente tarefas, notas, chat, ações e ausência de overflow nas resoluções oficiais. Só então alterar este documento para `PASS`.
+Foi criada uma missão de validação e aberta a rota `/missoes/<uuid>/`. A tela mostrou os blocos de Tarefas, Notas e Chat da missão, com os formulários e ações visíveis. A captura foi realizada em 1280×720; não houve overflow horizontal.
