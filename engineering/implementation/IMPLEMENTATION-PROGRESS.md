@@ -486,5 +486,6 @@ IMP-009M — materializar a criação provisória de Arte Oficial quando o compa
 - Dashboard oficial individual em /dashboard/; consulta financeira compatível preservada em /financeiro/dashboard/.
 - Analytics e Simulação determinísticos em /dashboard/analytics/, com evidências, confiança, validade, promoção explícita para Missão e auditoria.
 - 7 testes do Analytics e 9 do Aprendizado aprovados; checkpoint em engineering/implementation/IMP-012-CHECKPOINT-2026-08-10.md.
-- Pendências: métricas derivadas, comparações, causas, cenários compostos e matriz visual real.
+- Comparação factual de dois períodos foi adicionada, preservando fonte e declaração de ausência de interpretação automática.
+- Pendências: árvore de causas, anomalias, planos de ação, cenários compostos e matriz visual real.
 

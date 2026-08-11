@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import date, datetime
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -12,7 +12,7 @@ from apps.missoes.models import EstadoMissao, EstadoTarefaMissao, Missao, Tarefa
 from apps.pendencias.models import EstadoPendencia, Pendencia
 
 from .models import Analise, EvidenciaAnalitica, Simulacao, TipoEvidencia
-from .services import comparar_simulacoes, criar_analise_deterministica, gerar_relatorio_operacional, obter_metricas_operacionais, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao, validar_analise
+from .services import comparar_relatorios_operacionais, comparar_simulacoes, criar_analise_deterministica, gerar_relatorio_operacional, obter_metricas_operacionais, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao, validar_analise
 
 
 def _operador_missoes(operador):
@@ -39,6 +39,22 @@ def analytics_home(request):
     analises = Analise.objects.filter(autor=operador).prefetch_related("evidencias")[:8]
     simulacoes = Simulacao.objects.filter(autor=operador).select_related("missao")[:8]
     comparacao = None
+    comparacao_periodos = None
+    periodo_1_inicio = request.GET.get("periodo_1_inicio")
+    periodo_1_fim = request.GET.get("periodo_1_fim")
+    periodo_2_inicio = request.GET.get("periodo_2_inicio")
+    periodo_2_fim = request.GET.get("periodo_2_fim")
+    try:
+        if periodo_1_inicio and periodo_1_fim and periodo_2_inicio and periodo_2_fim:
+            inicio_1, fim_1 = date.fromisoformat(periodo_1_inicio), date.fromisoformat(periodo_1_fim)
+            inicio_2, fim_2 = date.fromisoformat(periodo_2_inicio), date.fromisoformat(periodo_2_fim)
+            comparacao_periodos = comparar_relatorios_operacionais(
+                operador=operador,
+                primeiro=gerar_relatorio_operacional(operador=operador, inicio=inicio_1, fim=fim_1),
+                segundo=gerar_relatorio_operacional(operador=operador, inicio=inicio_2, fim=fim_2),
+            )
+    except (ValueError, ValidationError) as exc:
+        messages.error(request, str(exc))
     ids_comparacao = request.GET.getlist("simulacao_ids")
     if ids_comparacao:
         try:
@@ -69,4 +85,4 @@ def analytics_home(request):
         except (ValueError, TypeError, json.JSONDecodeError, ValidationError) as exc:
             messages.error(request, str(exc))
         return redirect("analytics_home")
-    return render(request, "analytics/analytics.html", {"operador_atual": operador, "evidencias": evidencias, "analises": analises, "simulacoes": simulacoes, "relatorio": relatorio, "comparacao": comparacao, "tipos_evidencia": TipoEvidencia.choices, "active": "analytics"})
+    return render(request, "analytics/analytics.html", {"operador_atual": operador, "evidencias": evidencias, "analises": analises, "simulacoes": simulacoes, "relatorio": relatorio, "comparacao": comparacao, "comparacao_periodos": comparacao_periodos, "tipos_evidencia": TipoEvidencia.choices, "active": "analytics"})

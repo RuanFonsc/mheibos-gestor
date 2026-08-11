@@ -17,6 +17,7 @@
 - Todas as rotas funcionam sem modelo de IA.
 - O Dashboard projeta fatos operacionais atuais (pedidos ativos, arte, produção, entrega, urgência e prazo próximo) com fonte explícita, sem inferência.
 - Relatório do período calcula fatos de Pedido com fonte explícita e declara que nenhuma interpretação automática foi feita.
+- Comparação entre dois períodos mostra somente variações factuais de pedidos, urgências e valor total, sem inferência silenciosa.
 - Análises nascem como rascunho e só são validadas por autoridade humana autorizada, sempre preservando as evidências usadas.
 
 ## Quality Gates desta fatia
@@ -29,13 +30,12 @@
 | Auditoria | `PASS` | criação de evidência, análise e simulação, além da promoção, são eventos transacionais. |
 | Segurança | `PASS` | identidade ativa obrigatória; promoção exige autor ou administrador; sem autoridade implícita da IA. |
 | Migração | `PASS` | `0001_initial` do app Analytics; `makemigrations --check` sem alterações. |
-| Testes | `PASS` | 10 testes do Analytics e 9 do Aprendizado aprovados; baseline completo de 201 testes, Django check e migrações aprovados. |
+| Testes | `PASS` | 11 testes do Analytics e 9 do Aprendizado aprovados; baseline completo de 204 testes, Django check e migrações aprovados. |
 | Interface | `PASS_WITH_GAP` | rotas e templates renderizam; matriz visual multi-resolução e integração completa de widgets ainda pendentes. |
 | IA desligada | `PASS` | nenhum serviço, formulário ou rota depende de modelo externo. |
 
 ## Pendências para concluir IMP-012
 
-- comparação de períodos e relatórios analíticos sem inferência silenciosa;
 - árvore de causas, anomalias e planos de ação como propostas explícitas;
 - visualização completa de evidências e confiança no Dashboard;
 - matriz visual multi-resolução e acabamento da interface de comparação;

@@ -65,6 +65,28 @@ def gerar_relatorio_operacional(*, operador, inicio, fim):
     }
 
 
+def comparar_relatorios_operacionais(*, operador, primeiro, segundo):
+    """Compara dois relatórios factuais, sem correlação ou inferência automática."""
+    _exigir_operador(operador)
+    if not isinstance(primeiro, dict) or not isinstance(segundo, dict):
+        raise ValidationError("Os relatórios precisam ser registros oficiais.")
+    chaves = ("pedidos", "urgentes")
+    metricas = {}
+    for chave in chaves:
+        valores = [primeiro.get(chave), segundo.get(chave)]
+        if all(isinstance(valor, (int, float)) and not isinstance(valor, bool) for valor in valores):
+            metricas[chave] = {"valores": valores, "variacao": valores[1] - valores[0]}
+    valores = [float(primeiro.get("valor_total", 0)), float(segundo.get("valor_total", 0))]
+    metricas["valor_total"] = {"valores": [str(valor) for valor in valores], "variacao": str(valores[1] - valores[0])}
+    return {
+        "periodos": [primeiro["periodo"], segundo["periodo"]],
+        "metricas_comparaveis": metricas,
+        "fonte": "Pedido oficial nos períodos informados",
+        "interpretacao_automatica": False,
+        "ia_necessaria": False,
+    }
+
+
 @transaction.atomic
 def registrar_evidencia(*, operador, titulo, descricao, tipo, fonte, dados=None, confianca=100, referencia=""):
     _exigir_operador(operador)

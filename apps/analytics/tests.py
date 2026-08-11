@@ -13,6 +13,7 @@ from .models import EstadoAnalise, EstadoSimulacao, TipoEvidencia
 from .services import (
     criar_analise_deterministica,
     comparar_simulacoes,
+    comparar_relatorios_operacionais,
     gerar_relatorio_operacional,
     obter_metricas_operacionais,
     promover_simulacao_para_missao,
@@ -140,6 +141,14 @@ class AnalyticsDeterministicoTests(TestCase):
         self.assertEqual(relatorio["pedidos"], 0)
         self.assertFalse(relatorio["interpretacao_automatica"])
         self.assertFalse(relatorio["ia_necessaria"])
+
+    def test_comparacao_de_periodos_preserva_fatos_e_nao_inventa_interpretacao(self):
+        primeiro = gerar_relatorio_operacional(operador=self.usuario, inicio=date(2026, 8, 1), fim=date(2026, 8, 2))
+        segundo = gerar_relatorio_operacional(operador=self.usuario, inicio=date(2026, 8, 3), fim=date(2026, 8, 4))
+        comparacao = comparar_relatorios_operacionais(operador=self.usuario, primeiro=primeiro, segundo=segundo)
+        self.assertIn("pedidos", comparacao["metricas_comparaveis"])
+        self.assertFalse(comparacao["interpretacao_automatica"])
+        self.assertFalse(comparacao["ia_necessaria"])
 
     def test_validacao_de_analise_exige_autoridade_humana(self):
         evidencia = registrar_evidencia(operador=self.usuario, titulo="Fato", descricao="Fato observado", tipo=TipoEvidencia.FATO, fonte="pedido:1")
