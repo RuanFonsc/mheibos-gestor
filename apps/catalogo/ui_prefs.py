@@ -7,6 +7,11 @@ from apps.catalogo.models import OperadorGestor, PreferenciaUI
 PREFERENCIAS_PADRAO = {
     "tema": "dark",
     "zoom": 100,
+    "densidade": "confortavel",
+    "movimento_reduzido": False,
+    "intensidade_animacao": "media",
+    "detalhe_inicial": "padrao",
+    "frequencia_dicas": "normal",
     "usuario": "Ruan",
     "programa_arte": "coreldraw",
     "widgets": {
@@ -66,6 +71,11 @@ def normalizar_preferencias(dados):
     merged = _merge_dict(base, dados or {})
     merged["tema"] = "light" if merged.get("tema") == "light" else "dark"
     merged["zoom"] = normalizar_zoom(merged.get("zoom"))
+    merged["densidade"] = merged.get("densidade") if merged.get("densidade") in {"compacta", "confortavel"} else "confortavel"
+    merged["movimento_reduzido"] = bool(merged.get("movimento_reduzido", False))
+    merged["intensidade_animacao"] = merged.get("intensidade_animacao") if merged.get("intensidade_animacao") in {"baixa", "media", "alta"} else "media"
+    merged["detalhe_inicial"] = merged.get("detalhe_inicial") if merged.get("detalhe_inicial") in {"resumido", "padrao", "detalhado"} else "padrao"
+    merged["frequencia_dicas"] = merged.get("frequencia_dicas") if merged.get("frequencia_dicas") in {"nunca", "reduzida", "normal"} else "normal"
     merged["usuario"] = str(merged.get("usuario") or PREFERENCIAS_PADRAO["usuario"]).strip()[:80]
     if merged.get("programa_arte") not in PROGRAMAS_ARTE:
         merged["programa_arte"] = PREFERENCIAS_PADRAO["programa_arte"]

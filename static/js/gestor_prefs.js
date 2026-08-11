@@ -4,6 +4,11 @@
   const DEFAULTS = {
     tema: "dark",
     zoom: 100,
+    densidade: "confortavel",
+    movimento_reduzido: false,
+    intensidade_animacao: "media",
+    detalhe_inicial: "padrao",
+    frequencia_dicas: "normal",
     usuario: "Ruan",
     widgets: {
       prazos: {
@@ -33,6 +38,10 @@
     if (!patch || typeof patch !== "object") return result;
     if (patch.tema) result.tema = patch.tema;
     if (patch.zoom !== undefined) result.zoom = Number(patch.zoom) || base.zoom;
+    ["densidade", "intensidade_animacao", "detalhe_inicial", "frequencia_dicas"].forEach((chave) => {
+      if (patch[chave] !== undefined) result[chave] = String(patch[chave]);
+    });
+    if (patch.movimento_reduzido !== undefined) result.movimento_reduzido = Boolean(patch.movimento_reduzido);
     if (patch.usuario) result.usuario = String(patch.usuario).trim() || base.usuario;
     if (patch.widgets) {
       ["prazos", "assistencia"].forEach((chave) => {
@@ -138,6 +147,10 @@
     applyTheme(prefs.tema);
     applyZoom(prefs.zoom);
     applyUsuario(prefs.usuario);
+    document.documentElement.dataset.densidade = prefs.densidade || "confortavel";
+    document.documentElement.dataset.movimentoReduzido = prefs.movimento_reduzido ? "true" : "false";
+    document.documentElement.dataset.animacao = prefs.intensidade_animacao || "media";
+    document.documentElement.dataset.detalheInicial = prefs.detalhe_inicial || "padrao";
   }
 
   window.GestorPrefs = {

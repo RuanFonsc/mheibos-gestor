@@ -12,6 +12,8 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    html[data-movimento-reduzido="true"] *, html[data-movimento-reduzido="true"] *::before, html[data-movimento-reduzido="true"] *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    html[data-densidade="compacta"] .card, html[data-densidade="compacta"] .soft-panel { padding-top: .75rem !important; padding-bottom: .75rem !important; }
     :root {
       --ui-scale: 1;
       --space-1: 4px;

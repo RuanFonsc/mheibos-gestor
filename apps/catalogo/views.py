@@ -649,7 +649,7 @@ def configuracoes(request):
                 categoria.alerta_mesmo_dia_apos_14h = request.POST.get(f"{prefixo}_mesmo_dia") == "on"
                 categoria.save(update_fields=["alerta_prazo_ativo", "alerta_dias_uteis", "alerta_mesmo_dia_apos_14h"])
             messages.success(request, "Regras de notificacoes e alertas salvas.")
-            return redirect(f"{reverse('configuracoes')}?aba=widgets")
+            return redirect(f"{reverse('configuracoes')}?aba=operacao")
         if acao == "trocar_perfil_proprio":
             if not operador.is_admin_geral:
                 messages.error(request, "Somente administradores gerais acessam outros usuarios.")

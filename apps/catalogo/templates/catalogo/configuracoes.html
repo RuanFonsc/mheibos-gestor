@@ -60,10 +60,14 @@
 {% endblock %}
 {% block content %}
 <div class="page-content space-y-5">
-  <div class="config-tabs">
+  <div class="config-tabs" aria-label="Áreas de configurações">
     <button class="top-tab active" type="button" data-config-tab="usuarios"><i data-lucide="circle-user-round" class="h-5 w-5"></i> Meu perfil</button>
     <button class="top-tab" type="button" data-config-tab="aparencia"><i data-lucide="monitor-cog" class="h-5 w-5"></i> Aparencia</button>
-    <button class="top-tab" type="button" data-config-tab="widgets"><i data-lucide="bell" class="h-5 w-5"></i> Alertas</button>
+    <button class="top-tab" type="button" data-config-tab="operacao"><i data-lucide="bell" class="h-5 w-5"></i> Operação e alertas</button>
+    <button class="top-tab" type="button" data-config-tab="seguranca"><i data-lucide="shield-check" class="h-5 w-5"></i> Segurança</button>
+    <button class="top-tab" type="button" data-config-tab="offline"><i data-lucide="cloud-off" class="h-5 w-5"></i> Offline</button>
+    <button class="top-tab" type="button" data-config-tab="dashboard"><i data-lucide="chart-no-axes-combined" class="h-5 w-5"></i> Dashboard</button>
+    <button class="top-tab" type="button" data-config-tab="ia"><i data-lucide="brain-circuit" class="h-5 w-5"></i> IA</button>
     {% if pode_gerenciar_usuarios %}
       <button class="top-tab" type="button" data-config-tab="empresa"><i data-lucide="building-2" class="h-5 w-5"></i> Perfil da Empresa</button>
       {% if pode_gerenciar_usuarios_geral %}
@@ -450,7 +454,7 @@
       </div>
     </section>
 
-    <section id="tab-widgets" class="config-panel hidden">
+    <section id="tab-operacao" class="config-panel hidden">
       <div class="card p-5 space-y-6">
         <h3 class="text-lg font-semibold">Configuracoes de Notificacoes e Alertas</h3>
         {% if pode_gerenciar_usuarios %}
@@ -514,6 +518,70 @@
       </div>
     </section>
 
+    <section id="tab-seguranca" class="config-panel hidden space-y-5">
+      <div class="card p-5">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div><h3 class="text-lg font-semibold">Segurança da sessão</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">O Mheibos aplica permissões fora da camada visual.</p></div>
+          <span class="permission-chip">Estado atual</span>
+        </div>
+        <div class="grid gap-3 md:grid-cols-2">
+          <div class="soft-panel"><strong>Seu perfil</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">{{ operador_atual.get_papel_display }}</p></div>
+          <div class="soft-panel"><strong>Reautenticação</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Obrigatória para ações sensíveis.</p></div>
+          <div class="soft-panel"><strong>Permissões efetivas</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Calculadas para a sessão atual.</p></div>
+          <div class="soft-panel"><strong>Política empresarial</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Configuração administrativa prevista; parâmetros detalhados ainda pendentes.</p></div>
+        </div>
+      </div>
+      <div class="card p-5">
+        <div class="mb-4"><h3 class="text-lg font-semibold">Leitura e acessibilidade</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">Preferências pessoais que não alteram regras de negócio.</p></div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div><label for="configDensidade">Densidade</label><select id="configDensidade"><option value="confortavel">Confortável</option><option value="compacta">Compacta</option></select></div>
+          <div><label for="configDetalhe">Detalhe inicial</label><select id="configDetalhe"><option value="resumido">Resumido</option><option value="padrao">Padrão</option><option value="detalhado">Detalhado</option></select></div>
+          <div><label for="configAnimacao">Intensidade de animação</label><select id="configAnimacao"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select></div>
+          <div><label for="configDicas">Dicas não críticas</label><select id="configDicas"><option value="nunca">Não mostrar</option><option value="reduzida">Reduzida</option><option value="normal">Normal</option></select></div>
+          <label class="flex items-center gap-2 text-sm normal-case tracking-normal md:col-span-2"><input id="configMovimento" type="checkbox"> Reduzir movimento e transições</label>
+        </div>
+        <div class="mt-5 flex justify-end"><button id="btnSalvarAcessibilidade" class="btn-primary" type="button">Salvar preferências visuais</button></div>
+      </div>
+    </section>
+
+    <section id="tab-offline" class="config-panel hidden space-y-5">
+      <div class="card p-5">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div><h3 class="text-lg font-semibold">Offline e sincronização</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">A operação offline é restrita e não simula o estado global.</p></div>
+          <span class="permission-chip">Somente leitura</span>
+        </div>
+        <div class="grid gap-3 md:grid-cols-3">
+          <div class="soft-panel"><strong>Central</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Estado informado pelo cliente.</p></div>
+          <div class="soft-panel"><strong>Última sincronização</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Visível quando houver sincronização registrada.</p></div>
+          <div class="soft-panel"><strong>Pendências locais</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">O logout pode ser bloqueado enquanto existirem pendências.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-dashboard" class="config-panel hidden space-y-5">
+      <div class="card p-5">
+        <div class="mb-4"><h3 class="text-lg font-semibold">Dashboard e Analytics</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">Preferências pessoais de leitura não alteram os indicadores oficiais.</p></div>
+        <div class="grid gap-3 md:grid-cols-2">
+          <div class="soft-panel"><strong>Indicadores e filtros</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">O layout pessoal e o nível de detalhes podem ser persistidos nesta área.</p></div>
+          <div class="soft-panel"><strong>Metas empresariais</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Visíveis conforme sua permissão; critérios oficiais pertencem à empresa.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-ia" class="config-panel hidden space-y-5">
+      <div class="card p-5">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div><h3 class="text-lg font-semibold">IA e autonomia</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">A IA é complementar; o sistema continua operando desligado.</p></div>
+          <span class="permission-chip">Não configurável nesta fase</span>
+        </div>
+        <div class="grid gap-3 md:grid-cols-3">
+          <div class="soft-panel"><strong>Estado da IA</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Desligada ou não configurada não impede o uso normal.</p></div>
+          <div class="soft-panel"><strong>Gateway e modelo</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Informados quando estiverem disponíveis.</p></div>
+          <div class="soft-panel"><strong>Autonomia</strong><p class="mt-1 text-sm text-[var(--text-secondary)]">Aguardando o Modelo de Decisões Autônomas da IA.</p></div>
+        </div>
+      </div>
+    </section>
+
     {% if pode_gerenciar_usuarios %}
     <section id="tab-banco" class="config-panel hidden">
       <div class="card p-5">
@@ -552,8 +620,9 @@
     gestaoUsuarios.classList.remove("hidden");
   }
 
-  const allowedConfigTabs = ["usuarios", "aparencia", "widgets"{% if pode_gerenciar_usuarios %}, "empresa", "banco"{% endif %}{% if pode_gerenciar_usuarios_geral %}, "usuarios_config"{% endif %}];
+  const allowedConfigTabs = ["usuarios", "aparencia", "operacao", "seguranca", "offline", "dashboard", "ia"{% if pode_gerenciar_usuarios %}, "empresa", "banco"{% endif %}{% if pode_gerenciar_usuarios_geral %}, "usuarios_config"{% endif %}];
   function openTab(tab) {
+    if (tab === "widgets") tab = "operacao";
     const alvo = allowedConfigTabs.includes(tab) ? tab : "usuarios";
     document.querySelectorAll("[data-config-tab]").forEach((btn) => btn.classList.toggle("active", btn.dataset.configTab === alvo));
     document.querySelectorAll(".config-panel").forEach((panel) => panel.classList.toggle("hidden", panel.id !== `tab-${alvo}`));
@@ -591,6 +660,16 @@
     const zoom = document.getElementById("configZoom");
     if (tema) tema.value = prefs.tema;
     if (zoom) zoom.value = String(prefs.zoom);
+    const densidade = document.getElementById("configDensidade");
+    const detalhe = document.getElementById("configDetalhe");
+    const animacao = document.getElementById("configAnimacao");
+    const dicas = document.getElementById("configDicas");
+    const movimento = document.getElementById("configMovimento");
+    if (densidade) densidade.value = prefs.densidade || "confortavel";
+    if (detalhe) detalhe.value = prefs.detalhe_inicial || "padrao";
+    if (animacao) animacao.value = prefs.intensidade_animacao || "media";
+    if (dicas) dicas.value = prefs.frequencia_dicas || "normal";
+    if (movimento) movimento.checked = Boolean(prefs.movimento_reduzido);
     if (!document.getElementById("widgetPrazosAtivo")) return;
     const prazos = prefs.widgets.prazos;
     document.getElementById("widgetPrazosAtivo").checked = prazos.ativo;
@@ -646,6 +725,13 @@
   preencherFormulario(GestorPrefs.load());
   document.getElementById("btnAplicarTema")?.addEventListener("click", async () => salvarComFeedback({ tema: document.getElementById("configTema").value }, "Tema aplicado."));
   document.getElementById("btnAplicarZoom")?.addEventListener("click", async () => salvarComFeedback({ zoom: Number(document.getElementById("configZoom").value) }, "Zoom aplicado."));
+  document.getElementById("btnSalvarAcessibilidade")?.addEventListener("click", async () => salvarComFeedback({
+    densidade: document.getElementById("configDensidade").value,
+    detalhe_inicial: document.getElementById("configDetalhe").value,
+    intensidade_animacao: document.getElementById("configAnimacao").value,
+    frequencia_dicas: document.getElementById("configDicas").value,
+    movimento_reduzido: document.getElementById("configMovimento").checked,
+  }, "Preferências visuais salvas."));
   ["widgetPrazosModo", "notifAssistenciaModo"].forEach((id) => {
     document.getElementById(id)?.addEventListener("change", () => {
       if (id === "widgetPrazosModo") alternarCamposPeriodicos("widgetPrazosModo", "widgetPrazosIntervaloWrap", "widgetPrazosVisivelWrap");
