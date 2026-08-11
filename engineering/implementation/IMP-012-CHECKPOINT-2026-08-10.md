@@ -19,6 +19,7 @@
 - Relatório do período calcula fatos de Pedido com fonte explícita e declara que nenhuma interpretação automática foi feita.
 - Comparação entre dois períodos mostra somente variações factuais de pedidos, urgências e valor total, sem inferência silenciosa.
 - Análises nascem como rascunho e só são validadas por autoridade humana autorizada, sempre preservando as evidências usadas.
+- O Dashboard oficial exibe análises recentes em cartão compacto, com confiança, estado e quantidade de evidências, sem ampliar o cartão de pedido.
 
 ## Quality Gates desta fatia
 
@@ -38,7 +39,6 @@
 ## Lacunas explicitamente preservadas
 
 - árvore de causas, anomalias e planos de ação como propostas explícitas dependem da camada de IA futura e não são simulados pelo modo determinístico;
-- visualização completa de evidências e confiança no Dashboard;
 - matriz visual multi-resolução e acabamento da interface de comparação;
 - validação visual real nas resoluções oficiais;
 - integração posterior com a governança da RFC-0016 sem habilitar autonomia por padrão.
