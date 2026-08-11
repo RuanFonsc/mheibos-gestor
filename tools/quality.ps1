@@ -10,7 +10,8 @@ $env:SQLITE_DB_NAME = ":memory:"
 
 & $python -m ruff check apps config manage.py
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& $python -m mypy
+$mypyCache = Join-Path $env:TEMP "mheibos-mypy-quality-cache"
+& $python -m mypy --no-incremental --cache-dir $mypyCache
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $python manage.py check
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
