@@ -1,4 +1,5 @@
 from django import forms
+from typing import cast
 
 from apps.financeiro.models import CategoriaFinanceira, ContaFinanceira, LancamentoFinanceiro, MetaVendasUsuario, StatusLancamento, TipoLancamento
 
@@ -27,8 +28,8 @@ class LancamentoCRMForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["categoria"].queryset = CategoriaFinanceira.objects.filter(ativa=True).order_by("tipo", "ordem", "nome")
-        self.fields["conta"].queryset = ContaFinanceira.objects.filter(ativa=True)
+        cast(forms.ModelChoiceField, self.fields["categoria"]).queryset = CategoriaFinanceira.objects.filter(ativa=True).order_by("tipo", "ordem", "nome")
+        cast(forms.ModelChoiceField, self.fields["conta"]).queryset = ContaFinanceira.objects.filter(ativa=True)
         self.fields["conta"].required = False
         self.fields["data_vencimento"].required = False
         self.fields["data_pagamento"].required = False
@@ -36,7 +37,7 @@ class LancamentoCRMForm(forms.ModelForm):
         self.fields["status"].initial = StatusLancamento.REALIZADO
 
     def clean(self):
-        dados = super().clean()
+        dados = super().clean() or {}
         tipo = dados.get("tipo")
         categoria = dados.get("categoria")
         if tipo and categoria and categoria.tipo != tipo:

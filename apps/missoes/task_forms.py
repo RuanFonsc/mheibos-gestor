@@ -1,4 +1,5 @@
 from django import forms
+from typing import cast
 from apps.catalogo.models import OperadorGestor
 
 
@@ -13,7 +14,8 @@ class TarefaMissaoForm(forms.Form):
             ids = missao.participacoes.filter(
                 estado_participacao__in=["ACEITO", "ATRIBUIDO"], encerrado_em__isnull=True
             ).values("operador_id")
-            self.fields["responsavel"].queryset = OperadorGestor.objects.filter(pk__in=ids, ativo=True).order_by("nome")
+            campo_responsavel = cast(forms.ModelChoiceField, self.fields["responsavel"])
+            campo_responsavel.queryset = OperadorGestor.objects.filter(pk__in=ids, ativo=True).order_by("nome")
 
 
 class NotaMissaoForm(forms.Form):
