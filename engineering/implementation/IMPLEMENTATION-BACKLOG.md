@@ -17,7 +17,7 @@
 | IMP-009 | Arquivos e integrações oficiais | RFC-0014 | IMP-003, IMP-005 | COMPLETED | alto | IMP-009A–M cobrem vínculo, criação oficial, criação provisória local, transferência, retenção, monitoramento, conclusão, restauração crítica e transferência autorizada | 9 |
 | IMP-010 | Missões e Teamwork | RFC-0010 | IMP-002, IMP-005 | COMPLETED_WITH_GAPS | médio | missão persistente sem duplicar Processo/Etapa | 10 |
 | IMP-011 | Conhecimento e memória | RFC-0011 | IMP-003, IMP-010 | COMPLETED_WITH_GAPS | alto | conhecimento fora do modelo, proveniência e validação | 11 |
-| IMP-012 | Dashboard, analytics e simulação | RFC-0015 | IMP-003, IMP-005, IMP-010, IMP-011 | IN_PROGRESS | alto | dashboard individual e modular; análises explicáveis/auditáveis; simulações salvas, autorizadas e promovíveis a Missão | 12 |
+| IMP-012 | Dashboard, analytics e simulação | RFC-0015 | IMP-003, IMP-005, IMP-010, IMP-011 | COMPLETED_WITH_GAPS | alto | dashboard individual e modular; análises explicáveis/auditáveis; simulações salvas, autorizadas e promovíveis a Missão | 12 |
 | IMP-013 | Governança e segurança da IA | RFC-0016 Draft 0.1 | IMP-002, IMP-003, IMP-011 | PENDING | crítico | catálogo de decisões autônomas, reversibilidade, autoridade e auditoria | posterior |
 | IMP-014 | IA cognitiva final | RFC-0004, 0011, 0016 futura | IMP-001–013 | PENDING | crítico | funções cognitivas integradas por fronteiras substituíveis | última fase |
 

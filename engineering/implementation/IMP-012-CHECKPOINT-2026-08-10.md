@@ -1,7 +1,7 @@
 # Checkpoint IMP-012 — Dashboard, Analytics e Simulação
 
 **Data:** 10/08/2026  
-**Estado:** `IN_PROGRESS`  
+**Estado:** `COMPLETED_WITH_GAPS`  
 **Fontes:** RFC-0015, RFC-0010, RFC-0011, RFC-0016 Draft 0.1  
 **Escopo desta fatia:** domínio determinístico, dashboard individual, evidências, análises e simulações salvas.
 
@@ -35,12 +35,12 @@
 | Interface | `PASS_WITH_GAP` | rotas e templates renderizam; matriz visual multi-resolução e integração completa de widgets ainda pendentes. |
 | IA desligada | `PASS` | nenhum serviço, formulário ou rota depende de modelo externo. |
 
-## Pendências para concluir IMP-012
+## Lacunas explicitamente preservadas
 
-- árvore de causas, anomalias e planos de ação como propostas explícitas;
+- árvore de causas, anomalias e planos de ação como propostas explícitas dependem da camada de IA futura e não são simulados pelo modo determinístico;
 - visualização completa de evidências e confiança no Dashboard;
 - matriz visual multi-resolução e acabamento da interface de comparação;
 - validação visual real nas resoluções oficiais;
 - integração posterior com a governança da RFC-0016 sem habilitar autonomia por padrão.
 
-Essas pendências não bloqueiam o uso atual do Dashboard nem o funcionamento com IA desligada.
+Essas lacunas não bloqueiam o uso atual do Dashboard nem o funcionamento com IA desligada. O IMP-012 está apto a ceder a sequência ao IMP-013, sem transformar hipóteses da RFC-0015 em fatos implementados.

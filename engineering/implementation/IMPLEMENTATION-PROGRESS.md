@@ -1,9 +1,9 @@
 # Progresso da Implementação Integral
 
 **Estado geral:** IN_PROGRESS  
-**Fase atual:** IMP-012 — Dashboard, Analytics e Simulação  
-**Ciclo atual:** IMP-012 (preparação)  
-**Último ciclo concluído:** IMP-009M — criação provisória de arte oficial, transferência e consolidação de IMP-009  
+**Fase atual:** IMP-013 — Governança e Autoridade da IA (preparação)  
+**Ciclo atual:** IMP-013 (RFC-0016 Draft 0.1 recebido)  
+**Último ciclo concluído:** IMP-012 — Dashboard, Analytics e Simulação (`COMPLETED_WITH_GAPS`)  
 **Data:** 02/08/2026
 
 ## Contrato do ciclo IMP-003
@@ -481,11 +481,11 @@ IMP-009M — materializar a criação provisória de Arte Oficial quando o compa
 - A RFC-0016 passa a orientar o IMP-013, mas não autoriza autonomia da IA nem substitui o documento futuro de decisões autônomas.
 
 
-### IMP-012 — IN_PROGRESS
+### IMP-012 — COMPLETED_WITH_GAPS
 
 - Dashboard oficial individual em /dashboard/; consulta financeira compatível preservada em /financeiro/dashboard/.
 - Analytics e Simulação determinísticos em /dashboard/analytics/, com evidências, confiança, validade, promoção explícita para Missão e auditoria.
 - 7 testes do Analytics e 9 do Aprendizado aprovados; checkpoint em engineering/implementation/IMP-012-CHECKPOINT-2026-08-10.md.
 - Comparação factual de dois períodos foi adicionada, preservando fonte e declaração de ausência de interpretação automática.
-- Pendências: árvore de causas, anomalias, planos de ação, cenários compostos e matriz visual real.
+- Lacunas preservadas: árvore de causas, anomalias, planos de ação e cenários compostos dependem da futura camada de IA; matriz visual completa permanece como validação adicional.
 

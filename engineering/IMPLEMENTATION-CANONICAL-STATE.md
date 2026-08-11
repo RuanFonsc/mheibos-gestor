@@ -49,15 +49,15 @@ Esse arquivo não deve ser apagado. Deve ser revisado contra as telas realmente 
 | IMP-009 / 009A–009M | `COMPLETED` | Arquivos oficiais, criação, vinculação, monitoramento, restauração, transferência e provisório local implementados. |
 | IMP-010 | `COMPLETED_WITH_GAPS` | Missões, Teamwork, tarefas, notas e chat contextual; validação visual real registrada. O backend foi recuperado no commit `77872a1`; a validação final da fatia ainda precisa ser confirmada. |
 | IMP-011 | `COMPLETED_WITH_GAPS` | Conhecimento, memória e contexto transversal determinísticos; governança detalhada permanece posterior. |
-| IMP-012 | `IN_PROGRESS` | Dashboard oficial individual, evidências, análises e simulações; checkpoint IMP-012 em andamento. |
-| IMP-013 | `PENDING` | Governança e segurança da IA; aguarda RFC-0016. |
+  | IMP-012 | `COMPLETED_WITH_GAPS` | Dashboard oficial individual, evidências, análises, comparação factual e simulações; lacunas de IA futura preservadas. |
+  | IMP-013 | `PENDING` | Governança e segurança da IA; RFC-0016 Draft 0.1 recebido e impacto registrado, aguardando catálogo aprovado de decisões autônomas. |
 | IMP-014 | `PENDING` | IA cognitiva final; última fase. |
 
 ## Próximo ponto de retomada
 
 **Retomada atualizada:** IMP-010 foi validado como `COMPLETED_WITH_GAPS`; IMP-011 foi implementado e validado como `COMPLETED_WITH_GAPS` no checkpoint `IMP-011-CHECKPOINT-2026-08-10.md`.
 
-Próximo trabalho: iniciar IMP-012 em fatias verticais determinísticas conforme RFC-0015. Dashboard, analytics, evidências e simulação devem funcionar com IA desligada; RFC-0016 será incorporada quando oficializada, sem bloquear esta sequência.
+Próximo trabalho: iniciar IMP-013 a partir do impacto da RFC-0016. Dashboard, analytics, evidências e simulação do IMP-012 já funcionam com IA desligada; governança futura não deve habilitar autonomia por padrão.
 
 Os itens abaixo registram a condição histórica da consolidação anterior.
 
