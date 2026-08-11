@@ -4,7 +4,7 @@
 **Fase atual:** IMP-013 — Governança e Autoridade da IA (preparação)  
 **Ciclo atual:** IMP-013 (RFC-0016 Draft 0.1 recebido)  
 **Último ciclo concluído:** IMP-012 — Dashboard, Analytics e Simulação (`COMPLETED_WITH_GAPS`)  
-**Data:** 02/08/2026
+**Data:** 10/08/2026
 
 ## Contrato do ciclo IMP-003
 
