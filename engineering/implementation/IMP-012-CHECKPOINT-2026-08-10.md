@@ -39,7 +39,7 @@
 - comparação de períodos e relatórios analíticos sem inferência silenciosa;
 - árvore de causas, anomalias e planos de ação como propostas explícitas;
 - visualização completa de evidências e confiança no Dashboard;
-- interface visual completa para comparação e cenários compostos;
+- matriz visual multi-resolução e acabamento da interface de comparação;
 - validação visual real nas resoluções oficiais;
 - integração posterior com a governança da RFC-0016 sem habilitar autonomia por padrão.
 
