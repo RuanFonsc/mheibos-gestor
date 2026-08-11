@@ -128,6 +128,9 @@ class AnalyticsDeterministicoTests(TestCase):
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertEqual(analytics_response.status_code, 200)
 
+        self.assertIn(b"Fatos do trabalho atual", dashboard_response.content)
+        self.assertIn(b"Evid", dashboard_response.content)
+
     def test_rota_renderiza_comparacao_de_dois_periodos(self):
         request = RequestFactory().get(
             "/dashboard/analytics/",

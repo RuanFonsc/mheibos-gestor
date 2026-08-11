@@ -28,7 +28,8 @@ def dashboard(request):
     tarefas = TarefaMissao.objects.filter(missao__in=missoes, estado__in={EstadoTarefaMissao.PENDENTE, EstadoTarefaMissao.EM_ANDAMENTO}).select_related("missao")[:8]
     pendencias = Pendencia.objects.filter(Q(responsavel_principal=operador) | Q(destinatarios=operador), estado=EstadoPendencia.ABERTA).select_related("pedido")[:8]
     simulacoes = Simulacao.objects.filter(autor=operador).select_related("missao")[:5]
-    return render(request, "analytics/dashboard.html", {"operador_atual": operador, "missoes": missoes[:8], "tarefas": tarefas, "pendencias": pendencias, "simulacoes": simulacoes, "metricas": obter_metricas_operacionais(operador=operador), "active": "dashboard"})
+    analises_recentes = Analise.objects.filter(autor=operador).prefetch_related("evidencias").order_by("-atualizada_em")[:5]
+    return render(request, "analytics/dashboard.html", {"operador_atual": operador, "missoes": missoes[:8], "tarefas": tarefas, "pendencias": pendencias, "simulacoes": simulacoes, "analises_recentes": analises_recentes, "metricas": obter_metricas_operacionais(operador=operador), "active": "dashboard"})
 
 
 def analytics_home(request):
