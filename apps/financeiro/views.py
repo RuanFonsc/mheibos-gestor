@@ -1,6 +1,7 @@
 from decimal import Decimal
 from datetime import datetime, timedelta
 from io import BytesIO
+from typing import Any
 
 from django.contrib import messages
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
@@ -157,8 +158,8 @@ def dashboard(request):
     vendas_dia = pedidos_validos.filter(data_pedido=hoje)
     vendas_mes = pedidos_validos.filter(data_pedido__range=(inicio_mes, hoje))
 
-    receita_mensal = [0] * 12
-    despesa_mensal = [0] * 12
+    receita_mensal: list[float] = [0.0] * 12
+    despesa_mensal: list[float] = [0.0] * 12
     top_produtos_ranking = []
     top_categorias_ranking = []
     canais_ranking = []
@@ -287,9 +288,9 @@ def dashboard(request):
 
     crm = None
     lancamento_form = None
-    lancamentos_recentes = []
-    categorias_receita = []
-    categorias_despesa = []
+    lancamentos_recentes: Any = []
+    categorias_receita: Any = []
+    categorias_despesa: Any = []
     if aba == "crm":
         crm = relatorio_crm(ano)
         lancamento_form = LancamentoCRMForm(
@@ -358,8 +359,8 @@ def dashboard(request):
             metas_valores.append(float(valor_meta))
             metas_realizado_valores.append(float(realizado))
             metas_fotos.append(usuario_meta.foto.url if usuario_meta.foto else "")
-        meta_geral_total = sum((item["valor_meta"] for item in metas_usuarios), Decimal("0.00"))
-        meta_geral_realizado = sum((item["realizado"] for item in metas_usuarios), Decimal("0.00"))
+        meta_geral_total = sum((Decimal(str(item["valor_meta"])) for item in metas_usuarios), Decimal("0.00"))
+        meta_geral_realizado = sum((Decimal(str(item["realizado"])) for item in metas_usuarios), Decimal("0.00"))
         meta_geral_progresso = (meta_geral_realizado / meta_geral_total * 100) if meta_geral_total else Decimal("0.00")
         meta_geral_falta = max(Decimal("0.00"), meta_geral_total - meta_geral_realizado)
     anos_disponiveis = list(range(timezone.localdate().year, timezone.localdate().year - 5, -1))

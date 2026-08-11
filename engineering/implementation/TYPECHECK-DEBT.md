@@ -6,14 +6,14 @@
 
 ## Evidência
 
-Após as correções incrementais de formulários, datas, projeções, CRM, payloads de sincronização, ferramentas de validação e visões de Catálogo, a dívida foi reduzida para 20 diagnósticos em 6 arquivos. O escopo dos ciclos recentes permanece verde: Analytics e Aprendizado (8 arquivos) passam sem erros.
+Após as correções incrementais de formulários, datas, projeções, CRM, payloads de sincronização, ferramentas de validação, visões de Catálogo e Financeiro, a dívida foi reduzida para 8 diagnósticos em 5 arquivos. O escopo dos ciclos recentes permanece verde: Analytics e Aprendizado (8 arquivos) passam sem erros.
 
 ## Agrupamento atual
 
 | Área | Diagnósticos | Natureza predominante |
 |---|---:|---|
 | `tools/` | 0 | variáveis sem anotação e valores opcionais (corrigido neste ciclo) |
-| `apps/financeiro/` | 12 | agregações e listas sem tipos explícitos |
+| `apps/financeiro/` | 0 | agregações e listas sem tipos explícitos (corrigido neste ciclo) |
 | `apps/catalogo/` | 1 | comando de integridade textual com tipo genérico |
 | `apps/pedidos/` | 5 | atributos legados/projeções e parâmetros opcionais |
 | `apps/vendas/` | 0 | QuerySet/lista e projeções (corrigido neste ciclo) |
