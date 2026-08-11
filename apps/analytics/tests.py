@@ -128,6 +128,21 @@ class AnalyticsDeterministicoTests(TestCase):
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertEqual(analytics_response.status_code, 200)
 
+    def test_rota_renderiza_comparacao_de_dois_periodos(self):
+        request = RequestFactory().get(
+            "/dashboard/analytics/",
+            {
+                "periodo_1_inicio": "2026-08-01",
+                "periodo_1_fim": "2026-08-02",
+                "periodo_2_inicio": "2026-08-03",
+                "periodo_2_fim": "2026-08-04",
+            },
+        )
+        request.session = cast(Any, {SESSION_OPERATOR_ID: self.usuario.pk})
+        response = analytics_home(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Comparar per", response.content)
+
     def test_metricas_operacionais_sao_fatos_deterministicos(self):
         metricas = obter_metricas_operacionais(operador=self.usuario)
 
