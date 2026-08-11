@@ -28,7 +28,7 @@
 | Auditoria | `PASS` | criação de evidência, análise e simulação, além da promoção, são eventos transacionais. |
 | Segurança | `PASS` | identidade ativa obrigatória; promoção exige autor ou administrador; sem autoridade implícita da IA. |
 | Migração | `PASS` | `0001_initial` do app Analytics; `makemigrations --check` sem alterações. |
-| Testes | `PASS` | 8 testes do Analytics e 9 do Aprendizado aprovados; Django check aprovado. |
+| Testes | `PASS` | 8 testes do Analytics e 9 do Aprendizado aprovados; baseline completo de 201 testes, Django check e migrações aprovados. |
 | Interface | `PASS_WITH_GAP` | rotas e templates renderizam; matriz visual multi-resolução e integração completa de widgets ainda pendentes. |
 | IA desligada | `PASS` | nenhum serviço, formulário ou rota depende de modelo externo. |
 
