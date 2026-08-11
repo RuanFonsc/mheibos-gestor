@@ -480,6 +480,13 @@ IMP-009M — materializar a criação provisória de Arte Oficial quando o compa
 - O impacto foi registrado em engineering/implementation/IMP-013-IMPACT-ASSESSMENT.md.
 - A RFC-0016 passa a orientar o IMP-013, mas não autoriza autonomia da IA nem substitui o documento futuro de decisões autônomas.
 
+### IMP-013 — PENDING (PREPARAÇÃO)
+
+- A RFC-0016 Draft 0.1 já foi lida, copiada para a documentação oficial e auditada quanto ao impacto.
+- Nenhum catálogo de ações autônomas, limiar de confiança, autoridade de reversão ou janela de execução será inventado antes do documento normativo obrigatório **Modelo de Decisões Autônomas da IA**.
+- O modo IA desligada permanece o caminho operacional válido; segurança, auditoria, integridade e sincronização continuam determinísticas.
+- Próximo gate: decisão humana sobre a aprovação da RFC-0016 e fornecimento do documento de catálogo antes de implementar autonomia.
+
 
 ### IMP-012 — COMPLETED_WITH_GAPS
 
