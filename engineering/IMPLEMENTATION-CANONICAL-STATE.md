@@ -1,6 +1,6 @@
 # Estado Canônico da Implementação
 
-**Data da consolidação:** 10/08/2026  
+**Data da consolidação:** 11/08/2026  
 **Repositório oficial:** `C:\Users\Ruan\Documents\Codex\2026-08-01\entre-no-repositorio-mheibos-gestor-do\mheibos-gestor`  
 **Branch de trabalho:** `agent/engineering-baseline`  
 **Remoto:** `origin/agent/engineering-baseline`  
@@ -20,9 +20,9 @@ Antes de editar qualquer arquivo:
 
 ## Estado Git consolidado
 
-O branch estava alinhado ao remoto, com um commit local à frente no momento desta consolidação. O último commit era:
+O branch está alinhado ao remoto após a publicação desta consolidação. O último commit é:
 
-`77872a1 feat(missoes): recover backend implementation of tasks, chat and notes for IMP-010`
+`4e29716 feat(configuracoes): reorganizar preferencias e estados oficiais`
 
 Havia um arquivo não rastreado, produzido como evidência visual do IMP-010:
 
@@ -47,17 +47,19 @@ Esse arquivo não deve ser apagado. Deve ser revisado contra as telas realmente 
 | IMP-007A | `COMPLETED_WITH_GAPS` | Gateway Gemini opcional com fallback; IA desligada não bloqueia o sistema. |
 | IMP-008 | `COMPLETED_WITH_GAPS` | Offline e sincronização validados; falta smoke humano do instalador Windows empacotado. |
 | IMP-009 / 009A–009M | `COMPLETED` | Arquivos oficiais, criação, vinculação, monitoramento, restauração, transferência e provisório local implementados. |
-| IMP-010 | `COMPLETED_WITH_GAPS` | Missões, Teamwork, tarefas, notas e chat contextual; validação visual real registrada. O backend foi recuperado no commit `77872a1`; a validação final da fatia ainda precisa ser confirmada. |
+| IMP-010 | `COMPLETED_WITH_GAPS` | Missões, Teamwork, tarefas, notas e chat contextual; validação visual real registrada. Lacunas de autoridade e cobertura visual permanecem documentadas. |
 | IMP-011 | `COMPLETED_WITH_GAPS` | Conhecimento, memória e contexto transversal determinísticos; governança detalhada permanece posterior. |
   | IMP-012 | `COMPLETED_WITH_GAPS` | Dashboard oficial individual, evidências, análises, comparação factual e simulações; lacunas de IA futura preservadas. |
   | IMP-013 | `PENDING` | Governança e segurança da IA; RFC-0016 Draft 0.1 recebido e impacto registrado, aguardando catálogo aprovado de decisões autônomas. |
 | IMP-014 | `PENDING` | IA cognitiva final; última fase. |
 
+| Configurações | `COMPLETED_WITH_GAPS` | Matriz oficial e nova navegação por Perfil, Aparência, Operação e alertas, Segurança, Offline, Dashboard, IA, Empresa, Usuários e Banco. Preferências visuais persistentes implementadas; políticas ainda normativamente indefinidas aparecem somente como estado. |
+
 ## Próximo ponto de retomada
 
-**Retomada atualizada:** IMP-010 foi validado como `COMPLETED_WITH_GAPS`; IMP-011 foi implementado e validado como `COMPLETED_WITH_GAPS` no checkpoint `IMP-011-CHECKPOINT-2026-08-10.md`.
+**Retomada atualizada:** a matriz de Configurações foi implementada e publicada no commit `4e29716`; a suíte completa de 207 testes passou com banco SQLite isolado. IMP-011 permanece `COMPLETED_WITH_GAPS`, IMP-012 permanece `COMPLETED_WITH_GAPS` e IMP-013 continua pendente por falta do catálogo aprovado de decisões autônomas.
 
-Próximo trabalho: iniciar IMP-013 a partir do impacto da RFC-0016. Dashboard, analytics, evidências e simulação do IMP-012 já funcionam com IA desligada; governança futura não deve habilitar autonomia por padrão.
+Próximo trabalho: revisar a nova Configurações em ambiente real e então iniciar IMP-013 a partir do impacto da RFC-0016. Dashboard, analytics, evidências e simulação do IMP-012 já funcionam com IA desligada; governança futura não deve habilitar autonomia por padrão.
 
 Os itens abaixo registram a condição histórica da consolidação anterior.
 

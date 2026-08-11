@@ -4,7 +4,7 @@
 **Fase atual:** IMP-013 — Governança e Autoridade da IA (preparação)  
 **Ciclo atual:** IMP-013 (RFC-0016 Draft 0.1 recebido)  
 **Último ciclo concluído:** IMP-012 — Dashboard, Analytics e Simulação (`COMPLETED_WITH_GAPS`)  
-**Data:** 10/08/2026
+**Data:** 11/08/2026
 
 ## Contrato do ciclo IMP-003
 
@@ -496,4 +496,14 @@ IMP-009M — materializar a criação provisória de Arte Oficial quando o compa
 - 12 testes do Analytics e 9 do Aprendizado aprovados; baseline de 207 testes; checkpoint em engineering/implementation/IMP-012-CHECKPOINT-2026-08-10.md.
 - Comparação factual de dois períodos foi adicionada, preservando fonte e declaração de ausência de interpretação automática.
 - Lacunas preservadas: árvore de causas, anomalias, planos de ação e cenários compostos dependem da futura camada de IA; matriz visual completa permanece como validação adicional.
+
+### CONFIGURAÇÕES — COMPLETED_WITH_GAPS (11/08/2026)
+
+- **Capacidade:** matriz oficial de preferências individuais, configurações empresariais, aparência, operação, segurança, offline, dashboard e IA registrada em `docs/CONFIGURACOES-MATRIZ-OFICIAL.md`.
+- **Interface:** navegação separada em Perfil, Aparência, Operação e alertas, Segurança, Offline, Dashboard, IA, Perfil da Empresa, Usuários e Banco.
+- **Preferências persistentes:** densidade, redução de movimento, intensidade de animação, nível inicial de detalhe e frequência de dicas, além de tema e zoom.
+- **Regra:** cadastro/manutenção de usuários permanece somente na página Usuários; itens normativamente indefinidos são somente leitura.
+- **Validação:** suíte completa de 207 testes, Django check, Ruff, sintaxe JavaScript e diff check aprovados; teste executado com banco SQLite isolado para não depender de PostgreSQL local.
+- **Commit:** `4e29716 feat(configuracoes): reorganizar preferencias e estados oficiais`, publicado em `origin/agent/engineering-baseline`.
+- **Próximo passo:** validação visual real da página e, depois, IMP-013 somente quando o Modelo de Decisões Autônomas da IA estiver aprovado.
 
