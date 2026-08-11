@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from typing import Any, cast
 
 from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
@@ -88,7 +89,7 @@ class Command(BaseCommand):
             ]
             if not campos:
                 continue
-            for obj in model.objects.all().iterator():
+            for obj in cast(Any, model).objects.all().iterator():
                 for field in campos:
                     value = getattr(obj, field.name, "") or ""
                     if texto_suspeito(str(value)):

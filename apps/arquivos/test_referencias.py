@@ -1,6 +1,7 @@
 import hashlib
 import tempfile
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -102,7 +103,7 @@ class ArteReferenciaTests(TestCase):
             {"acao": "remover_arte", "arte_id": arte.pk},
         )
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, f"/pedidos/{self.pedido.pk}/editar/")
+        self.assertEqual(cast(Any, response).url, f"/pedidos/{self.pedido.pk}/editar/")
         self.assertFalse(self.pedido.artes_ativas.exists())
         arte = ArtePedido.todos_vinculos.get(pk=arte.pk)
         self.assertTrue(arte.arquivo.storage.exists(arte.arquivo.name))

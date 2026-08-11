@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from typing import Any, cast
 
 from apps.auditoria.models import EventoOperacional
 from apps.catalogo.models import OperadorGestor, PapelOperador
@@ -227,7 +228,7 @@ class ProjecaoOperacionalIntegradaTests(TestCase):
         pedido = projetar_lista(
             queryset_com_projecao(Pedido.objects.filter(pk=self.pedido.pk))
         )[0]
-        self.assertEqual(pedido.projecao.operacional, "Em andamento")
+        self.assertEqual(cast(Any, pedido).projecao.operacional, "Em andamento")
         self.assertIn(self.pedido.pk, queryset_fila_producao().values_list("pk", flat=True))
 
         producao = self.client.get("/producao/")

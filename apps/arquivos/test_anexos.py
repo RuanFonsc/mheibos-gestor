@@ -1,5 +1,6 @@
 import tempfile
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -148,7 +149,7 @@ class AnexoPedidoTests(TestCase):
             f"/pedidos/{self.pedido.pk}/anexos/{anexo_inicial.pk}/baixar/"
         )
         self.assertTrue(download["Content-Disposition"].startswith("attachment;"))
-        self.assertEqual(b"".join(download.streaming_content), b"conteudo-opaco")
+        self.assertEqual(b"".join(cast(Any, download).streaming_content), b"conteudo-opaco")
         download.close()
         sem_acesso = OperadorGestor.objects.create(
             nome="Sem Acesso Anexo", senha="segura", papel=PapelOperador.USUARIO
@@ -167,6 +168,8 @@ class AnexoPedidoTests(TestCase):
         )
         self.assertEqual(AnexoPedido.objects.count(), 2)
         anexo = AnexoPedido.objects.first()
+        self.assertIsNotNone(anexo)
+        anexo = cast(Any, anexo)
         self.entrar(self.admin)
         self.client.post(f"/pedidos/{self.pedido.pk}/anexos/{anexo.pk}/desvincular/")
         anexo.refresh_from_db()

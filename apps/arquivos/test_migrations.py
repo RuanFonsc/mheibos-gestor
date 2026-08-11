@@ -1,6 +1,7 @@
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TransactionTestCase
+from typing import Any, cast
 
 
 class ArquivoLegadoMigrationTests(TransactionTestCase):
@@ -16,7 +17,7 @@ class ArquivoLegadoMigrationTests(TransactionTestCase):
             ("clientes", "0003_cliente_status_cadastro_and_more"),
         ]
         executor.migrate(targets_from)
-        apps = executor.loader.project_state(targets_from[1:]).apps
+        apps = executor.loader.project_state(cast(Any, targets_from[1:])).apps
         Cliente = apps.get_model("clientes", "Cliente")
         Pedido = apps.get_model("pedidos", "Pedido")
         cliente = Cliente.objects.create(nome="Cliente Legado Arquivo")
