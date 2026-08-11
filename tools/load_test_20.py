@@ -167,7 +167,7 @@ def main():
     elapsed = time.perf_counter() - started
     failures = [item for item in all_results if not item.ok]
     timings = [item.seconds for item in all_results if item.ok]
-    by_path = {}
+    by_path: dict[str, list[Result]] = {}
     for item in all_results:
         by_path.setdefault(item.path, []).append(item)
 

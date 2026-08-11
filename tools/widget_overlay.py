@@ -50,9 +50,9 @@ class WidgetOverlayWindows:
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", 0.95)
         self.root.configure(bg="#151823")
-        self._fotos = []
-        self._timer_sumir = None
-        self._timer_loop = None
+        self._fotos: list[object] = []
+        self._timer_sumir: str | None = None
+        self._timer_loop: str | None = None
         self._largura = 120
 
     def iniciar(self):
