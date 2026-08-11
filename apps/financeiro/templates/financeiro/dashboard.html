@@ -5,7 +5,7 @@
 {% block head %}
 <style>
   .dashboard-chart-grid { align-items: stretch; }
-  .dashboard-chart-card { position: relative; display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; border-color: rgba(0,229,255,.22); background: radial-gradient(circle at 18% 0%, rgba(0,229,255,.12), transparent 30%), linear-gradient(145deg, rgba(23,26,41,.96), rgba(24,32,56,.96)); }
+  .dashboard-chart-card { position: relative; display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; border-color: var(--border-accent); background: var(--panel-gradient); border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
   .dashboard-chart-card::after { content: ""; position: absolute; inset: auto 12% -42px; height: 86px; border-radius: 50%; background: rgba(0,229,255,.14); filter: blur(30px); pointer-events: none; }
   .dashboard-chart-card h2 { position: relative; z-index: 1; }
   .personal-dashboard-card { position: relative; overflow: hidden; border-color: rgba(0,229,255,.24); background: radial-gradient(circle at 8% 0%, rgba(0,229,255,.16), transparent 30%), linear-gradient(145deg, rgba(23,26,41,.96), rgba(24,32,56,.96)); }

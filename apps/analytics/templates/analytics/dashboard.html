@@ -22,7 +22,7 @@
 {% endblock %}
 {% block content %}
 <div class="page-content w-full space-y-5">
-  <header class="page-heading">
+  <header class="page-hero card p-5">
     <div>
       <span class="kicker"><i data-lucide="orbit" class="h-4 w-4"></i> Centro de comando</span>
       <h2 class="section-title">Olá, {{ operador_atual.nome }}</h2>
@@ -31,14 +31,14 @@
     <div class="page-actions"><a class="btn-secondary" href="{% url 'analytics_home' %}"><i data-lucide="chart-no-axes-combined" class="h-4 w-4"></i> Analisar e simular</a></div>
   </header>
 
-  <section class="grid gap-4 md:grid-cols-3">
+  <section class="metric-grid">
     <article class="card p-5"><p class="text-xs uppercase text-[var(--text-secondary)]">Missões ativas</p><strong class="mt-2 block text-3xl">{{ missoes|length }}</strong><a class="mt-3 inline-flex text-sm text-[var(--accent)]" href="{% url 'missoes_lista' %}">Abrir missões →</a></article>
     <article class="card p-5"><p class="text-xs uppercase text-[var(--text-secondary)]">Tarefas em atenção</p><strong class="mt-2 block text-3xl">{{ tarefas|length }}</strong><span class="mt-3 block text-sm text-[var(--text-secondary)]">Pendências de execução</span></article>
     <article class="card p-5"><p class="text-xs uppercase text-[var(--text-secondary)]">Pendências abertas</p><strong class="mt-2 block text-3xl">{{ pendencias|length }}</strong><a class="mt-3 inline-flex text-sm text-[var(--accent)]" href="{% url 'pendencias_lista' %}">Ver fila →</a></article>
   </section>
   <section class="card p-5"><div class="mb-4 flex items-center justify-between"><div><span class="kicker">Estado operacional</span><h3 class="mt-1 text-xl font-bold">Fatos do trabalho atual</h3></div><span class="text-xs text-[var(--text-secondary)]">Fonte: {{ metricas.fonte }}</span></div><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div class="rounded-lg bg-[var(--bg-input)] p-3"><span class="text-xs text-[var(--text-secondary)]">Pedidos ativos</span><strong class="mt-1 block text-2xl">{{ metricas.pedidos_ativos }}</strong></div><div class="rounded-lg bg-[var(--bg-input)] p-3"><span class="text-xs text-[var(--text-secondary)]">Aguardando arte</span><strong class="mt-1 block text-2xl">{{ metricas.aguardando_arte }}</strong></div><div class="rounded-lg bg-[var(--bg-input)] p-3"><span class="text-xs text-[var(--text-secondary)]">Em produção</span><strong class="mt-1 block text-2xl">{{ metricas.em_producao }}</strong></div><div class="rounded-lg bg-[var(--bg-input)] p-3"><span class="text-xs text-[var(--text-secondary)]">Prazo próximo</span><strong class="mt-1 block text-2xl">{{ metricas.prazo_proximo }}</strong></div></div></section>
 
-  <section class="card overflow-hidden p-5" style="background: radial-gradient(circle at 8% 0%, rgba(0,229,255,.14), transparent 34%), linear-gradient(135deg, rgba(23,26,41,.98), rgba(24,32,56,.98));">
+  <section class="page-hero card overflow-hidden p-5">
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div><span class="kicker">Desempenho individual</span><h3 class="mt-1 text-2xl font-bold">Minha meta de vendas</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">Período {{ meta_individual.mes }} · fonte: pedidos oficiais</p></div>
       {% if operador_atual.is_admin_geral %}<a class="btn-secondary" href="{% url 'dashboard_financeiro' %}?aba=metas">Configurar metas</a>{% endif %}
