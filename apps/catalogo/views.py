@@ -1,6 +1,7 @@
 import json
 import hashlib
 from collections import defaultdict
+from typing import Any, cast
 
 from django.contrib import messages
 from django.conf import settings
@@ -366,13 +367,13 @@ def preparacao_arte(request):
         .distinct()
         .order_by("data_entrega", "id")[:120]
     )
-    aguardando_arte = (
+    aguardando_arte_qs = (
         Pedido.objects.filter(status__in=STATUS_ASSISTENCIA)
         .select_related("cliente")
         .prefetch_related("itens", "artes", "processos__etapas__responsavel")
         .order_by("data_entrega", "id")[:120]
     )
-    aguardando_arte = [_preparar_contexto_operacional(pedido) for pedido in aguardando_arte]
+    aguardando_arte = [_preparar_contexto_operacional(pedido) for pedido in aguardando_arte_qs]
     preparacoes = (
         PreparacaoArtePedido.objects.exclude(estado=EstadoPreparacaoArte.CONCLUIDA)
         .select_related("pedido__cliente", "responsavel")
@@ -383,7 +384,7 @@ def preparacao_arte(request):
     for preparacao in preparacoes:
         alerta = avaliar_alerta_inatividade_arte(pedido=preparacao.pedido)
         if alerta.ativo:
-            preparacao.pedido.alerta_inatividade_arte = alerta
+            cast(Any, preparacao.pedido).alerta_inatividade_arte = alerta
             alertas_inatividade.append(preparacao.pedido)
     return render(
         request,
@@ -772,7 +773,7 @@ def producao_home(request):
     sem_categoria = []
     for pedido in pedidos_lista:
         _preparar_contexto_operacional(pedido)
-        pedido.alerta_prazo = pedido_em_alerta(pedido)
+        cast(Any, pedido).alerta_prazo = pedido_em_alerta(pedido)
         categorias_pedido = sorted(categorias_do_pedido(pedido), key=lambda item: (item.ordem, item.nome))
         if not categorias_pedido:
             sem_categoria.append(pedido)
