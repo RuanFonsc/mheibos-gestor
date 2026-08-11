@@ -132,6 +132,28 @@ def salvar_simulacao(*, operador, titulo, objetivo, premissas, resultado, valida
     return simulacao
 
 
+def comparar_simulacoes(*, operador, simulacoes):
+    """Compara resultados estruturados sem inventar métricas ausentes."""
+    _exigir_operador(operador)
+    itens = list(simulacoes or [])
+    if len(itens) < 2:
+        raise ValidationError("Selecione pelo menos duas simulações para comparar.")
+    if any(not isinstance(item, Simulacao) for item in itens):
+        raise ValidationError("A comparação aceita somente simulações persistidas.")
+    if any(item.autor_id != operador.pk and not operador.is_admin for item in itens):
+        raise PermissionDenied("Você não pode comparar simulações de outro operador.")
+    agora = timezone.now()
+    if any(item.validade_ate and item.validade_ate <= agora for item in itens):
+        raise ValidationError("Simulações expiradas não podem compor uma comparação.")
+    chaves = set(itens[0].resultado).intersection(*(item.resultado for item in itens[1:]))
+    deltas = {}
+    for chave in sorted(chaves):
+        valores = [item.resultado[chave] for item in itens]
+        if all(isinstance(valor, (int, float)) and not isinstance(valor, bool) for valor in valores):
+            deltas[chave] = {"valores": valores, "variacao_desde_primeiro": [valor - valores[0] for valor in valores]}
+    return {"simulacoes": [{"id": item.pk, "titulo": item.titulo} for item in itens], "metricas_comparaveis": deltas, "ia_necessaria": False}
+
+
 def promover_simulacao_para_missao(*, simulacao, operador):
     _exigir_operador(operador)
     expirou = False

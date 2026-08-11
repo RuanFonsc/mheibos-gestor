@@ -12,6 +12,7 @@ from apps.missoes.models import EstadoMissao
 from .models import EstadoAnalise, EstadoSimulacao, TipoEvidencia
 from .services import (
     criar_analise_deterministica,
+    comparar_simulacoes,
     gerar_relatorio_operacional,
     obter_metricas_operacionais,
     promover_simulacao_para_missao,
@@ -85,6 +86,16 @@ class AnalyticsDeterministicoTests(TestCase):
 
         simulacao.refresh_from_db()
         self.assertEqual(simulacao.estado, EstadoSimulacao.EXPIRADA)
+
+    def test_comparacao_usa_somente_metricas_presentes_em_todos_os_cenarios(self):
+        primeiro = salvar_simulacao(operador=self.usuario, titulo="A", objetivo="A", premissas={"x": 1}, resultado={"prazo": 4, "custo": 10})
+        segundo = salvar_simulacao(operador=self.usuario, titulo="B", objetivo="B", premissas={"x": 2}, resultado={"prazo": 2, "custo": 12, "extra": 99})
+
+        comparacao = comparar_simulacoes(operador=self.usuario, simulacoes=[primeiro, segundo])
+
+        self.assertEqual(set(comparacao["metricas_comparaveis"]), {"prazo", "custo"})
+        self.assertEqual(comparacao["metricas_comparaveis"]["prazo"]["variacao_desde_primeiro"], [0, -2])
+        self.assertFalse(comparacao["ia_necessaria"])
 
     def test_administrador_pode_promover_simulacao_de_outro_usuario(self):
         simulacao = salvar_simulacao(
