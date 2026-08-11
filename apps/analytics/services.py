@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from typing import cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
@@ -75,9 +76,11 @@ def comparar_relatorios_operacionais(*, operador, primeiro, segundo):
     for chave in chaves:
         valores = [primeiro.get(chave), segundo.get(chave)]
         if all(isinstance(valor, (int, float)) and not isinstance(valor, bool) for valor in valores):
-            metricas[chave] = {"valores": valores, "variacao": valores[1] - valores[0]}
-    valores = [float(primeiro.get("valor_total", 0)), float(segundo.get("valor_total", 0))]
-    metricas["valor_total"] = {"valores": [str(valor) for valor in valores], "variacao": str(valores[1] - valores[0])}
+            primeiro_valor = cast(float, valores[0])
+            segundo_valor = cast(float, valores[1])
+            metricas[chave] = {"valores": valores, "variacao": segundo_valor - primeiro_valor}
+    valores_totais = [float(primeiro.get("valor_total", 0)), float(segundo.get("valor_total", 0))]
+    metricas["valor_total"] = {"valores": [str(valor) for valor in valores_totais], "variacao": str(valores_totais[1] - valores_totais[0])}
     return {
         "periodos": [primeiro["periodo"], segundo["periodo"]],
         "metricas_comparaveis": metricas,
