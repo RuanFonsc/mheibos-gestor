@@ -12,7 +12,7 @@ from apps.missoes.models import EstadoMissao, EstadoTarefaMissao, Missao, Tarefa
 from apps.pendencias.models import EstadoPendencia, Pendencia
 
 from .models import Analise, EvidenciaAnalitica, Simulacao, TipoEvidencia
-from .services import criar_analise_deterministica, obter_metricas_operacionais, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao, validar_analise
+from .services import criar_analise_deterministica, gerar_relatorio_operacional, obter_metricas_operacionais, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao, validar_analise
 
 
 def _operador_missoes(operador):
@@ -33,6 +33,8 @@ def dashboard(request):
 
 def analytics_home(request):
     operador = operador_atual(request)
+    hoje = timezone.localdate()
+    relatorio = gerar_relatorio_operacional(operador=operador, inicio=hoje.replace(day=1), fim=hoje)
     evidencias = EvidenciaAnalitica.objects.filter(autor=operador)[:12]
     analises = Analise.objects.filter(autor=operador).prefetch_related("evidencias")[:8]
     simulacoes = Simulacao.objects.filter(autor=operador).select_related("missao")[:8]
@@ -60,4 +62,4 @@ def analytics_home(request):
         except (ValueError, TypeError, json.JSONDecodeError, ValidationError) as exc:
             messages.error(request, str(exc))
         return redirect("analytics_home")
-    return render(request, "analytics/analytics.html", {"operador_atual": operador, "evidencias": evidencias, "analises": analises, "simulacoes": simulacoes, "tipos_evidencia": TipoEvidencia.choices, "active": "analytics"})
+    return render(request, "analytics/analytics.html", {"operador_atual": operador, "evidencias": evidencias, "analises": analises, "simulacoes": simulacoes, "relatorio": relatorio, "tipos_evidencia": TipoEvidencia.choices, "active": "analytics"})

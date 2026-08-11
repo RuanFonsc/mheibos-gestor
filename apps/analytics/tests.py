@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any, cast
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -12,6 +12,7 @@ from apps.missoes.models import EstadoMissao
 from .models import EstadoAnalise, EstadoSimulacao, TipoEvidencia
 from .services import (
     criar_analise_deterministica,
+    gerar_relatorio_operacional,
     obter_metricas_operacionais,
     promover_simulacao_para_missao,
     registrar_evidencia,
@@ -121,6 +122,13 @@ class AnalyticsDeterministicoTests(TestCase):
         self.assertEqual(metricas["pedidos_ativos"], 0)
         self.assertEqual(metricas["aguardando_arte"], 0)
         self.assertEqual(metricas["fonte"], "Pedido/Processo oficial")
+
+    def test_relatorio_do_periodo_preserva_fatos_sem_interpretacao(self):
+        relatorio = gerar_relatorio_operacional(operador=self.usuario, inicio=date(2026, 8, 1), fim=date(2026, 8, 10))
+
+        self.assertEqual(relatorio["pedidos"], 0)
+        self.assertFalse(relatorio["interpretacao_automatica"])
+        self.assertFalse(relatorio["ia_necessaria"])
 
     def test_validacao_de_analise_exige_autoridade_humana(self):
         evidencia = registrar_evidencia(operador=self.usuario, titulo="Fato", descricao="Fato observado", tipo=TipoEvidencia.FATO, fonte="pedido:1")

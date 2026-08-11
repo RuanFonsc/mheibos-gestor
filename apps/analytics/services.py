@@ -1,7 +1,8 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from apps.auditoria.services import registrar_evento
@@ -34,6 +35,33 @@ def obter_metricas_operacionais(*, operador):
         "prioridade_urgente": pedidos.filter(prioridade=PrioridadePedido.URGENTE).count(),
         "prazo_proximo": pedidos.filter(data_entrega__isnull=False, data_entrega__range=(hoje, limite)).count(),
         "fonte": "Pedido/Processo oficial",
+    }
+
+
+def gerar_relatorio_operacional(*, operador, inicio, fim):
+    """Retorna fatos comparáveis de um período, sem correlação automática."""
+    _exigir_operador(operador)
+    if not isinstance(inicio, date) or not isinstance(fim, date) or inicio > fim:
+        raise ValidationError("Informe um período válido para o relatório.")
+    pedidos = Pedido.objects.exclude(status=StatusPedido.CANCELADO).filter(data_pedido__range=(inicio, fim))
+    if not operador.is_admin:
+        pedidos = pedidos.filter(usuario_cadastro__iexact=operador.nome)
+    total = pedidos.count()
+    valor = pedidos.aggregate(total=Sum("valor_total"))["total"] or 0
+    por_status = {
+        status.value: pedidos.filter(status=status.value).count()
+        for status in StatusPedido
+        if status != StatusPedido.CANCELADO
+    }
+    return {
+        "periodo": {"inicio": inicio.isoformat(), "fim": fim.isoformat()},
+        "pedidos": total,
+        "valor_total": str(valor),
+        "por_status": por_status,
+        "urgentes": pedidos.filter(prioridade=PrioridadePedido.URGENTE).count(),
+        "fonte": "Pedido oficial no período informado",
+        "interpretacao_automatica": False,
+        "ia_necessaria": False,
     }
 
 
