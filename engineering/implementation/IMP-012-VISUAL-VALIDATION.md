@@ -9,6 +9,7 @@
 - Login real abriu o novo Dashboard oficial individual.
 - O Dashboard exibiu Centro de comando, Missões, tarefas, Pendências, métricas operacionais e simulações recentes.
 - Analytics exibiu relatório do período, registro de evidências, análise, simulação e comparação determinística.
+- O Dashboard passou a exibir análises recentes de forma compacta, com estado, confiança e quantidade de evidências.
 - A origem `Pedido/Processo oficial` ficou visível nas métricas.
 - A mensagem de que fatos não são interpretação automática ficou visível.
 - A rota financeira compatível permaneceu separada do Dashboard oficial.
@@ -16,4 +17,4 @@
 
 ## Gap restante
 
-Esta validação cobre a execução e a composição visual principal em uma resolução. A matriz oficial de cinco resoluções/escalas e a interação completa com dados operacionais reais permanecem pendentes antes de marcar o IMP-012 como `COMPLETED_WITH_GAPS` final.
+Esta validação cobre a execução e a composição visual principal em uma resolução. A matriz oficial de cinco resoluções/escalas e a interação completa com dados operacionais reais permanecem como lacunas documentadas do estado `COMPLETED_WITH_GAPS`.
