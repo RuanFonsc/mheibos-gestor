@@ -486,7 +486,7 @@ IMP-009M — materializar a criação provisória de Arte Oficial quando o compa
 - Nenhum catálogo de ações autônomas, limiar de confiança, autoridade de reversão ou janela de execução será inventado antes do documento normativo obrigatório **Modelo de Decisões Autônomas da IA**.
 - O modo IA desligada permanece o caminho operacional válido; segurança, auditoria, integridade e sincronização continuam determinísticas.
 - Próximo gate: decisão humana sobre a aprovação da RFC-0016 e fornecimento do documento de catálogo antes de implementar autonomia.
-- Dívida de tipagem completa do legado (47 diagnósticos em 17 arquivos após correções incrementais) está rastreada em `engineering/implementation/TYPECHECK-DEBT.md`; o escopo dos ciclos novos permanece verde.
+- Dívida de tipagem completa do legado (39 diagnósticos em 14 arquivos após correções incrementais) está rastreada em `engineering/implementation/TYPECHECK-DEBT.md`; o escopo dos ciclos novos permanece verde.
 
 
 ### IMP-012 — COMPLETED_WITH_GAPS
