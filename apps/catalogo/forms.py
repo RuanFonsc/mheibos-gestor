@@ -86,7 +86,7 @@ class OperadorSenhaForm(forms.Form):
     )
 
     def clean(self):
-        dados = super().clean()
+        dados = super().clean() or {}
         nova = dados.get("senha_nova")
         confirmacao = dados.get("senha_confirmacao")
         if nova and confirmacao and nova != confirmacao:

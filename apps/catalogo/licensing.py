@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+from datetime import datetime
 import os
 import platform
 import socket
@@ -118,7 +119,7 @@ def verify_license(token=None):
     expires_at = payload.get("expires_at")
     if expires_at:
         try:
-            expires_date = timezone.datetime.fromisoformat(str(expires_at)).date()
+            expires_date = datetime.fromisoformat(str(expires_at)).date()
         except ValueError:
             return LicenseStatus(False, "Data de validade da licenca invalida.", payload=payload)
         if expires_date < timezone.localdate():

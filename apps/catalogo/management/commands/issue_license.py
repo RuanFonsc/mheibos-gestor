@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -30,7 +31,7 @@ class Command(BaseCommand):
         expires_at = options["expires_at"].strip()
         if expires_at:
             try:
-                timezone.datetime.fromisoformat(expires_at)
+                datetime.fromisoformat(expires_at)
             except ValueError as exc:
                 raise CommandError("Use validade no formato YYYY-MM-DD.") from exc
 

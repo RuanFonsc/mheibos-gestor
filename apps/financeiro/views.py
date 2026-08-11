@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import timedelta
+from datetime import datetime, timedelta
 from io import BytesIO
 
 from django.contrib import messages
@@ -53,9 +53,9 @@ def dashboard(request):
     periodo_manual = bool(data_inicio_txt or data_fim_txt)
     try:
         if data_inicio_txt:
-            periodo_inicio = timezone.datetime.fromisoformat(data_inicio_txt).date()
+            periodo_inicio = datetime.fromisoformat(data_inicio_txt).date()
         if data_fim_txt:
-            periodo_fim = timezone.datetime.fromisoformat(data_fim_txt).date()
+            periodo_fim = datetime.fromisoformat(data_fim_txt).date()
     except ValueError:
         periodo_inicio, periodo_fim = inicio_mes, hoje
     if periodo_inicio > periodo_fim:
