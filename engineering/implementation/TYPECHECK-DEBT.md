@@ -6,17 +6,17 @@
 
 ## Evidência
 
-Após as correções incrementais de formulários, datas e projeções, a dívida foi reduzida para 33 diagnósticos em 12 arquivos. O escopo dos ciclos recentes permanece verde: Analytics e Aprendizado (8 arquivos) passam sem erros.
+Após as correções incrementais de formulários, datas, projeções e CRM, a dívida foi reduzida para 29 diagnósticos em 10 arquivos. O escopo dos ciclos recentes permanece verde: Analytics e Aprendizado (8 arquivos) passam sem erros.
 
 ## Agrupamento atual
 
 | Área | Diagnósticos | Natureza predominante |
 |---|---:|---|
 | `tools/` | 4 | variáveis sem anotação e valores opcionais |
-| `apps/financeiro/` | 14 | CRM, agregações e listas sem tipos explícitos |
+| `apps/financeiro/` | 12 | agregações e listas sem tipos explícitos |
 | `apps/catalogo/` | 4 | comandos, QuerySets e atributos legados |
 | `apps/pedidos/` | 5 | atributos legados/projeções e parâmetros opcionais |
-| `apps/vendas/` | 2 | QuerySet/lista e projeções |
+| `apps/vendas/` | 0 | QuerySet/lista e projeções (corrigido neste ciclo) |
 | `apps/arquivos/` | 6 | respostas monkey-patched, uniões opcionais e migration loader |
 | `apps/sincronizacao/` | 2 | payloads de testes tipados como `object` |
 | `apps/missoes/` | 0 | campo de formulário Django sem tipo reconhecido (corrigido neste ciclo) |

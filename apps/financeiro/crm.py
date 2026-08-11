@@ -31,8 +31,8 @@ def _lancamentos_ano(ano):
 
 def _pivot_por_categoria(tipo, ano):
     categorias = list(CategoriaFinanceira.objects.filter(tipo=tipo, ativa=True).order_by("ordem", "nome"))
-    valores = defaultdict(lambda: [Decimal("0.00")] * 12)
-    totais_categoria = defaultdict(lambda: Decimal("0.00"))
+    valores: defaultdict[int, list[Decimal]] = defaultdict(lambda: [Decimal("0.00")] * 12)
+    totais_categoria: defaultdict[int, Decimal] = defaultdict(lambda: Decimal("0.00"))
 
     agregados = (
         _lancamentos_ano(ano)

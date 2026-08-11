@@ -1,6 +1,7 @@
 from decimal import Decimal
 from datetime import timedelta
 from io import BytesIO
+from typing import Any, cast
 
 from django.contrib import messages
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
@@ -37,12 +38,12 @@ def _contexto_base(request):
 
 def vendas_pedidos(request):
     operador = operador_atual(request)
-    pedidos = queryset_com_projecao(
+    pedidos_qs = queryset_com_projecao(
         Pedido.objects.select_related("cliente")
         .filter(origem="VENDAS")
         .order_by("-criado_em")
     )[:30]
-    pedidos = projetar_lista(pedidos)
+    pedidos = projetar_lista(pedidos_qs)
     contexto = _contexto_base(request)
     contexto.update(
         {
@@ -211,7 +212,7 @@ def vendas_relatorio(request, tipo):
             f"#{pedido.legado_id or pedido.pk}",
             pedido.cliente.nome,
             pedido.tema or "-",
-            pedido.projecao.operacional,
+            cast(Any, pedido).projecao.operacional,
             _moeda(pedido.valor_total),
         ])
     dados.append(["", "", "", "", "Total", _moeda(total)])
