@@ -1,15 +1,18 @@
 import json
 from datetime import date, datetime
+from decimal import Decimal
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.catalogo.permissions import operador_atual
 from apps.missoes.models import EstadoMissao, EstadoTarefaMissao, Missao, TarefaMissao
 from apps.pendencias.models import EstadoPendencia, Pendencia
+from apps.financeiro.models import MetaVendasUsuario
+from apps.pedidos.models import Pedido, StatusPedido
 
 from .models import Analise, EvidenciaAnalitica, Simulacao, TipoEvidencia
 from .services import comparar_relatorios_operacionais, comparar_simulacoes, criar_analise_deterministica, gerar_relatorio_operacional, obter_metricas_operacionais, promover_simulacao_para_missao, registrar_evidencia, salvar_simulacao, validar_analise
@@ -29,7 +32,30 @@ def dashboard(request):
     pendencias = Pendencia.objects.filter(Q(responsavel_principal=operador) | Q(destinatarios=operador), estado=EstadoPendencia.ABERTA).select_related("pedido")[:8]
     simulacoes = Simulacao.objects.filter(autor=operador).select_related("missao")[:5]
     analises_recentes = Analise.objects.filter(autor=operador).prefetch_related("evidencias").order_by("-atualizada_em")[:5]
-    return render(request, "analytics/dashboard.html", {"operador_atual": operador, "missoes": missoes[:8], "tarefas": tarefas, "pendencias": pendencias, "simulacoes": simulacoes, "analises_recentes": analises_recentes, "metricas": obter_metricas_operacionais(operador=operador), "active": "dashboard"})
+    inicio_mes = timezone.localdate().replace(day=1)
+    hoje = timezone.localdate()
+    meta_registro, _ = MetaVendasUsuario.objects.get_or_create(
+        operador=operador,
+        ano=inicio_mes.year,
+        mes=inicio_mes.month,
+        defaults={"valor": Decimal("0.00")},
+    )
+    vendas_mes = Pedido.objects.exclude(status=StatusPedido.CANCELADO).filter(
+        usuario_cadastro__iexact=operador.nome,
+        data_pedido__range=(inicio_mes, hoje),
+    )
+    realizado = vendas_mes.aggregate(total=Sum("valor_total"))["total"] or Decimal("0.00")
+    meta_valor = meta_registro.valor or Decimal("0.00")
+    progresso_meta = (realizado / meta_valor * 100) if meta_valor else Decimal("0.00")
+    meta_individual = {
+        "valor": meta_valor,
+        "realizado": realizado,
+        "falta": max(Decimal("0.00"), meta_valor - realizado),
+        "progresso": min(Decimal("100.00"), progresso_meta),
+        "mes": inicio_mes.strftime("%m/%Y"),
+        "configurada": bool(meta_valor),
+    }
+    return render(request, "analytics/dashboard.html", {"operador_atual": operador, "missoes": missoes[:8], "tarefas": tarefas, "pendencias": pendencias, "simulacoes": simulacoes, "analises_recentes": analises_recentes, "metricas": obter_metricas_operacionais(operador=operador), "meta_individual": meta_individual, "active": "dashboard"})
 
 
 def analytics_home(request):
