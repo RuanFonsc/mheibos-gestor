@@ -55,7 +55,8 @@ def criar_pedido_vendas(form, operador):
         if not nome:
             continue
         produto = ProdutoServico.objects.filter(nome__iexact=nome).select_related("categoria_servico").first()
-        categoria = produto.categoria_servico if produto else CategoriaServico.objects.filter(pk=form.data.get(f"item_categoria_{index}") or None).first()
+        categoria_id = form.data.get(f"item_categoria_{index}")
+        categoria = produto.categoria_servico if produto else (CategoriaServico.objects.filter(pk=categoria_id).first() if categoria_id else None)
         quantidade = _decimal(form.data.get(f"item_qtd_{index}"), "1")
         preco = _decimal(form.data.get(f"item_preco_{index}"))
         descricao = form.data.get(f"item_desc_{index}", "").strip()

@@ -1,5 +1,6 @@
 from decimal import Decimal
 import uuid
+from typing import Any, cast
 
 from django.contrib import messages
 from django.conf import settings
@@ -127,7 +128,7 @@ def pedido_list(request):
 
     pedidos_lista = projetar_lista(preparar_categorias_pedidos(pedidos[:80]))
     for pedido in pedidos_lista:
-        pedido.alerta_prazo = pedido_em_alerta(pedido)
+        cast(Any, pedido).alerta_prazo = pedido_em_alerta(pedido)
 
     contexto = {
         "active": "pedidos",
@@ -205,7 +206,7 @@ def pedido_detail(request, pk):
         ),
         pk=pk,
     )
-    pedido.projecao = projetar_pedido(pedido)
+    cast(Any, pedido).projecao = projetar_pedido(pedido)
     operador = operador_atual(request)
     preferencias = carregar_preferencias(operador=operador, request=request)
     arquivos_oficiais = pedido.arquivos_oficiais_arte.all()
@@ -536,7 +537,7 @@ def pedido_rejeitar_producao(request, pk):
         messages.error(request, "Somente pedidos em producao podem ser rejeitados.")
         return redirect(retorno)
     operador = operador_atual(request)
-    pedido.projecao = projetar_pedido(pedido)
+    cast(Any, pedido).projecao = projetar_pedido(pedido)
     try:
         alterar_status_pedido(
             pedido=pedido,
@@ -1004,7 +1005,8 @@ def _criar_pedido(form, arquivos, operador, *, origem_offline=False):
         if not nome:
             continue
         produto = ProdutoServico.objects.filter(nome__iexact=nome).first()
-        categoria = produto.categoria_servico if produto else CategoriaServico.objects.filter(pk=form.data.get(f"item_categoria_{index}") or None).first()
+        categoria_id = form.data.get(f"item_categoria_{index}")
+        categoria = produto.categoria_servico if produto else (CategoriaServico.objects.filter(pk=categoria_id).first() if categoria_id else None)
         quantidade = Decimal(form.data.get(f"item_qtd_{index}") or "1")
         preco = Decimal(str(form.data.get(f"item_preco_{index}") or "0").replace(",", "."))
         descricao = form.data.get(f"item_desc_{index}", "").strip()
@@ -1119,7 +1121,8 @@ def _atualizar_pedido(pedido, form, arquivos, operador):
         if not nome:
             continue
         produto = ProdutoServico.objects.filter(nome__iexact=nome).first()
-        categoria = produto.categoria_servico if produto else CategoriaServico.objects.filter(pk=form.data.get(f"item_categoria_{index}") or None).first()
+        categoria_id = form.data.get(f"item_categoria_{index}")
+        categoria = produto.categoria_servico if produto else (CategoriaServico.objects.filter(pk=categoria_id).first() if categoria_id else None)
         quantidade = Decimal(form.data.get(f"item_qtd_{index}") or "1")
         preco = Decimal(str(form.data.get(f"item_preco_{index}") or "0").replace(",", "."))
         descricao = form.data.get(f"item_desc_{index}", "").strip()
