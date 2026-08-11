@@ -1,5 +1,4 @@
 # Checkpoint IMP-012 — Dashboard, Analytics e Simulação
-- Análises nascem como rascunho e só são validadas por autoridade humana autorizada, sempre preservando as evidências usadas.
 
 **Data:** 10/08/2026  
 **Estado:** `IN_PROGRESS`  
@@ -18,6 +17,7 @@
 - Todas as rotas funcionam sem modelo de IA.
 - O Dashboard projeta fatos operacionais atuais (pedidos ativos, arte, produção, entrega, urgência e prazo próximo) com fonte explícita, sem inferência.
 - Relatório do período calcula fatos de Pedido com fonte explícita e declara que nenhuma interpretação automática foi feita.
+- Análises nascem como rascunho e só são validadas por autoridade humana autorizada, sempre preservando as evidências usadas.
 
 ## Quality Gates desta fatia
 
@@ -35,7 +35,6 @@
 
 ## Pendências para concluir IMP-012
 
-- métricas operacionais derivadas com evidências automáticas de Pedido/Processo/Pendência;
 - comparação de períodos e relatórios analíticos sem inferência silenciosa;
 - árvore de causas, anomalias e planos de ação como propostas explícitas;
 - visualização completa de evidências e confiança no Dashboard;
