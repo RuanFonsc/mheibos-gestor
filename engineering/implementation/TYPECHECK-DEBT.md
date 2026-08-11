@@ -6,7 +6,7 @@
 
 ## Evidência
 
-Após as correções incrementais de formulários, datas, projeções e CRM, a dívida foi reduzida para 29 diagnósticos em 10 arquivos. O escopo dos ciclos recentes permanece verde: Analytics e Aprendizado (8 arquivos) passam sem erros.
+Após as correções incrementais de formulários, datas, projeções, CRM e payloads de sincronização, a dívida foi reduzida para 27 diagnósticos em 9 arquivos. O escopo dos ciclos recentes permanece verde: Analytics e Aprendizado (8 arquivos) passam sem erros.
 
 ## Agrupamento atual
 
@@ -18,7 +18,7 @@ Após as correções incrementais de formulários, datas, projeções e CRM, a d
 | `apps/pedidos/` | 5 | atributos legados/projeções e parâmetros opcionais |
 | `apps/vendas/` | 0 | QuerySet/lista e projeções (corrigido neste ciclo) |
 | `apps/arquivos/` | 6 | respostas monkey-patched, uniões opcionais e migration loader |
-| `apps/sincronizacao/` | 2 | payloads de testes tipados como `object` |
+| `apps/sincronizacao/` | 0 | payloads de testes tipados como `object` (corrigido neste ciclo) |
 | `apps/missoes/` | 0 | campo de formulário Django sem tipo reconhecido (corrigido neste ciclo) |
 | `apps/operacao/` | 1 | atributo legado de projeção em teste |
 | `apps/` (migração) | 1 | assinatura de `MigrationLoader` |

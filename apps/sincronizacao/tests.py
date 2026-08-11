@@ -2,6 +2,7 @@ import copy
 import json
 import uuid
 from decimal import Decimal
+from typing import Any
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
@@ -237,7 +238,7 @@ class IncorporacaoCentralTests(TestCase):
             papel=PapelOperador.USUARIO,
             codigo_origem_offline="AC",
         )
-        self.payload = {
+        self.payload: dict[str, Any] = {
             "pedido": {
                 "tema": "Pedido incorporado",
                 "data_pedido": "2026-08-01",
@@ -275,7 +276,7 @@ class IncorporacaoCentralTests(TestCase):
             ],
             "pagamentos": [],
         }
-        self.envelope = {
+        self.envelope: dict[str, Any] = {
             "chave_idempotencia": str(uuid.uuid4()),
             "entidade_local_id": str(uuid.uuid4()),
             "estacao_id": "22222222-2222-2222-2222-222222222222",
