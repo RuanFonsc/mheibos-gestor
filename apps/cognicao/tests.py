@@ -8,9 +8,35 @@ from apps.clientes.models import Cliente
 from apps.pedidos.models import Pedido
 
 from .gateway import FALLBACK_RESUMO, GatewayIA, SolicitacaoCognitiva
+from .configuracoes_ia import resolve_ai_policy, normalizar_configuracoes_ia
 
 
 class GatewayIATests(TestCase):
+    def test_locked_financial_action_never_becomes_autonomous(self):
+        decision = resolve_ai_policy(action="finance.approve_payment", ia_enabled=True)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.blocked_by, "Proteção permanente do Mheibos")
+
+    def test_disabled_ai_keeps_deterministic_path_available(self):
+        decision = resolve_ai_policy(action="optional.summary", ia_enabled=False)
+        self.assertFalse(decision.allowed)
+        self.assertIn("IA desligada", decision.blocked_by)
+
+    def test_mission_autonomy_is_scoped_to_that_mission(self):
+        disabled = resolve_ai_policy(action="mission.replan", mission={}, ia_enabled=True)
+        enabled = resolve_ai_policy(
+            action="mission.replan",
+            mission={"ai.mission_autonomy": True},
+            ia_enabled=True,
+        )
+        self.assertFalse(disabled.allowed)
+        self.assertTrue(enabled.allowed)
+
+    def test_normalizer_ignores_locked_values(self):
+        values = normalizar_configuracoes_ia({"ai.locked_financial": True, "ai.user_mode": "intelligent"})
+        self.assertNotIn("ai.locked_financial", values)
+        self.assertEqual(values["ai.user_mode"], "intelligent")
+
     def test_disabled_gateway_returns_non_blocking_fallback(self):
         resposta = GatewayIA(None).solicitar(SolicitacaoCognitiva("teste", "fatos"))
 

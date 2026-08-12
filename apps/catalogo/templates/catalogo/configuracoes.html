@@ -67,7 +67,7 @@
     <button class="top-tab" type="button" data-config-tab="seguranca"><i data-lucide="shield-check" class="h-5 w-5"></i> Segurança</button>
     <button class="top-tab" type="button" data-config-tab="offline"><i data-lucide="cloud-off" class="h-5 w-5"></i> Offline</button>
     <button class="top-tab" type="button" data-config-tab="dashboard"><i data-lucide="chart-no-axes-combined" class="h-5 w-5"></i> Dashboard</button>
-    <button class="top-tab" type="button" data-config-tab="ia"><i data-lucide="brain-circuit" class="h-5 w-5"></i> IA</button>
+    <button class="top-tab" type="button" data-config-tab="ia_guia"><i data-lucide="brain-circuit" class="h-5 w-5"></i> IA</button>
     {% if pode_gerenciar_usuarios %}
       <button class="top-tab" type="button" data-config-tab="empresa"><i data-lucide="building-2" class="h-5 w-5"></i> Perfil da Empresa</button>
       {% if pode_gerenciar_usuarios_geral %}
@@ -582,6 +582,14 @@
       </div>
     </section>
 
+    <section id="tab-ia_guia" class="config-panel hidden space-y-5">
+      <div class="page-hero card p-5"><div class="flex flex-wrap items-start justify-between gap-4"><div><span class="kicker"><i data-lucide="brain-circuit" class="h-4 w-4"></i> Política central</span><h2 class="text-2xl font-bold">Inteligência Artificial</h2><p class="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">A tela escolhe apenas possibilidades autorizadas. O Policy Resolver e as regras LOCKED continuam soberanos, e a aplicação funciona normalmente com a IA desligada.</p></div><span class="permission-chip">IA opcional · desligada por padrão</span></div></div>
+      {% if pode_gerenciar_usuarios %}<form method="post" class="card p-5">{% csrf_token %}<input type="hidden" name="acao" value="salvar_ia_empresa"><div class="mb-4"><span class="kicker">EMPRESA</span><h3 class="text-lg font-semibold">Política organizacional</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">Define apenas o espaço permitido para assistência opcional.</p></div><div class="grid gap-3 md:grid-cols-2">{% for item in ia_empresa_catalogo %}{% if item.type == "choice" %}<div class="soft-panel"><label for="{{ item.key }}">{{ item.title }}</label><select id="{{ item.key }}" name="{{ item.key }}">{% for value, label in item.options %}<option value="{{ value }}" {% if item.current == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>{% elif item.type == "bool" %}<label class="soft-panel flex items-start gap-3"><input class="mt-1" type="checkbox" name="{{ item.key }}" {% if item.current %}checked{% endif %}><span><strong>{{ item.title }}</strong><small class="mt-1 block text-xs text-[var(--text-secondary)]">Não afeta proteções obrigatórias.</small></span></label>{% endif %}{% endfor %}</div><div class="mt-5 flex flex-wrap items-end justify-end gap-3"><label class="min-w-52">Senha administrativa<input type="password" name="senha_admin" autocomplete="current-password" required></label><button class="btn-primary" type="submit"><i data-lucide="shield-check" class="h-4 w-4"></i> Salvar política</button></div></form>{% endif %}
+      <form method="post" class="card p-5">{% csrf_token %}<input type="hidden" name="acao" value="salvar_ia_usuario"><div class="mb-4"><span class="kicker">SÓ PARA MIM</span><h3 class="text-lg font-semibold">Minha experiência</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">Preferências individuais não alteram processos, permissões, campos obrigatórios ou alertas críticos.</p></div><div class="grid gap-3 md:grid-cols-2">{% for item in ia_usuario_catalogo %}{% if item.type == "choice" %}<div class="soft-panel"><label for="{{ item.key }}">{{ item.title }}</label><select id="{{ item.key }}" name="{{ item.key }}">{% for value, label in item.options %}<option value="{{ value }}" {% if item.current == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>{% elif item.type == "bool" %}<label class="soft-panel flex items-start gap-3"><input class="mt-1" type="checkbox" name="{{ item.key }}" {% if item.current %}checked{% endif %}><span><strong>{{ item.title }}</strong><small class="mt-1 block text-xs text-[var(--text-secondary)]">Reversível pelo próprio usuário.</small></span></label>{% endif %}{% endfor %}</div><div class="mt-5 flex justify-end"><button class="btn-primary" type="submit">Salvar minha experiência</button></div></form>
+      <div class="card p-5"><div class="mb-4"><span class="kicker">ESTA MISSÃO</span><h3 class="text-lg font-semibold">Autonomia por Missão</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">A autonomia será configurada dentro de cada Missão, somente para usuários com autoridade aplicável.</p></div><div class="grid gap-3 md:grid-cols-2">{% for item in ia_missao_catalogo %}<div class="soft-panel flex items-start justify-between gap-3"><div><strong>{{ item.title }}</strong><p class="mt-1 text-xs text-[var(--text-secondary)]">Desligada por padrão · escopo isolado.</p></div><span class="permission-chip">Por Missão</span></div>{% endfor %}</div></div>
+      <div class="card p-5"><div class="mb-4"><span class="kicker">PROTEÇÕES PERMANENTES</span><h3 class="text-lg font-semibold">Decisões não configuráveis</h3><p class="mt-1 text-sm text-[var(--text-secondary)]">Estas regras são informativas e não possuem controles de alteração.</p></div><div class="grid gap-3 md:grid-cols-2">{% for item in ia_locked_catalogo %}<div class="soft-panel"><div class="flex items-center justify-between gap-3"><strong>{{ item.title }}</strong><span class="permission-chip">LOCKED</span></div><p class="mt-1 text-xs text-[var(--text-secondary)]">Proteção obrigatória do Mheibos.</p></div>{% endfor %}</div></div>
+    </section>
+
     {% if pode_gerenciar_usuarios %}
     <section id="tab-banco" class="config-panel hidden">
       <div class="card p-5">
@@ -620,9 +628,10 @@
     gestaoUsuarios.classList.remove("hidden");
   }
 
-  const allowedConfigTabs = ["usuarios", "aparencia", "operacao", "seguranca", "offline", "dashboard", "ia"{% if pode_gerenciar_usuarios %}, "empresa", "banco"{% endif %}{% if pode_gerenciar_usuarios_geral %}, "usuarios_config"{% endif %}];
+  const allowedConfigTabs = ["usuarios", "aparencia", "operacao", "seguranca", "offline", "dashboard", "ia_guia", "ia"{% if pode_gerenciar_usuarios %}, "empresa", "banco"{% endif %}{% if pode_gerenciar_usuarios_geral %}, "usuarios_config"{% endif %}];
   function openTab(tab) {
     if (tab === "widgets") tab = "operacao";
+    if (tab === "ia") tab = "ia_guia";
     const alvo = allowedConfigTabs.includes(tab) ? tab : "usuarios";
     document.querySelectorAll("[data-config-tab]").forEach((btn) => btn.classList.toggle("active", btn.dataset.configTab === alvo));
     document.querySelectorAll(".config-panel").forEach((panel) => panel.classList.toggle("hidden", panel.id !== `tab-${alvo}`));

@@ -9,7 +9,7 @@ from apps.catalogo.authentication import (
     senha_esta_protegida,
     validar_senha_operador,
 )
-from apps.catalogo.models import OperadorGestor, PapelOperador
+from apps.catalogo.models import OperadorGestor, PapelOperador, PreferenciaUI
 from apps.catalogo.ui_prefs import carregar_preferencias
 from apps.catalogo.permissions import operador_atual
 
@@ -102,6 +102,34 @@ class SessaoOperadorTests(TestCase):
             carregar_preferencias(operador=self.operador)["programa_arte"],
             "affinity_photo",
         )
+
+    def test_configuracoes_ia_expoem_escopos_e_protecoes_locked(self):
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+        response = self.client.get("/configuracoes/?aba=ia")
+        self.assertContains(response, "Política organizacional")
+        self.assertContains(response, "Autonomia por Missão")
+        self.assertContains(response, "Decisões não configuráveis")
+        self.assertContains(response, "LOCKED")
+
+    def test_empresa_ia_requires_admin_password_and_persists_allowed_values(self):
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+        response = self.client.post("/configuracoes/", {"acao": "salvar_ia_empresa", "ai.proactivity": "proactive", "senha_admin": "senha123"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PreferenciaUI.objects.get(chave="ia:empresa").dados["ai.proactivity"], "proactive")
+
+    def test_user_ia_preferences_are_scoped_to_operator(self):
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+        response = self.client.post("/configuracoes/", {"acao": "salvar_ia_usuario", "ai.user_mode": "intelligent", "ai.contextual_facilities": "on"})
+        self.assertEqual(response.status_code, 302)
+        dados = PreferenciaUI.objects.get(chave=f"operador:{self.operador.pk}").dados
+        self.assertEqual(dados["ia"]["ai.user_mode"], "intelligent")
+        self.assertTrue(dados["ia"]["ai.contextual_facilities"])
 
     def test_launcher_login_uses_same_authentication_contract(self):
         response = self.client.post(

@@ -42,6 +42,15 @@ from apps.catalogo.models import (
     PapelOperador,
     PerfilEmpresa,
     ProdutoServico,
+    PreferenciaUI,
+)
+from apps.cognicao.configuracoes_ia import (
+    COMPANY,
+    LOCKED,
+    MISSION,
+    USER,
+    CONFIGURACOES_IA,
+    normalizar_configuracoes_ia,
 )
 from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os, normalizar_linha_cabecalho, salvar_campos_os, salvar_linha_cabecalho
 from apps.catalogo.permissions import operador_atual
@@ -519,6 +528,27 @@ def configuracoes(request):
                 salvar_preferencias({"programa_arte": programa_arte}, operador=operador, request=request)
                 messages.success(request, "Preferencias do perfil salvas.")
             return redirect(f"{reverse('configuracoes')}?aba=usuarios#preferencias-usuario")
+        if acao == "salvar_ia_usuario":
+            valores = {item["key"]: request.POST.get(item["key"]) == "on" for item in CONFIGURACOES_IA if item["scope"] == USER and item["type"] == "bool"}
+            valores["ai.user_mode"] = request.POST.get("ai.user_mode", "apathetic")
+            atual = carregar_preferencias(operador=operador, request=request).get("ia", {})
+            salvar_preferencias({"ia": {**atual, **normalizar_configuracoes_ia(valores)}}, operador=operador, request=request)
+            messages.success(request, "Preferências individuais da IA salvas. A IA continua opcional e desligada por padrão.")
+            return redirect(f"{reverse('configuracoes')}?aba=ia")
+        if acao == "salvar_ia_empresa":
+            if not operador.pode_gerenciar_usuarios:
+                messages.error(request, "Somente administradores podem alterar políticas da IA da empresa.")
+                return redirect(f"{reverse('configuracoes')}?aba=ia")
+            senha_admin = (request.POST.get("senha_admin") or "").strip()
+            if not senha_operador_valida(operador, senha_admin):
+                messages.error(request, "Senha administrativa incorreta. A alteração não foi aplicada.")
+                return redirect(f"{reverse('configuracoes')}?aba=ia")
+            valores = {item["key"]: request.POST.get(item["key"]) == "on" for item in CONFIGURACOES_IA if item["scope"] == COMPANY and item["type"] == "bool"}
+            valores["ai.proactivity"] = request.POST.get("ai.proactivity", "balanced")
+            atual = PreferenciaUI.objects.filter(chave="ia:empresa").values_list("dados", flat=True).first() or {}
+            PreferenciaUI.objects.update_or_create(chave="ia:empresa", defaults={"dados": normalizar_configuracoes_ia({**atual, **valores})})
+            messages.success(request, "Políticas configuráveis da IA da empresa salvas e auditadas pelo fluxo administrativo.")
+            return redirect(f"{reverse('configuracoes')}?aba=ia")
         if acao == "trocar_senha":
             senha_form = OperadorSenhaForm(request.POST, prefix="senha")
             if senha_form.is_valid():
@@ -667,6 +697,10 @@ def configuracoes(request):
     todos_operadores_qs = OperadorGestor.objects.all() if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk)
     operadores_ativos_qs = OperadorGestor.objects.filter(ativo=True) if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk)
     categorias_usuario = CategoriaUsuario.objects.filter(ativa=True).order_by("ordem", "nome")
+    ia_empresa = normalizar_configuracoes_ia(PreferenciaUI.objects.filter(chave="ia:empresa").values_list("dados", flat=True).first() or {})
+    ia_usuario = normalizar_configuracoes_ia(carregar_preferencias(operador=operador, request=request).get("ia", {}))
+    def _ia_items(scope, values):
+        return [{**item, "current": values.get(item["key"], item["default"])} for item in CONFIGURACOES_IA if item["scope"] == scope]
     contexto = {
         "active": "configuracoes",
         "categorias": CategoriaServico.objects.filter(ativa=True).order_by("ordem", "nome"),
@@ -694,6 +728,10 @@ def configuracoes(request):
         "zoom_opcoes": [85, 90, 95, 100, 110, 125, 150, 175],
         "intervalo_opcoes": [5, 10, 15, 30, 60],
         "visivel_opcoes": [30, 60, 120, 300],
+        "ia_empresa_catalogo": _ia_items(COMPANY, ia_empresa),
+        "ia_usuario_catalogo": _ia_items(USER, ia_usuario),
+        "ia_missao_catalogo": _ia_items(MISSION, {}),
+        "ia_locked_catalogo": _ia_items(LOCKED, {}),
     }
     return render(request, "catalogo/configuracoes.html", contexto)
 
