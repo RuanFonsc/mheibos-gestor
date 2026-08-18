@@ -15,3 +15,5 @@ dist/
 release/
 out/
 exports/
+archive/*
+!archive/README.md
