@@ -500,6 +500,14 @@ app.whenReady().then(async () => {
     if (result.canceled || !result.filePaths.length) return null;
     return normalizarCaminhoServidor(result.filePaths[0]);
   });
+  ipcMain.handle("directory:select", async () => {
+    const result = await dialog.showOpenDialog({
+      title: "Escolher diretório das artes oficiais",
+      properties: ["openDirectory", "createDirectory"],
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    return result.filePaths[0];
+  });
   ipcMain.handle("corel:normalize-path", (_event, filePath) => normalizarCaminhoServidor(filePath));
   ipcMain.handle("corel:open-path", (_event, filePath) => {
     const normalized = normalizarCaminhoServidor(filePath);

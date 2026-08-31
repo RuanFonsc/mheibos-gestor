@@ -632,12 +632,35 @@ def configuracoes(request):
             if not operador.pode_gerenciar_usuarios:
                 messages.error(request, "Somente administradores alteram o perfil da empresa.")
                 return redirect("configuracoes")
-            perfil_empresa_form = PerfilEmpresaForm(request.POST, request.FILES, prefix="empresa", instance=perfil_empresa)
+            dados_empresa = request.POST.copy()
+            dados_empresa["diretorio_artes_raiz"] = perfil_empresa.diretorio_artes_raiz
+            dados_empresa["retencao_copias_locais_dias"] = perfil_empresa.retencao_copias_locais_dias
+            perfil_empresa_form = PerfilEmpresaForm(dados_empresa, request.FILES, prefix="empresa", instance=perfil_empresa)
             if perfil_empresa_form.is_valid():
                 perfil_empresa_form.save()
                 messages.success(request, "Perfil da empresa salvo.")
                 return redirect(f"{reverse('configuracoes')}?aba=empresa")
             messages.error(request, "Nao foi possivel salvar o perfil da empresa. Confira os campos.")
+        if acao == "salvar_configuracao_artes":
+            if not operador.pode_gerenciar_usuarios:
+                messages.error(request, "Somente administradores alteram a configuracao das artes oficiais.")
+                return redirect(f"{reverse('configuracoes')}?aba=operacao")
+            diretorio = (request.POST.get("diretorio_artes_raiz") or "").strip()
+            retencao_bruta = (request.POST.get("retencao_copias_locais_dias") or "").strip()
+            try:
+                retencao = int(retencao_bruta)
+            except (TypeError, ValueError):
+                retencao = None
+            if len(diretorio) > 1000:
+                messages.error(request, "A pasta compartilhada das artes oficiais excede o limite permitido.")
+            elif retencao is None or not 0 <= retencao <= 32767:
+                messages.error(request, "Informe uma retencao de copias locais entre 0 e 32767 dias.")
+            else:
+                perfil_empresa.diretorio_artes_raiz = diretorio
+                perfil_empresa.retencao_copias_locais_dias = retencao
+                perfil_empresa.save(update_fields=["diretorio_artes_raiz", "retencao_copias_locais_dias", "atualizado_em"])
+                messages.success(request, "Configuracao das artes oficiais salva.")
+            return redirect(f"{reverse('configuracoes')}?aba=operacao")
         if acao == "salvar_ordem_servico":
             if not operador.pode_gerenciar_usuarios:
                 messages.error(request, "Somente administradores alteram a ordem de servico.")
@@ -697,8 +720,42 @@ def configuracoes(request):
     todos_operadores_qs = OperadorGestor.objects.all() if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk)
     operadores_ativos_qs = OperadorGestor.objects.filter(ativo=True) if operador.pode_gerenciar_usuarios else OperadorGestor.objects.filter(pk=operador.pk)
     categorias_usuario = CategoriaUsuario.objects.filter(ativa=True).order_by("ordem", "nome")
+    preferencias = carregar_preferencias(operador=operador, request=request)
     ia_empresa = normalizar_configuracoes_ia(PreferenciaUI.objects.filter(chave="ia:empresa").values_list("dados", flat=True).first() or {})
-    ia_usuario = normalizar_configuracoes_ia(carregar_preferencias(operador=operador, request=request).get("ia", {}))
+    ia_usuario = normalizar_configuracoes_ia(preferencias.get("ia", {}))
+    contrato_alertas = alertas_operacionais(operador=operador, limite=100)
+    contagens_alertas = {str(item["id"]): int(item["count"]) for item in contrato_alertas["por_categoria"]}
+
+    def _estado_alerta(quantidade):
+        quantidade = int(quantidade or 0)
+        return f"{quantidade} ativa(s)" if quantidade else "Sem ocorrência ativa"
+
+    status_alertas = [
+        {
+            "nome": "Arquivo oficial ausente",
+            "estado": _estado_alerta(contagens_alertas.get("ausencia-arquivo-oficial")),
+            "detalhe": "Crítico e exige restauração ou novo vínculo. Não pode ser desativado nesta tela.",
+            "tipo": "critico",
+        },
+        {
+            "nome": "Arte sem atualização",
+            "estado": _estado_alerta(contagens_alertas.get("inatividade-arte")),
+            "detalhe": "A criticidade nasce do prazo e do estado da arte; a resposta do responsável encerra ou adia o alerta.",
+            "tipo": "acao",
+        },
+        {
+            "nome": "Aguardando arte",
+            "estado": _estado_alerta(contagens_alertas.get("aguardando-arte")),
+            "detalhe": "Informativo e derivado do status do pedido. Não possui chave de ativação própria.",
+            "tipo": "informativo",
+        },
+        {
+            "nome": "Assistência por prazo",
+            "estado": _estado_alerta(sum(item["count"] for item in contrato_alertas["por_categoria"] if str(item["id"]).isdigit())),
+            "detalhe": "Gerado pelas regras de prazo por categoria acima e pelos estados operacionais do pedido.",
+            "tipo": "regra",
+        },
+    ]
     def _ia_items(scope, values):
         return [{**item, "current": values.get(item["key"], item["default"])} for item in CONFIGURACOES_IA if item["scope"] == scope]
     contexto = {
@@ -721,7 +778,9 @@ def configuracoes(request):
         "pode_gerenciar_usuarios": operador.pode_gerenciar_usuarios,
         "pode_gerenciar_usuarios_geral": operador.is_admin_geral,
         "operador_editando": operador_editando,
-        "preferencias": carregar_preferencias(operador=operador, request=request),
+        "preferencias": preferencias,
+        "status_alertas": status_alertas,
+        "resumo_alertas": contrato_alertas,
         "programas_arte": __import__("apps.catalogo.ui_prefs", fromlist=["PROGRAMAS_ARTE"]).PROGRAMAS_ARTE,
         "db": db,
         "legacy_db": legacy_db,

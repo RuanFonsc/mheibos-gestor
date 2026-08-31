@@ -6,52 +6,52 @@
 {% block head %}
 <style>
   .config-tabs { display: flex; flex-wrap: wrap; gap: 10px; }
-  .profile-shell { position: relative; min-height: 620px; overflow: hidden; border: 1px solid rgba(0,229,255,.24); border-radius: 18px; background: radial-gradient(circle at 12% 0%, rgba(0,229,255,.16), transparent 30%), linear-gradient(145deg, rgba(23,26,41,.96), rgba(24,32,56,.96)); box-shadow: 0 18px 54px rgba(0,0,0,.18); }
-  .profile-shell::after { content: ""; position: absolute; inset: auto 12% -50px; height: 100px; border-radius: 50%; background: rgba(0,229,255,.14); filter: blur(32px); pointer-events: none; }
+  .profile-shell { position: relative; min-height: 38.75rem; overflow: hidden; border: 1px solid rgba(0,229,255,.24); border-radius: var(--card-radius); background: radial-gradient(circle at 12% 0%, rgba(0,229,255,.16), transparent 30%), linear-gradient(145deg, rgba(23,26,41,.96), rgba(24,32,56,.96)); box-shadow: 0 18px 3.375rem rgba(0,0,0,.18); }
+  .profile-shell::after { content: ""; position: absolute; inset: auto 12% -50px; height: 6.25rem; border-radius: 50%; background: rgba(0,229,255,.14); filter: blur(32px); pointer-events: none; }
   .profile-shell > * { position: relative; z-index: 1; }
-  .profile-main { min-width: 0; padding: 28px 32px 32px; }
-  .profile-top { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
-  .profile-search { display: flex; align-items: center; gap: 10px; min-width: min(420px, 100%); min-height: 50px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 0 14px; color: var(--text-secondary); }
+  .profile-main { min-width: 0; padding: var(--space-6); }
+  .profile-top { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 1.375rem; }
+  .profile-search { display: flex; align-items: center; gap: 10px; min-width: min(26.25rem, 100%); min-height: 3.125rem; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 0 14px; color: var(--text-secondary); }
   .profile-search input { min-height: 42px; border: 0; background: transparent; padding: 0; }
-  .profile-card { overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: color-mix(in srgb, var(--bg-card) 96%, white 4%); }
-  .profile-cover { height: 96px; background: linear-gradient(115deg, rgba(75,102,255,.30), rgba(0,229,255,.12) 48%, rgba(255,179,71,.16)), var(--bg-input); }
-  .profile-body { padding: 0 30px 30px; }
+  .profile-card { overflow: hidden; border: 1px solid var(--border); border-radius: var(--card-radius); background: color-mix(in srgb, var(--bg-card) 96%, white 4%); }
+  .profile-cover { height: 6rem; background: linear-gradient(115deg, rgba(75,102,255,.30), rgba(0,229,255,.12) 48%, rgba(255,179,71,.16)), var(--bg-input); }
+  .profile-body { padding: 0 var(--space-6) var(--space-6); }
   .profile-identity { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-top: -42px; margin-bottom: 28px; }
   .profile-person { display: flex; align-items: flex-end; gap: 18px; min-width: 0; }
-  .profile-photo-wrap { position: relative; width: 96px; height: 96px; flex: 0 0 auto; }
-  .profile-avatar { display: grid; place-items: center; width: 96px; height: 96px; border: 5px solid var(--bg-card); border-radius: 999px; background: var(--bg-input); color: var(--accent-2); overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,.24); }
+  .profile-photo-wrap { position: relative; width: 6rem; height: 6rem; flex: 0 0 auto; }
+  .profile-avatar { display: grid; place-items: center; width: 6rem; height: 6rem; border: 0.3125rem solid var(--bg-card); border-radius: 62.4375rem; background: var(--bg-input); color: var(--accent-2); overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,.24); }
   .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .profile-photo-wrap input[type="file"] { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-  .camera-button { position: absolute; right: -2px; bottom: 0; z-index: 1; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 999px; background: var(--accent); color: #fff; pointer-events: none; box-shadow: 0 10px 24px rgba(0,0,0,.24); }
+  .camera-button { position: absolute; right: -2px; bottom: 0; z-index: 1; display: grid; place-items: center; width: 2.125rem; height: 2.125rem; border: 1px solid var(--border); border-radius: 62.4375rem; background: var(--accent); color: #fff; pointer-events: none; box-shadow: 0 10px 24px rgba(0,0,0,.24); }
   .profile-name h3 { margin: 0; font-size: 24px; font-weight: 950; }
   .profile-name p { margin: 4px 0 0; color: var(--text-secondary); }
   .profile-fields { display: grid; gap: 18px 28px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .profile-field label { margin-bottom: 8px; }
   .profile-field .readonly { display: flex; align-items: center; min-height: 52px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 0 16px; color: var(--text-primary); font-weight: 750; }
   .user-admin-layout { display: block; margin-top: 20px; }
-  .soft-panel { border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); padding: 22px; }
-  .user-admin-actions { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
-  .user-list { display: grid; gap: 10px; max-height: min(56vh, 620px); overflow-y: auto; padding-right: 6px; scrollbar-gutter: stable; }
+  .soft-panel { border: 1px solid var(--border); border-radius: var(--card-radius); background: var(--bg-card); padding: var(--space-4); }
+  .user-admin-actions { margin-top: 1.625rem; padding-top: 1.375rem; border-top: 1px solid var(--border); }
+  .user-list { display: grid; gap: 10px; max-height: min(56vh, 38.75rem); overflow-y: auto; padding-right: 0.375rem; scrollbar-gutter: stable; }
   .user-list-panel { width: 100%; max-width: none; }
-  .user-row { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(150px, auto) 78px auto; align-items: center; gap: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
+  .user-row { display: grid; grid-template-columns: minmax(16.25rem, 1fr) minmax(9.375rem, auto) 4.875rem auto; align-items: center; gap: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
   .user-row.is-editing { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
   .user-mini { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .user-mini-name { min-width: 0; }
   .user-mini-avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--bg-card); color: var(--accent-2); overflow: hidden; }
   .user-mini-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .permission-chip { justify-self: start; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-2); padding: 7px 10px; font-size: 11px; font-weight: 900; }
+  .permission-chip { justify-self: start; border-radius: 62.4375rem; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-2); padding: 0.4375rem 10px; font-size: 11px; font-weight: 900; }
   .user-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
   .os-fields { display: grid; gap: 12px; }
-  .os-field-row { display: grid; grid-template-columns: minmax(180px, 1fr) 150px; align-items: end; gap: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 12px; }
-  .header-line-preview { height: 10px; border-radius: 999px; margin-top: 8px; }
+  .os-field-row { display: grid; grid-template-columns: minmax(11.25rem, 1fr) 9.375rem; align-items: end; gap: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-input); padding: 12px; }
+  .header-line-preview { height: 10px; border-radius: 62.4375rem; margin-top: 8px; }
   .password-panel { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
   .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.68); padding: 20px; }
   .modal-backdrop.is-open { display: flex; }
-  .modal-card { width: min(520px, 100%); border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); box-shadow: 0 24px 80px rgba(0,0,0,.38); padding: 22px; }
-  .modal-card.wide { width: min(760px, 100%); }
-  .user-category-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
-  @media (max-width: 1100px) {
-    .profile-main { padding: 22px 18px; }
+  .modal-card { width: min(520px, 100%); border: 1px solid var(--border); border-radius: var(--card-radius); background: var(--bg-card); box-shadow: 0 24px 5rem rgba(0,0,0,.38); padding: var(--space-4); }
+  .modal-card.wide { width: min(47.5rem, 100%); }
+  .user-category-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(11.25rem, 17.5rem); align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-input); padding: 12px 14px; }
+  @media (max-width: 68.75rem) {
+    .profile-main { padding: var(--space-4) 18px; }
     .profile-top, .profile-identity { align-items: stretch; flex-direction: column; }
     .profile-fields, .user-admin-layout, .os-field-row, .user-category-row { grid-template-columns: 1fr; }
     .user-row { grid-template-columns: 1fr; }
@@ -60,7 +60,14 @@
 {% endblock %}
 {% block content %}
 <div class="page-content space-y-5">
-  <div class="config-tabs" aria-label="Áreas de configurações">
+  <section class="page-hero card p-5 mb-5">
+  <div class="relative z-[1]">
+    <span class="kicker"><i data-lucide="settings" class="h-4 w-4"></i> Administração</span>
+    <h2 class="section-title">Configurações</h2>
+    <p class="text-sm text-[var(--text-secondary)]">Ajuste sua experiência e as regras operacionais autorizadas do Mheibos.</p>
+  </div>
+</section>
+<div class="config-tabs card p-3" aria-label="Áreas de configurações">
     <button class="top-tab active" type="button" data-config-tab="usuarios"><i data-lucide="circle-user-round" class="h-5 w-5"></i> Meu perfil</button>
     <button class="top-tab" type="button" data-config-tab="aparencia"><i data-lucide="monitor-cog" class="h-5 w-5"></i> Aparencia</button>
     <button class="top-tab" type="button" data-config-tab="operacao"><i data-lucide="bell" class="h-5 w-5"></i> Operação e alertas</button>
@@ -101,7 +108,7 @@
           <div class="profile-body">
             <div class="profile-identity">
               <div class="profile-person">
-                <div class="profile-photo-wrap">
+                <div class="profile-photo-wrap" data-overflow-authorized>
                   <div class="profile-avatar" id="profileAvatarPreview">
                     {% if operador_atual.foto %}
                       <img src="{{ operador_atual.foto.url }}" alt="{{ operador_atual.nome }}">
@@ -246,13 +253,13 @@
                     <span class="permission-chip">{{ usuario.get_papel_display }}</span>
                     <span class="text-sm {% if usuario.ativo %}text-[#00c896]{% else %}text-[#ff4b4b]{% endif %}">{% if usuario.ativo %}Ativo{% else %}Inativo{% endif %}</span>
                     <div class="user-actions">
-                      <a class="btn-secondary min-h-[34px] px-3 text-xs" href="{% url 'configuracoes' %}?aba=usuarios_config&operador_id={{ usuario.pk }}"><i data-lucide="pencil" class="h-4 w-4"></i> Editar</a>
+                      <a class="btn-secondary min-h-[2.125rem] px-3 text-xs" href="{% url 'configuracoes' %}?aba=usuarios_config&operador_id={{ usuario.pk }}"><i data-lucide="pencil" class="h-4 w-4"></i> Editar</a>
                       {% if usuario.pk != operador_atual.pk %}
                         <form method="post" onsubmit="return confirm('Excluir este usuario?')">
                           {% csrf_token %}
                           <input type="hidden" name="acao" value="excluir_operador">
                           <input type="hidden" name="operador_id" value="{{ usuario.pk }}">
-                          <button class="btn-danger min-h-[34px] px-3 text-xs" type="submit"><i data-lucide="trash-2" class="h-4 w-4"></i> Excluir</button>
+                          <button class="btn-danger min-h-[2.125rem] px-3 text-xs" type="submit"><i data-lucide="trash-2" class="h-4 w-4"></i> Excluir</button>
                         </form>
                       {% endif %}
                     </div>
@@ -270,7 +277,7 @@
     {% if pode_gerenciar_usuarios_geral %}
       <section id="tab-usuarios_config" class="config-panel hidden space-y-5">
         <div id="gestaoUsuariosDestino"></div>
-        <div class="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <div class="grid gap-5 xl:grid-cols-[22.5rem_minmax(0,1fr)]">
           <form method="post" class="card p-5">
             {% csrf_token %}
             <input type="hidden" name="acao" value="salvar_categoria_usuario">
@@ -351,8 +358,6 @@
           <div><label>Telefone secundario</label>{{ perfil_empresa_form.telefone_secundario }}</div>
           <div><label>Telefone adicional</label>{{ perfil_empresa_form.telefone_terciario }}</div>
           <div><label>Email</label>{{ perfil_empresa_form.email }}</div>
-          <div class="md:col-span-2"><label>Pasta compartilhada das artes oficiais</label>{{ perfil_empresa_form.diretorio_artes_raiz }}<p class="mt-1 text-xs text-[var(--text-secondary)]">Aceita caminho direto do servidor ou unidade mapeada. O Mheibos controla como o caminho e exibido.</p></div>
-          <div><label>Retencao de copias locais (dias)</label>{{ perfil_empresa_form.retencao_copias_locais_dias }}</div>
           <div class="md:col-span-2">
             <label>Logo da empresa</label>
             <div class="mt-2 flex flex-wrap items-center gap-4">
@@ -386,7 +391,7 @@
         <form method="post" class="grid gap-5">
           {% csrf_token %}
           <input type="hidden" name="acao" value="salvar_ordem_servico">
-          <div class="max-w-[360px]">
+          <div class="max-w-[22.5rem]">
             <label>Formato de impressao</label>
             <select name="os_layout">
               {% for value, label in layouts_ordem_servico %}
@@ -441,14 +446,14 @@
       <div class="card p-5">
         <h3 class="mb-4 text-lg font-semibold">Aparencia</h3>
         <div class="flex flex-wrap gap-3">
-          <select id="configTema" class="max-w-[280px]"><option value="dark">Escuro</option><option value="light">Claro</option></select>
+          <select id="configTema" class="max-w-[17.5rem]"><option value="dark">Escuro</option><option value="light">Claro</option></select>
           <button id="btnAplicarTema" class="btn-secondary" type="button">Aplicar tema</button>
         </div>
       </div>
       <div class="card p-5">
         <h3 class="mb-4 text-lg font-semibold">Zoom da interface</h3>
         <div class="flex flex-wrap gap-3">
-          <select id="configZoom" class="max-w-[280px]">{% for zoom in zoom_opcoes %}<option value="{{ zoom }}">{{ zoom }}%</option>{% endfor %}</select>
+          <select id="configZoom" class="max-w-[17.5rem]">{% for zoom in zoom_opcoes %}<option value="{{ zoom }}">{{ zoom }}%</option>{% endfor %}</select>
           <button id="btnAplicarZoom" class="btn-secondary" type="button">Aplicar zoom</button>
         </div>
       </div>
@@ -456,7 +461,47 @@
 
     <section id="tab-operacao" class="config-panel hidden">
       <div class="card p-5 space-y-6">
-        <h3 class="text-lg font-semibold">Configuracoes de Notificacoes e Alertas</h3>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <span class="kicker">CENTRAL DE OPERAÇÃO</span>
+            <h3 class="text-lg font-semibold">Configurações de notificações e alertas</h3>
+            <p class="mt-1 text-sm text-[var(--text-secondary)]">Aqui ficam as regras editáveis e o estado dos alertas que o Mheibos calcula automaticamente.</p>
+          </div>
+          <span class="permission-chip">Regras determinísticas</span>
+        </div>
+        {% if pode_gerenciar_usuarios %}
+        <div id="operacao-artes-oficiais" class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
+          <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 class="font-semibold">Artes oficiais</h4>
+              <p class="mt-1 text-sm text-[#8892b0]">Configuração compartilhada usada para criar, vincular e conservar as artes oficiais dos pedidos.</p>
+            </div>
+            <span class="permission-chip">Empresa</span>
+          </div>
+          <form method="post" class="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="salvar_configuracao_artes">
+            <div>
+              <label for="diretorioArtesRaiz">Pasta compartilhada das artes oficiais</label>
+              <div class="flex flex-wrap gap-2 sm:flex-nowrap">
+                <input id="diretorioArtesRaiz" class="min-w-0 flex-1" name="diretorio_artes_raiz" value="{{ perfil_empresa.diretorio_artes_raiz }}" maxlength="1000" autocomplete="off">
+                <button id="btnEscolherDiretorio" class="btn-secondary shrink-0" type="button"><i data-lucide="folder-open" class="h-4 w-4"></i> Escolher diretório</button>
+              </div>
+              <p class="mt-1 text-xs text-[var(--text-secondary)]">Digite o caminho ou escolha uma pasta pelo explorador de arquivos. No Mheibos Desktop, o caminho real é preenchido automaticamente.</p>
+              <input id="diretorioArtesRaizBrowserPicker" class="hidden" type="file" webkitdirectory directory multiple tabindex="-1" aria-hidden="true">
+            </div>
+            <div>
+              <label for="retencaoCopiasLocaisDias">Retenção de cópias locais (dias)</label>
+              <input id="retencaoCopiasLocaisDias" name="retencao_copias_locais_dias" type="number" min="0" max="32767" value="{{ perfil_empresa.retencao_copias_locais_dias }}">
+              <p class="mt-1 text-xs text-[var(--text-secondary)]">A cópia local é temporária e não substitui o arquivo oficial.</p>
+            </div>
+            <div class="md:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#2d3154] bg-[#22253a] p-3">
+              <p class="text-xs text-[var(--text-secondary)]">A criação e o vínculo permanecem dentro do fluxo oficial do pedido. Esta tela só define a pasta compartilhada e a retenção local.</p>
+              <button class="btn-primary" type="submit"><i data-lucide="save" class="h-4 w-4"></i> Salvar configuração de artes</button>
+            </div>
+          </form>
+        </div>
+        {% endif %}
         {% if pode_gerenciar_usuarios %}
         <form method="post" class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
           {% csrf_token %}
@@ -488,7 +533,8 @@
         {% endif %}
         <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
           <h4 class="mb-3 font-semibold">Widget de prazos</h4>
-          <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="widgetPrazosAtivo" type="checkbox" checked> Ativar widget</label>
+          <p class="mb-3 text-sm text-[#8892b0]">Exibe os prazos e categorias acompanhadas na interface operacional. Configurações: ativação, comportamento, intervalo, duração e categorias.</p>
+          <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="widgetPrazosAtivo" type="checkbox" {% if preferencias.widgets.prazos.ativo %}checked{% endif %}> Ativar widget</label>
           <div class="grid gap-3 md:grid-cols-3">
             <div><label>Comportamento</label><select id="widgetPrazosModo"><option value="periodico">Voltar de tempos em tempos</option><option value="sempre">Ficar ativo o tempo todo</option></select></div>
             <div id="widgetPrazosIntervaloWrap"><label>Voltar a cada</label><select id="widgetPrazosIntervalo">{% for minutos in intervalo_opcoes %}<option value="{{ minutos }}">{{ minutos }} minutos</option>{% endfor %}</select></div>
@@ -502,7 +548,8 @@
         </div>
         <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
           <h4 class="mb-3 font-semibold">Notificação da Assistência de Impressão</h4>
-          <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="notifAssistenciaAtivo" type="checkbox" checked> Ativar notificacao</label>
+          <p class="mb-3 text-sm text-[#8892b0]">Informa pedidos que aguardam assistência de impressão. Configurações: ativação, comportamento, intervalo, duração e posição.</p>
+          <label class="mb-3 flex items-center gap-2 text-sm normal-case tracking-normal"><input id="notifAssistenciaAtivo" type="checkbox" {% if preferencias.widgets.assistencia.ativo %}checked{% endif %}> Ativar notificação</label>
           <div class="grid gap-3 md:grid-cols-4">
             <div><label>Comportamento</label><select id="notifAssistenciaModo"><option value="periodico">Voltar de tempos em tempos</option><option value="sempre">Ficar ativa o tempo todo</option></select></div>
             <div id="notifAssistenciaIntervaloWrap"><label>Voltar a cada</label><select id="notifAssistenciaIntervalo">{% for minutos in intervalo_opcoes %}<option value="{{ minutos }}">{{ minutos }} minutos</option>{% endfor %}</select></div>
@@ -515,7 +562,33 @@
           <button id="btnTestarWidgets" class="btn-secondary" type="button">Verificar agora</button>
         </div>
         <p id="configFeedback" class="hidden text-sm font-semibold text-[#00c896]"></p>
-      </div>
+
+        <div id="status-alertas-sistemicos" class="rounded-lg border border-[#2d3154] bg-[#171a29] p-4">
+          <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 class="font-semibold">Status dos alertas sistêmicos</h4>
+              <p class="mt-1 text-sm text-[#8892b0]">Estes estados são calculados pelo domínio e não podem ser ligados ou desligados nesta página.</p>
+            </div>
+            <span class="permission-chip">Somente leitura</span>
+          </div>
+          <div class="mb-4 grid gap-3 sm:grid-cols-3">
+            <div class="soft-panel"><strong>{{ resumo_alertas.total_alertas }}</strong><p class="mt-1 text-xs text-[var(--text-secondary)]">alerta(s) visível(is) para você</p></div>
+            <div class="soft-panel"><strong>{{ resumo_alertas.total_exige_acao }}</strong><p class="mt-1 text-xs text-[var(--text-secondary)]">exige(m) decisão ou resposta</p></div>
+            <div class="soft-panel"><strong>{{ resumo_alertas.total_criticos }}</strong><p class="mt-1 text-xs text-[var(--text-secondary)]">crítico(s)</p></div>
+          </div>
+          <div class="grid gap-3 md:grid-cols-2">
+            {% for item in status_alertas %}
+              <article class="soft-panel">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <strong>{{ item.nome }}</strong>
+                  <span class="status-pill {% if item.tipo == 'critico' %}is-danger{% elif item.tipo == 'acao' %}is-work{% else %}is-info{% endif %}">{{ item.estado }}</span>
+                </div>
+                <p class="mt-2 text-xs text-[var(--text-secondary)]">{{ item.detalhe }}</p>
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+</div>
     </section>
 
     <section id="tab-seguranca" class="config-panel hidden space-y-5">
@@ -606,7 +679,7 @@
             </button>
           </form>
         </div>
-        <div class="grid gap-3 md:grid-cols-[160px_1fr]">
+        <div class="grid gap-3 md:grid-cols-[10rem_1fr]">
           <label>Tipo de banco</label><input value="PostgreSQL (rede)" readonly>
           <label>Nome do banco</label><input value="{{ db.NAME }}" readonly>
           <label>Host / IP</label><input value="{{ db.HOST }}" readonly>
@@ -824,6 +897,45 @@
       avatarPreview.innerHTML = `<img src="${evento.target.result}" alt="Preview da foto">`;
     };
     leitor.readAsDataURL(arquivo);
+  });
+
+  const diretorioArtesRaiz = document.getElementById("diretorioArtesRaiz");
+  const btnEscolherDiretorio = document.getElementById("btnEscolherDiretorio");
+  const diretorioArtesRaizBrowserPicker = document.getElementById("diretorioArtesRaizBrowserPicker");
+  function informarDiretorioEscolhido(nome) {
+    feedback("Pasta selecionada: " + nome + ". No navegador, digite o caminho completo ou abra o Mheibos Desktop para preenchê-lo automaticamente.");
+  }
+  btnEscolherDiretorio?.addEventListener("click", async () => {
+    const selecionarDiretorio = window.mheibosArquivos?.selecionarDiretorio;
+    if (selecionarDiretorio) {
+      try {
+        const caminho = await selecionarDiretorio();
+        if (caminho && diretorioArtesRaiz) {
+          diretorioArtesRaiz.value = caminho;
+          diretorioArtesRaiz.dispatchEvent(new Event("input", { bubbles: true }));
+          feedback("Diretório escolhido. Salve a configuração para aplicar o caminho.");
+        }
+      } catch (_) {
+        feedback("Não foi possível abrir o explorador de arquivos.");
+      }
+      return;
+    }
+    if (window.showDirectoryPicker) {
+      try {
+        const diretorio = await window.showDirectoryPicker();
+        if (diretorio?.name) informarDiretorioEscolhido(diretorio.name);
+      } catch (erro) {
+        if (erro?.name !== "AbortError") feedback("Não foi possível escolher o diretório neste navegador.");
+      }
+      return;
+    }
+    diretorioArtesRaizBrowserPicker?.click();
+  });
+  diretorioArtesRaizBrowserPicker?.addEventListener("change", () => {
+    const caminhoRelativo = diretorioArtesRaizBrowserPicker.files?.[0]?.webkitRelativePath || "";
+    const nome = caminhoRelativo.split("/")[0];
+    if (nome) informarDiretorioEscolhido(nome);
+    diretorioArtesRaizBrowserPicker.value = "";
   });
 
   function atualizarPreviewLinhaCabecalho() {

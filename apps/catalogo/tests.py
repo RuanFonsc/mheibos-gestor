@@ -9,7 +9,7 @@ from apps.catalogo.authentication import (
     senha_esta_protegida,
     validar_senha_operador,
 )
-from apps.catalogo.models import OperadorGestor, PapelOperador, PreferenciaUI
+from apps.catalogo.models import OperadorGestor, PapelOperador, PerfilEmpresa, PreferenciaUI
 from apps.catalogo.ui_prefs import carregar_preferencias
 from apps.catalogo.permissions import operador_atual
 
@@ -86,6 +86,47 @@ class SessaoOperadorTests(TestCase):
         self.assertContains(response, "Perfil da Empresa")
         self.assertContains(response, "Pasta compartilhada das artes oficiais")
         self.assertContains(response, 'id="gestaoUsuariosDestino"')
+
+    def test_configuracoes_separam_artes_da_identidade_da_empresa_e_expoem_alertas(self):
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+
+        response = self.client.get("/configuracoes/?aba=operacao")
+        content = response.content.decode("utf-8")
+        empresa = content.split('id="tab-empresa"', 1)[1].split('id="tab-aparencia"', 1)[0]
+        operacao = content.split('id="tab-operacao"', 1)[1].split('id="tab-aparencia"', 1)[0]
+
+        self.assertNotIn("diretorioArtesRaiz", empresa)
+        self.assertNotIn("retencaoCopiasLocaisDias", empresa)
+        self.assertIn("operacao-artes-oficiais", operacao)
+        self.assertIn('id="btnEscolherDiretorio"', operacao)
+        self.assertIn("Escolher diretório", operacao)
+        self.assertIn("status-alertas-sistemicos", operacao)
+        self.assertIn("Arquivo oficial ausente", operacao)
+        self.assertIn("Arte sem atualização", operacao)
+        self.assertIn("Aguardando arte", operacao)
+        self.assertIn("Widget de prazos", operacao)
+        self.assertIn("Notificação da Assistência de Impressão", operacao)
+
+    def test_configuracao_de_artes_persiste_fora_do_perfil_da_empresa(self):
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+
+        response = self.client.post(
+            "/configuracoes/",
+            {
+                "acao": "salvar_configuracao_artes",
+                "diretorio_artes_raiz": r"\\servidor\artes-oficiais",
+                "retencao_copias_locais_dias": "45",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        perfil = PerfilEmpresa.objects.get(chave="global")
+        self.assertEqual(perfil.diretorio_artes_raiz, r"\\servidor\artes-oficiais")
+        self.assertEqual(perfil.retencao_copias_locais_dias, 45)
 
     def test_usuario_salva_programa_de_arte_preferido(self):
         session = self.client.session

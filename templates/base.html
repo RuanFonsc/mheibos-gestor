@@ -197,10 +197,10 @@
     }
     .top-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
     .workspace { min-height: 0; overflow-y: auto; overflow-x: hidden; padding: var(--space-5) var(--space-5) var(--space-8); background: var(--workspace-bg); color: var(--text-primary); scrollbar-gutter: stable; width: 100%; }
-    .page-content { width: 100%; max-width: none; }
+    .page-content { width: 100%; max-width: none; min-width: 0; }
     .panel { background: transparent; border: 0; }
     .card, .glass { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--card-radius); color: var(--text-primary); box-shadow: var(--card-shadow); }
-    .page-hero { position: relative; overflow: hidden; border-color: var(--border-accent); background: var(--panel-gradient); }
+    .page-hero { position: relative; overflow: hidden; border-color: var(--border-accent); border-radius: var(--card-radius); background: var(--panel-gradient); }
     .page-hero::after { content: ""; position: absolute; inset: auto 12% -44px; height: 5.5rem; border-radius: 50%; background: rgba(0, 229, 255, .12); filter: blur(30px); pointer-events: none; }
     .page-hero > * { position: relative; z-index: 1; }
     .chart-card { position: relative; overflow: hidden; border-color: var(--border-accent); background: var(--panel-gradient); }
@@ -234,12 +234,16 @@
     .page-heading p { margin: 0.375rem 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
     .page-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
     .kicker { display: inline-flex; align-items: center; gap: 0.4375rem; margin-bottom: 8px; color: var(--accent-2); font-size: 11px; font-weight: 900; letter-spacing: 1.2px; text-transform: uppercase; }
-    .metric-card { position: relative; overflow: hidden; min-height: 5.875rem; padding: 16px; }
+    .metric-card { position: relative; overflow: hidden; min-height: 5.875rem; border: 1px solid rgba(0, 229, 255, .14); background: rgba(16, 19, 31, .72); padding: var(--space-4); }
     .metric-card p { margin: 0; color: var(--text-secondary); font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
     .metric-card strong { display: block; margin-top: 0.5625rem; font-size: 1.625rem; line-height: 1; }
-    .metric-card span { display: inline-block; margin-top: 8px; color: var(--text-secondary); font-size: 12px; }
+    .metric-card span { display: inline-block; margin-top: var(--space-2); color: var(--text-secondary); font-size: 12px; }
+    html[data-theme="light"] .metric-card { background: var(--bg-input); border-color: var(--border); }
     .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
     .filter-grid { display: grid; grid-template-columns: minmax(0, 1fr) 15rem auto auto; gap: var(--space-3); padding: var(--space-4); margin-bottom: var(--space-4); }
+    .module-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-4); margin-bottom: var(--space-4); }
+    .module-filter input { min-width: 0; flex: 1 1 18rem; }
+    .module-filter .btn-secondary, .module-filter .btn-primary { flex: 0 0 auto; }
     .view-toggle { display: flex; min-height: var(--control-height); overflow: hidden; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); }
     .view-toggle a { width: auto; min-width: var(--control-height); padding: 0 var(--space-2); display: inline-flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 12px; font-weight: 700; text-decoration: none; }
     .view-toggle a + a { border-left: 1px solid var(--border-light); }
@@ -660,7 +664,7 @@
     <button id="interfaceVivaToggle" class="interface-viva-toggle" type="button" aria-label="Abrir Interface Viva" aria-expanded="false" title="Falar com Mheibos">
       <i data-lucide="sparkles" class="h-6 w-6"></i><span id="interfaceVivaAlertasButtonBadge" class="interface-viva-alert-badge hidden" aria-hidden="true">0</span>
     </button>
-    <aside id="interfaceVivaDrawer" class="interface-viva-drawer" aria-label="Assistência do Mheibos" aria-hidden="true">
+    <aside id="interfaceVivaDrawer" class="interface-viva-drawer" data-overflow-authorized aria-label="Assistência do Mheibos" aria-hidden="true">
       <header class="interface-viva-header"><div><span class="kicker">Interface Viva</span><h2>Mheibos</h2><p>Ajuda contextual, com ações confirmáveis.</p></div><button id="interfaceVivaClose" class="interface-viva-close" type="button" aria-label="Fechar">×</button></header>
       <section id="interfaceVivaAlertas" class="interface-viva-alertas" aria-labelledby="interfaceVivaAlertasTitulo">
         <div class="interface-viva-alertas-heading"><strong id="interfaceVivaAlertasTitulo">Alertas operacionais</strong><span id="interfaceVivaAlertasBadge" class="interface-viva-alertas-count">0</span></div>

@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("mheibosSetup", {
 
 contextBridge.exposeInMainWorld("mheibosArquivos", {
   selecionarCorel: () => ipcRenderer.invoke("corel:select-file"),
+  selecionarDiretorio: () => ipcRenderer.invoke("directory:select"),
   normalizarCorel: (filePath) => ipcRenderer.invoke("corel:normalize-path", filePath),
   abrirCorel: (filePath) => ipcRenderer.invoke("corel:open-path", filePath),
   caminhoArquivo: (file) => webUtils.getPathForFile(file),

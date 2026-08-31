@@ -1,9 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Produtos{% endblock %}
 {% block page_title %}Produtos{% endblock %}
+{% block page_icon %}package{% endblock %}
 {% block content %}
-<div class="page-content grid w-full gap-5 xl:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
-  <section class="space-y-5">
+<div class="page-content w-full space-y-5">
+  <section class="page-hero card p-5">
+    <div class="relative z-[1]">
+      <span class="kicker"><i data-lucide="package" class="h-4 w-4"></i> Catálogo</span>
+      <h2 class="section-title">Produtos</h2>
+      <p class="text-sm text-[var(--text-secondary)]">Organize produtos, categorias, preços e prazos usados nos pedidos.</p>
+    </div>
+  </section>
+  <div class="grid w-full min-w-0 gap-5 xl:grid-cols-[minmax(18.75rem,23.75rem)_minmax(0,1fr)]">
+  <section class="min-w-0 space-y-5">
     <div class="card p-5">
       <h2 class="mb-4 text-lg font-semibold">{% if produto_editando %}Editar produto{% else %}Cadastrar novo produto{% endif %}</h2>
       <form method="post" class="space-y-3">
@@ -40,7 +49,7 @@
     {% endif %}
   </section>
 
-  <section class="space-y-5">
+  <section class="min-w-0 space-y-5">
     <div class="card p-5">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold">Categorias de serviço</h2>
@@ -48,7 +57,7 @@
       </div>
       <div class="grid gap-3 md:grid-cols-3">
         {% for categoria in categorias %}
-          <div class="rounded-lg border border-[#2d3154] bg-[#171a29] p-3">
+          <div class="subtle-panel p-3">
             <strong>{{ categoria.nome }}</strong>
             <p class="mt-1 text-xs text-[#8892b0]">Ordem {{ categoria.ordem }} · {% if categoria.ativa %}ativa{% else %}inativa{% endif %}</p>
             {% if pode_excluir_categoria %}
@@ -65,12 +74,12 @@
     </div>
 
     <div class="card overflow-hidden">
-      <div class="border-b border-[#2d3154] p-5">
+      <div class="border-b border-[var(--border)] p-5">
         <h2 class="text-lg font-semibold">Lista de produtos</h2>
       </div>
-      <div class="overflow-x-auto overflow-y-visible">
-        <table class="w-full min-w-[820px] text-left text-sm">
-          <thead class="bg-[#171a29] text-[#8892b0]">
+      <div class="table-wrap min-w-0 border-0 rounded-none" data-overflow-authorized>
+        <table class="data-table min-w-[800px]">
+          <thead>
             <tr>
               <th class="p-3">Produto</th>
               <th class="p-3">Categoria</th>
@@ -82,7 +91,7 @@
               <th class="p-3 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-[#2d3154]">
+          <tbody>
             {% for produto in produtos %}
               <tr>
                 <td class="p-3 font-semibold">{{ produto.nome }}</td>
@@ -114,5 +123,6 @@
       </div>
     </div>
   </section>
+</div>
 </div>
 {% endblock %}

@@ -1,6 +1,6 @@
 (() => {
   const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
-  const authorized = (el) => el.matches('[data-overflow-authorized], .table-wrap, .tabbar, .sidebar, .workspace');
+  const authorized = (el) => !!el.closest('[data-overflow-authorized], .table-wrap, .tabbar, .sidebar, .workspace');
   const issues = [];
   for (const el of document.querySelectorAll('body *')) {
     if (!visible(el) || authorized(el)) continue;
