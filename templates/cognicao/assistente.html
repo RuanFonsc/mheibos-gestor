@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Mheibos — Interface Viva{% endblock %}
+{% block head %}
+<style>
+  .cognitive-shell { max-width: 73.75rem; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .cognitive-panel { min-height: 62vh; display: grid; grid-template-rows: auto 1fr auto auto; gap: 14px; }
+  .cognitive-messages { min-height: 320px; max-height: 58vh; overflow: auto; display: grid; align-content: start; gap: 10px; padding: 4px; }
+  .cognitive-message { max-width: min(47.5rem, 92%); padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; line-height: 1.45; white-space: pre-wrap; }
+  .cognitive-message.user { justify-self: end; background: var(--accent); color: #fff; border-color: transparent; }
+  .cognitive-message.mheibos { justify-self: start; background: var(--bg-card); }
+  .cognitive-status { color: var(--text-secondary); min-height: 20px; }
+  .cognitive-compose { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+  .cognitive-compose textarea { min-height: 72px; resize: vertical; }
+  @media (max-width: 56.25rem) { .cognitive-compose { grid-template-columns: 1fr; } .cognitive-message { max-width: 100%; } }
+</style>
+{% endblock %}
+{% block content %}
+<main class="cognitive-shell" data-cognitive data-conversation-id="{{ conversa.pk|default:'' }}">
+  <section class="soft-panel cognitive-panel">
+    <header>
+      <div class="kicker">Interface Viva</div>
+      <h1 class="text-2xl font-semibold">Fale com o Mheibos</h1>
+      <p class="text-sm text-[var(--text-secondary)]">A IA interpreta o sistema, sugere caminhos e só executa ações autorizadas.</p>
+    </header>
+    <div class="cognitive-messages" data-messages aria-live="polite">
+      {% if conversa %}{% for mensagem in conversa.mensagens.all %}
+        <div class="cognitive-message {% if mensagem.papel == 'USUARIO' %}user{% else %}mheibos{% endif %}">{{ mensagem.texto }}</div>
+      {% empty %}<p class="text-[var(--text-secondary)]">Nenhuma conversa iniciada. A operação normal continua disponível sem IA.</p>{% endfor %}
+      {% else %}<p class="text-[var(--text-secondary)]" data-empty-state>Nenhuma conversa iniciada. A operação normal continua disponível sem IA.</p>{% endif %}
+    </div>
+    <form class="cognitive-compose" data-compose>
+      {% csrf_token %}
+      <textarea name="texto" maxlength="4000" placeholder="Descreva o que você precisa resolver..." required></textarea>
+      <button class="btn-primary" type="submit">Enviar</button>
+    </form>
+    <div class="cognitive-status" data-status></div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const root = document.querySelector("[data-cognitive]");
+  if (!root) return;
+  const form = root.querySelector("[data-compose]");
+  const textarea = form.querySelector("textarea");
+  const messages = root.querySelector("[data-messages]");
+  const status = root.querySelector("[data-status]");
+  let conversationId = root.dataset.conversationId || "";
+  const csrf = form.querySelector("[name=csrfmiddlewaretoken]").value;
+  const add = (text, role, action) => { messages.querySelector("[data-empty-state]")?.remove(); const node = document.createElement("div"); node.className = `cognitive-message ${role}`; node.textContent = text; if (action?.interface?.requer_confirmacao) { const button = document.createElement("button"); button.className = "btn-primary mt-3"; button.textContent = "Confirmar alteração"; button.addEventListener("click", async () => { button.disabled = true; const response = await fetch("{% url 'cognicao_confirmar_status' %}", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf, "Accept": "application/json" }, body: JSON.stringify(action.interface.parametros) }); const data = await response.json(); button.textContent = response.ok ? `Confirmado: ${data.status}` : (data.erro || "Não foi possível confirmar"); }); node.appendChild(button); } messages.appendChild(node); messages.scrollTop = messages.scrollHeight; };
+  const poll = async (taskId) => {
+    status.textContent = "O Mheibos está analisando o contexto...";
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const response = await fetch(`/cognicao/assistente/tarefas/${taskId}/`, { headers: { "Accept": "application/json" } });
+      const data = await response.json();
+      if (["CONCLUIDA", "FALHOU", "CANCELADA"].includes(data.estado)) {
+        if (data.resultado?.texto) add(data.resultado.texto, "mheibos", data.resultado.acao);
+        status.textContent = data.resultado?.disponivel === false ? "IA indisponível; o fluxo normal continua disponível." : (data.erro || "");
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    status.textContent = "A análise demorou mais que o esperado. Você pode continuar usando o sistema.";
+  };
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const texto = textarea.value.trim();
+    if (!texto) return;
+    add(texto, "user"); textarea.value = ""; textarea.disabled = true; form.querySelector("button").disabled = true;
+    try {
+      const response = await fetch("{% url 'cognicao_enviar_mensagem' %}", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf, "Accept": "application/json" }, body: JSON.stringify({ texto, conversa_id: conversationId || null }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.erro || "Não foi possível enfileirar a mensagem.");
+      conversationId = String(data.conversa_id); root.dataset.conversationId = conversationId;
+      await poll(data.tarefa_id);
+    } catch (error) { status.textContent = error.message; }
+    finally { textarea.disabled = false; form.querySelector("button").disabled = false; textarea.focus(); }
+  });
+})();
+</script>
+{% endblock %}

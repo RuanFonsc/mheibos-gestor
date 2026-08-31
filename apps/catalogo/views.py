@@ -55,7 +55,7 @@ from apps.cognicao.configuracoes_ia import (
 from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os, normalizar_linha_cabecalho, salvar_campos_os, salvar_linha_cabecalho
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
-from apps.catalogo.widget_data import pedidos_para_widget, resumo_assistencia_envio
+from apps.catalogo.widget_data import alertas_operacionais, pedidos_para_widget
 from apps.arquivos.models import (
     ArquivoOficialArte,
     EstadoPreparacaoArte,
@@ -886,48 +886,16 @@ def api_widget_prazos(request):
 
 
 def api_notificacao_assistencia(request):
-    resumo = resumo_assistencia_envio(_categorias_da_requisicao(request))
-    total_arquivos_ausentes = ArquivoOficialArte.objects.filter(
-        estado_vinculo="ATIVO", ausencia_critica_ativa=True
-    ).count()
-    preparacoes = (
-        PreparacaoArtePedido.objects.exclude(estado=EstadoPreparacaoArte.CONCLUIDA)
-        .select_related("pedido")
-        .prefetch_related("pedido__itens__categoria_servico")[:120]
+    categorias = _categorias_da_requisicao(request)
+    contrato = alertas_operacionais(
+        categorias_ids=categorias,
+        operador=operador_atual(request),
+        limite=100,
     )
-    total_inatividade = sum(
-        1
-        for preparacao in preparacoes
-        if avaliar_alerta_inatividade_arte(pedido=preparacao.pedido).ativo
-    )
-    if total_arquivos_ausentes:
-        resumo["por_categoria"] = [
-            {
-                "id": "ausencia-arquivo-oficial",
-                "nome": "Arquivo oficial ausente",
-                "tipo": "critico",
-                "count": total_arquivos_ausentes,
-            }
-        ]
-        resumo["total"] = total_arquivos_ausentes
-        resumo["alerta"] = True
-    elif total_inatividade:
-        resumo["por_categoria"] = [
-            {
-                "id": "inatividade-arte",
-                "nome": "Arte sem atualizacao",
-                "tipo": "pre_producao",
-                "count": total_inatividade,
-            }
-        ]
-        resumo["total"] = total_inatividade
-        resumo["alerta"] = True
-    resumo["url"] = reverse(
-        "preparacao_arte"
-        if total_arquivos_ausentes or total_inatividade
-        else "assistencia_envio"
-    )
-    return JsonResponse(resumo)
+    contrato["total"] = contrato["total_alertas"]
+    contrato["alerta"] = contrato["total_alertas"] > 0
+    contrato["url"] = reverse("preparacao_arte" if contrato["exige_acao"] else "assistencia_envio")
+    return JsonResponse(contrato)
 
 
 @require_http_methods(["GET", "POST"])

@@ -3,6 +3,8 @@ from django.shortcuts import render
 
 from apps.clientes.models import Cliente
 from apps.financeiro.models import LancamentoFinanceiro, StatusLancamento, TipoLancamento
+from apps.catalogo.permissions import operador_atual
+from apps.catalogo.widget_data import alertas_operacionais
 from apps.pedidos.models import Pedido
 
 
@@ -27,5 +29,10 @@ def home(request):
         "receitas": receitas,
         "despesas": despesas,
         "lucro": receitas - despesas,
+        "alertas_inicio": alertas_operacionais(
+            operador=operador_atual(request),
+            limite=100,
+        ),
+        "active": "home",
     }
     return render(request, "home.html", contexto)

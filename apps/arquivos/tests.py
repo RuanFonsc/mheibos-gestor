@@ -891,6 +891,12 @@ class ArquivoOficialArteTests(TestCase):
             notificacao = self.client.get("/api/notificacoes/assistencia/").json()
             self.assertEqual(notificacao["total"], 1)
             self.assertEqual(notificacao["url"], "/preparacao-arte/")
+            self.assertTrue(notificacao["exige_acao"])
+            self.assertEqual(notificacao["total_exige_acao"], 1)
+            alerta = notificacao["alertas"][0]
+            self.assertEqual(alerta["pedido_id"], self.pedido.pk)
+            self.assertFalse(alerta["pode_dispensar"])
+            self.assertIn(f"/pedidos/{self.pedido.pk}/#arquivos-oficiais", alerta["href"])
 
             resposta = self.client.post(
                 f"/pedidos/{self.pedido.pk}/arte/responder-inatividade/",

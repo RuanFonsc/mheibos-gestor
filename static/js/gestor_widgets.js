@@ -5,6 +5,15 @@
   const dockItems = document.getElementById("widgetPrazosItems");
   const dockEmpty = document.getElementById("widgetPrazosEmpty");
   const dockClose = document.getElementById("widgetPrazosClose");
+  const intervention = document.getElementById("alertasIntervencao");
+  const interventionItems = document.getElementById("alertasIntervencaoItens");
+  const interventionSummary = document.getElementById("alertasIntervencaoResumo");
+  const vivaAlertas = document.getElementById("interfaceVivaAlertas");
+  const vivaAlertasBadge = document.getElementById("interfaceVivaAlertasBadge");
+  const vivaToggleBadge = document.getElementById("interfaceVivaAlertasButtonBadge");
+  const vivaAlertasResumo = document.getElementById("interfaceVivaAlertasResumo");
+  const vivaAlertasLista = document.getElementById("interfaceVivaAlertasLista");
+  const vivaToggle = document.getElementById("interfaceVivaToggle");
   const toast = document.getElementById("notifAssistencia");
   const toastText = document.getElementById("notifAssistenciaTexto");
   const toastLink = document.getElementById("notifAssistenciaLink");
@@ -14,6 +23,7 @@
   let ocultoManualPrazos = false;
   let ocultoManualAssistencia = false;
   let ultimaNotificacaoAssistencia = "";
+  let ultimaIntervencao = "";
 
   function prefs() {
     return GestorPrefs.load();
@@ -37,35 +47,21 @@
     }
   }
 
-  function esconderDock() {
-    dock?.classList.add("hidden");
-    dock?.setAttribute("aria-hidden", "true");
+  function alternar(elemento, visivel) {
+    if (!elemento) return;
+    elemento.classList.toggle("hidden", !visivel);
+    elemento.setAttribute("aria-hidden", visivel ? "false" : "true");
   }
 
-  function mostrarDock() {
-    dock?.classList.remove("hidden");
-    dock?.setAttribute("aria-hidden", "false");
-  }
-
-  function esconderToast() {
-    toast?.classList.add("hidden");
-    toast?.setAttribute("aria-hidden", "true");
-  }
-
-  function mostrarToast() {
-    toast?.classList.remove("hidden");
-    toast?.setAttribute("aria-hidden", "false");
-  }
+  function esconderDock() { alternar(dock, false); }
+  function mostrarDock() { alternar(dock, true); }
+  function esconderToast() { alternar(toast, false); }
+  function mostrarToast() { alternar(toast, true); }
+  function esconderIntervencao() { alternar(intervention, false); }
 
   function aplicarPosicaoToast(posicao) {
     if (!toast) return;
-    toast.classList.remove(
-      "pos-superior-direita",
-      "pos-superior-esquerda",
-      "pos-inferior-direita",
-      "pos-inferior-esquerda",
-      "pos-centro"
-    );
+    toast.classList.remove("pos-superior-direita", "pos-superior-esquerda", "pos-inferior-direita", "pos-inferior-esquerda", "pos-centro");
     const classes = {
       superior_esquerda: "pos-superior-esquerda",
       inferior_direita: "pos-inferior-direita",
@@ -77,14 +73,7 @@
 
   function aplicarPosicaoDock(posicao) {
     if (!dock) return;
-    dock.classList.remove(
-      "pos-superior-direita",
-      "pos-superior-esquerda",
-      "pos-inferior-direita",
-      "pos-inferior-esquerda",
-      "pos-inferior-centro",
-      "pos-centro"
-    );
+    dock.classList.remove("pos-superior-direita", "pos-superior-esquerda", "pos-inferior-direita", "pos-inferior-esquerda", "pos-inferior-centro", "pos-centro");
     const classes = {
       superior_direita: "pos-superior-direita",
       superior_esquerda: "pos-superior-esquerda",
@@ -136,26 +125,125 @@
     mostrarDock();
   }
 
-  function renderToast(resumo) {
-    if (!toastText || !toastLink) return;
-    if (!resumo.total) {
-      esconderToast();
-      ultimaNotificacaoAssistencia = "";
+  function renderInterfaceVivaAlertas(resumo) {
+    if (!vivaAlertas || !vivaAlertasLista) return;
+    const itens = resumo.alertas || [];
+    const total = Number(resumo.total_alertas || itens.length);
+    vivaAlertasLista.innerHTML = "";
+    vivaAlertas.classList.toggle("is-empty", !total);
+    [vivaAlertasBadge, vivaToggleBadge].forEach((badge) => {
+      if (!badge) return;
+      badge.textContent = String(total);
+      badge.classList.toggle("hidden", !total);
+      badge.setAttribute("aria-hidden", total ? "false" : "true");
+    });
+    if (vivaToggle) {
+      vivaToggle.setAttribute("aria-label", total ? `Abrir Interface Viva — ${total} alerta(s)` : "Abrir Interface Viva");
+    }
+    vivaAlertasResumo.textContent = total
+      ? (total > itens.length ? `${total} alerta(s); exibindo os mais urgentes.` : `${total} alerta(s) ativo(s).`)
+      : "Nenhum alerta ativo.";
+    itens.forEach((item) => {
+      const article = document.createElement("article");
+      article.className = "interface-viva-alerta";
+      if (Number(item.nivel) >= 4) article.classList.add("is-critical");
+      const title = document.createElement("strong");
+      title.textContent = `${item.pedido_label || "Pedido"} · ${item.titulo || "Alerta operacional"}`;
+      article.appendChild(title);
+      const message = document.createElement("p");
+      message.textContent = item.mensagem || "Consulte o pedido para ver os detalhes.";
+      article.appendChild(message);
+      if (item.href) {
+        const link = document.createElement("a");
+        link.href = item.href;
+        link.textContent = item.acao_label || "Abrir alerta";
+        article.appendChild(link);
+      }
+      vivaAlertasLista.appendChild(article);
+    });
+  }
+
+  function renderIntervencao(resumo) {
+    if (!intervention || !interventionItems) return;
+    const itens = (resumo.alertas || []).filter((item) => item.exige_acao || Number(item.nivel) >= 3);
+    interventionItems.innerHTML = "";
+    if (!itens.length) {
+      esconderIntervencao();
+      ultimaIntervencao = "";
       return;
     }
-    const partes = resumo.por_categoria.map((item) => `${item.nome}: ${item.count}`);
-    const texto = `${resumo.total} pedido(s) exigem preparação de arte${partes.length ? ` (${partes.join(" · ")})` : ""}`;
+    itens.forEach((item) => {
+      const article = document.createElement("article");
+      article.className = "alerta-intervencao-item";
+      if (Number(item.nivel) >= 4) article.classList.add("is-critico");
+
+      const badge = document.createElement("span");
+      badge.className = "alerta-intervencao-badge";
+      badge.textContent = Number(item.nivel) >= 4 ? "Ação crítica necessária" : "Resposta necessária";
+      article.appendChild(badge);
+
+      const title = document.createElement("h3");
+      title.textContent = `${item.pedido_label || "Pedido"} · ${item.titulo || "Alerta operacional"}`;
+      article.appendChild(title);
+
+      const message = document.createElement("p");
+      message.textContent = item.mensagem || "Abra o pedido para consultar a ação necessária.";
+      article.appendChild(message);
+
+      const meta = document.createElement("p");
+      meta.className = "alerta-intervencao-meta";
+      meta.textContent = item.pode_dispensar === false
+        ? "Este alerta permanece visível até uma ação válida ser registrada."
+        : "A decisão deve ser registrada no pedido.";
+      article.appendChild(meta);
+
+      if (item.href) {
+        const link = document.createElement("a");
+        link.href = item.href;
+        link.className = "alerta-intervencao-action";
+        link.textContent = item.acao_label || "Abrir e responder";
+        article.appendChild(link);
+      }
+      interventionItems.appendChild(article);
+    });
+    const total = Number(resumo.total_exige_acao || itens.length);
+    interventionSummary.textContent = total > itens.length
+      ? `${total} decisão(ões) exigem resposta. Mostrando as mais urgentes.`
+      : `${total} decisão(ões) exigem resposta.`;
+    const assinatura = itens.map((item) => item.id).join("|");
+    if (assinatura !== ultimaIntervencao) {
+      ultimaIntervencao = assinatura;
+      intervention.classList.add("is-new");
+      setTimeout(() => intervention.classList.remove("is-new"), 900);
+    }
+    alternar(intervention, true);
+  }
+
+  function renderToast(resumo) {
+    if (!toastText || !toastLink) return;
+    const normais = (resumo.alertas || []).filter((item) => !item.exige_acao && Number(item.nivel) < 3);
+    if (!normais.length) {
+      esconderToast();
+      return;
+    }
+    const grupos = {};
+    normais.forEach((item) => {
+      const chave = item.categoria_nome || "Assistência";
+      grupos[chave] = (grupos[chave] || 0) + 1;
+    });
+    const partes = Object.entries(grupos).map(([nome, quantidade]) => `${nome}: ${quantidade}`);
+    const texto = `${normais.length} pedido(s) aguardam atenção${partes.length ? ` (${partes.join(" · ")})` : ""}`;
     toastText.textContent = texto;
-    toastLink.href = resumo.url || "/assistencia-envio/";
-    toast?.classList.toggle("is-alert", Boolean(resumo.alerta));
+    toastLink.href = normais[0].href || resumo.url || "/assistencia-envio/";
+    toast?.classList.remove("is-alert");
     mostrarToast();
-    const assinatura = `${resumo.total}|${partes.join("|")}|${resumo.alerta ? "1" : "0"}`;
+    const assinatura = `${normais.map((item) => item.id).join("|")}`;
     if (window.mheibosDesktop?.notificar && assinatura !== ultimaNotificacaoAssistencia) {
       ultimaNotificacaoAssistencia = assinatura;
       window.mheibosDesktop.notificar({
-        title: "Preparação de arte",
+        title: "Atenção operacional",
         body: texto,
-        url: resumo.url || "/assistencia-envio/",
+        url: toastLink.href,
       }).catch(() => {});
     }
   }
@@ -202,31 +290,38 @@
   }
 
   async function atualizarAssistencia(cicloCompleto) {
-    if (document.body?.dataset.app === "producao" || !toast) return;
+    if (!intervention && !toast) return;
     const conf = prefs().widgets.assistencia;
-    if (!conf.ativo) {
-      esconderToast();
-      return;
-    }
-    if (ocultoManualAssistencia && conf.modo !== "sempre") {
-      agendarAssistencia(conf, conf.intervalo_minutos * 60 * 1000);
-      return;
-    }
     try {
-      const categorias = prefs().widgets.prazos.categorias;
-      const dados = await fetchJson("/api/notificacoes/assistencia/" + categoriasQuery(categorias));
-      if (!dados.total) {
+      const dados = await fetchJson("/api/notificacoes/assistencia/" + categoriasQuery(prefs().widgets.prazos.categorias));
+      const exigeAcao = Boolean(dados.exige_acao);
+      if (!dados.total && !dados.total_alertas) {
+        renderInterfaceVivaAlertas({alertas: [], total_alertas: 0});
+        esconderIntervencao();
         esconderToast();
         if (cicloCompleto) agendarAssistencia(conf, conf.intervalo_minutos * 60 * 1000);
         return;
       }
-      aplicarPosicaoToast(conf.posicao);
+      renderInterfaceVivaAlertas(dados);
+      renderIntervencao(dados);
       renderToast(dados);
-      if (conf.modo === "sempre") {
+      if (exigeAcao) {
         agendarAssistencia(conf, 60 * 1000);
         return;
       }
-      if (cicloCompleto) {
+      if (!conf.ativo) {
+        esconderToast();
+        if (cicloCompleto) agendarAssistencia(conf, conf.intervalo_minutos * 60 * 1000);
+        return;
+      }
+      if (ocultoManualAssistencia && conf.modo !== "sempre") {
+        agendarAssistencia(conf, conf.intervalo_minutos * 60 * 1000);
+        return;
+      }
+      aplicarPosicaoToast(conf.posicao);
+      if (conf.modo === "sempre") {
+        agendarAssistencia(conf, 60 * 1000);
+      } else if (cicloCompleto) {
         timers.assistencia = setTimeout(() => {
           esconderToast();
           agendarAssistencia(conf, conf.intervalo_minutos * 60 * 1000);

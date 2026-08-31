@@ -1,23 +1,57 @@
 {% extends "base.html" %}
-{% block title %}Gestor Web{% endblock %}
-{% block page_title %}Gestor Web{% endblock %}
-{% block page_subtitle %}Escolha um módulo na lateral para começar.{% endblock %}
+{% block title %}Início{% endblock %}
+{% block page_title %}Início{% endblock %}
+{% block page_subtitle %}Visão geral do Gestor e das decisões operacionais que exigem sua atenção.{% endblock %}
 {% block content %}
-<div class="grid gap-4 md:grid-cols-3">
-  <a href="{% url 'dashboard' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
-    <div class="mb-4 text-[#00e5ff]"><i data-lucide="layout-dashboard"></i></div>
-    <h2 class="font-semibold">Dashboard</h2>
-    <p class="mt-2 text-sm text-[#8892b0]">Visão moderna com CRM, pedidos e fluxo de caixa.</p>
-  </a>
-  <a href="{% url 'pedido_list' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
-    <div class="mb-4 text-[#00e5ff]"><i data-lucide="clipboard-list"></i></div>
-    <h2 class="font-semibold">Gestor de Pedidos</h2>
-    <p class="mt-2 text-sm text-[#8892b0]">Lista, filtros, status, valores, itens e artes.</p>
-  </a>
-  <a href="{% url 'pedido_create' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
-    <div class="mb-4 text-[#00e5ff]"><i data-lucide="plus-circle"></i></div>
-    <h2 class="font-semibold">Novo Pedido</h2>
-    <p class="mt-2 text-sm text-[#8892b0]">Fluxo inspirado no Gestor Novo, já sem Base64.</p>
-  </a>
+<div class="page-content space-y-5">
+  <div class="grid gap-4 md:grid-cols-3">
+    <a href="{% url 'dashboard' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
+      <div class="mb-4 text-[#00e5ff]"><i data-lucide="layout-dashboard"></i></div>
+      <h2 class="font-semibold">Dashboard</h2>
+      <p class="mt-2 text-sm text-[#8892b0]">Visão moderna com CRM, pedidos e fluxo de caixa.</p>
+    </a>
+    <a href="{% url 'pedido_list' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
+      <div class="mb-4 text-[#00e5ff]"><i data-lucide="clipboard-list"></i></div>
+      <h2 class="font-semibold">Gestor de Pedidos</h2>
+      <p class="mt-2 text-sm text-[#8892b0]">Lista, filtros, status, valores, itens e artes.</p>
+    </a>
+    <a href="{% url 'pedido_create' %}" class="glass rounded-xl p-6 hover:border-[#00e5ff]">
+      <div class="mb-4 text-[#00e5ff]"><i data-lucide="plus-circle"></i></div>
+      <h2 class="font-semibold">Novo Pedido</h2>
+      <p class="mt-2 text-sm text-[#8892b0]">Fluxo inspirado no Gestor Novo, já sem Base64.</p>
+    </a>
+  </div>
+
+  {% if alertas_inicio.total_alertas %}
+    <section class="card home-alerts-panel {% if alertas_inicio.exige_acao %}is-attention{% endif %}" aria-labelledby="alertasInicioTitulo">
+      <div class="page-heading">
+        <div>
+          <span class="kicker {% if alertas_inicio.critico %}text-red-400{% endif %}">Visão operacional</span>
+          <h2 id="alertasInicioTitulo" class="section-title">Alertas e decisões necessárias</h2>
+          <p>{{ alertas_inicio.total_alertas }} alerta(s) no seu escopo autorizado. Alertas críticos permanecem até uma ação válida.</p>
+        </div>
+        <a class="btn-secondary" href="{% url 'preparacao_arte' %}">Abrir preparação de arte</a>
+      </div>
+      <div class="home-alerts-list">
+        {% for alerta in alertas_inicio.alertas %}
+          <article class="home-alert-card {% if alerta.nivel >= 4 %}is-critical{% elif alerta.exige_acao %}is-required{% endif %}" {% if alerta.exige_acao %}role="alert"{% endif %}>
+            <div>
+              <span class="home-alert-badge">{% if alerta.nivel >= 4 %}Ação crítica necessária{% elif alerta.exige_acao %}Resposta necessária{% else %}Atenção operacional{% endif %}</span>
+              <h3>{{ alerta.pedido_label }} · {{ alerta.titulo }}</h3>
+              <p>{{ alerta.mensagem }}</p>
+              {% if alerta.pode_dispensar == False %}<small>Permanece visível até uma ação válida ser registrada.</small>{% endif %}
+            </div>
+            <a class="btn-primary" href="{{ alerta.href }}">{{ alerta.acao_label }}</a>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% else %}
+    <section class="card home-empty-panel">
+      <span class="kicker">Visão operacional</span>
+      <h2 class="section-title">Nenhum alerta ativo</h2>
+      <p>Quando um pedido exigir atenção, ele aparecerá aqui e na barra lateral da Interface Viva.</p>
+    </section>
+  {% endif %}
 </div>
 {% endblock %}

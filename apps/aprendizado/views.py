@@ -83,10 +83,14 @@ def evolution_webhook(request):
     except json.JSONDecodeError:
         return JsonResponse({"ok": False, "erro": "JSON invalido"}, status=400)
     conversa = registrar_evento_evolution(payload)
+    from apps.cognicao.whatsapp import espelhar_mensagem_whatsapp
+
+    conversa_cognitiva = espelhar_mensagem_whatsapp(conversa)
     return JsonResponse(
         {
             "ok": True,
             "conversa_id": conversa.pk,
+            "contexto_cognitivo_id": conversa_cognitiva.pk,
             "total_mensagens": conversa.total_mensagens,
             "util_para_treinamento": conversa.util_para_treinamento,
         }

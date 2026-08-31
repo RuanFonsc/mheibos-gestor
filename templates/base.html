@@ -8,6 +8,7 @@
   <title>{% block title %}Gestor de Pedidos{% endblock %}</title>
   {{ preferencias_ui_json|json_script:"gestor-prefs-server" }}
   <script src="{% static 'js/gestor_prefs.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'css/interface_viva.css' %}?v=2">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -24,7 +25,7 @@
       --space-6: 24px;
       --space-8: 32px;
       --control-height: 36px;
-      --sidebar-width: 232px;
+      --sidebar-width: 14.5rem;
       --page-header-height: 60px;
       --bg-dark: #1a1d27;
       --bg-card: #22253a;
@@ -59,6 +60,7 @@
       --topbar-bg: rgba(255, 255, 255, .94);
     }
     * { box-sizing: border-box; }
+    html { height: 100%; overflow: hidden; }
     body {
       margin: 0;
       background: var(--bg-dark);
@@ -99,7 +101,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 4px 6px 8px;
+      padding: 4px 0.375rem 8px;
       position: relative;
       z-index: 1;
     }
@@ -112,15 +114,15 @@
       justify-content: center;
     }
     .brand-mark img { width: 100%; height: 64px; object-fit: contain; object-position: center; display: block; }
-    .brand-mark-fallback { max-width: 88px; margin: 0 auto; }
+    .brand-mark-fallback { max-width: 5.5rem; margin: 0 auto; }
     .brand-mark-fallback::before,
     .brand-mark-fallback::after {
       content: "";
       position: absolute;
       top: 0;
       width: 48px;
-      height: 50px;
-      border-radius: 999px;
+      height: 3.125rem;
+      border-radius: 62.4375rem;
       background: white;
     }
     .brand-mark-fallback::before { left: 0; }
@@ -174,7 +176,7 @@
       text-transform: uppercase;
       white-space: nowrap;
     }
-    .user-pill { border: 1px solid var(--border-light); background: var(--bg-card); border-radius: 12px; color: var(--text-primary); padding: 10px 14px; font-family: "Segoe UI", system-ui, sans-serif; font-weight: 900; display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
+    .user-pill { border: 1px solid var(--border-light); background: var(--bg-card); border-radius: 12px; color: var(--text-primary); padding: 10px 14px; font-family: "Segoe UI", system-ui, sans-serif; font-weight: 900; display: inline-flex; align-items: center; gap: 0.5625rem; text-decoration: none; }
     .tabbar { min-height: 48px; display: flex; align-items: center; border-bottom: 1px solid var(--border); background: var(--workspace-bg); padding: var(--space-2) var(--space-5); gap: var(--space-2); overflow-x: auto; }
     .tabbar:empty { display: none; }
     .top-tab {
@@ -199,10 +201,10 @@
     .panel { background: transparent; border: 0; }
     .card, .glass { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--card-radius); color: var(--text-primary); box-shadow: var(--card-shadow); }
     .page-hero { position: relative; overflow: hidden; border-color: var(--border-accent); background: var(--panel-gradient); }
-    .page-hero::after { content: ""; position: absolute; inset: auto 12% -44px; height: 88px; border-radius: 50%; background: rgba(0, 229, 255, .12); filter: blur(30px); pointer-events: none; }
+    .page-hero::after { content: ""; position: absolute; inset: auto 12% -44px; height: 5.5rem; border-radius: 50%; background: rgba(0, 229, 255, .12); filter: blur(30px); pointer-events: none; }
     .page-hero > * { position: relative; z-index: 1; }
     .chart-card { position: relative; overflow: hidden; border-color: var(--border-accent); background: var(--panel-gradient); }
-    .chart-card::after { content: ""; position: absolute; inset: auto 14% -38px; height: 76px; border-radius: 50%; background: rgba(0, 229, 255, .10); filter: blur(28px); pointer-events: none; }
+    .chart-card::after { content: ""; position: absolute; inset: auto 14% -38px; height: 4.75rem; border-radius: 50%; background: rgba(0, 229, 255, .10); filter: blur(28px); pointer-events: none; }
     .chart-card > * { position: relative; z-index: 1; }
     .subtle-panel { border: 1px solid var(--border); border-radius: 8px; background: var(--bg-input); }
     .confirm-backdrop {
@@ -217,27 +219,27 @@
     }
     .confirm-backdrop.is-open { display: flex; }
     .confirm-modal {
-      width: min(360px, 100%);
+      width: min(22.5rem, 100%);
       border: 1px solid var(--border-light);
       border-radius: 12px;
       background: var(--bg-card);
       color: var(--text-primary);
-      box-shadow: 0 24px 80px rgba(0, 0, 0, .36);
+      box-shadow: 0 24px 5rem rgba(0, 0, 0, .36);
       padding: 18px;
     }
     .confirm-modal h3 { margin: 0; font-size: 18px; font-weight: 900; }
     .confirm-modal p { margin: 10px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.4; }
     .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
     .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-    .page-heading p { margin: 6px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
+    .page-heading p { margin: 0.375rem 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
     .page-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
-    .kicker { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 8px; color: var(--accent-2); font-size: 11px; font-weight: 900; letter-spacing: 1.2px; text-transform: uppercase; }
-    .metric-card { position: relative; overflow: hidden; min-height: 94px; padding: 16px; }
+    .kicker { display: inline-flex; align-items: center; gap: 0.4375rem; margin-bottom: 8px; color: var(--accent-2); font-size: 11px; font-weight: 900; letter-spacing: 1.2px; text-transform: uppercase; }
+    .metric-card { position: relative; overflow: hidden; min-height: 5.875rem; padding: 16px; }
     .metric-card p { margin: 0; color: var(--text-secondary); font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
-    .metric-card strong { display: block; margin-top: 9px; font-size: 26px; line-height: 1; }
+    .metric-card strong { display: block; margin-top: 0.5625rem; font-size: 1.625rem; line-height: 1; }
     .metric-card span { display: inline-block; margin-top: 8px; color: var(--text-secondary); font-size: 12px; }
     .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
-    .filter-grid { display: grid; grid-template-columns: minmax(0, 1fr) 240px auto auto; gap: var(--space-3); padding: var(--space-4); margin-bottom: var(--space-4); }
+    .filter-grid { display: grid; grid-template-columns: minmax(0, 1fr) 15rem auto auto; gap: var(--space-3); padding: var(--space-4); margin-bottom: var(--space-4); }
     .view-toggle { display: flex; min-height: var(--control-height); overflow: hidden; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); }
     .view-toggle a { width: auto; min-width: var(--control-height); padding: 0 var(--space-2); display: inline-flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 12px; font-weight: 700; text-decoration: none; }
     .view-toggle a + a { border-left: 1px solid var(--border-light); }
@@ -250,23 +252,23 @@
     .order-card-head, .order-card-identity, .order-card-meta, .order-card-foot { display: flex; align-items: center; gap: var(--space-3); }
     .order-card-head { align-items: flex-start; justify-content: space-between; }
     .order-card-identity { min-width: 0; align-items: flex-start; }
-    .order-card-title { margin: var(--space-3) 0 var(--space-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
+    .order-card-title { margin: var(--space-3) 0 var(--space-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.0625rem; }
     .order-card-subtitle { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
-    .order-card-value { margin: 0; color: var(--success); font-size: 17px; font-weight: 700; text-align: right; white-space: nowrap; }
+    .order-card-value { margin: 0; color: var(--success); font-size: 1.0625rem; font-weight: 700; text-align: right; white-space: nowrap; }
     .order-card-date { margin: var(--space-1) 0 0; color: var(--text-secondary); font-size: 12px; text-align: right; }
     .order-card-foot { justify-content: space-between; border-top: 1px solid var(--border); padding-top: var(--space-3); color: var(--text-secondary); font-size: 12px; }
     .order-card-meta { min-width: 0; flex-wrap: wrap; }
     .order-card-actions { margin-left: auto; }
-    .order-id { border-radius: 6px; background: var(--bg-sidebar); padding: var(--space-1) var(--space-2); color: var(--text-secondary); font-size: 12px; }
-    .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--space-5); align-items: start; }
+    .order-id { border-radius: 0.375rem; background: var(--bg-sidebar); padding: var(--space-1) var(--space-2); color: var(--text-secondary); font-size: 12px; }
+    .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 21.25rem; gap: var(--space-5); align-items: start; }
     .content-stack { display: grid; gap: var(--space-5); }
     .summary-card { padding: var(--space-5); }
     .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
     .summary-field { min-width: 0; }
-    .summary-field p { margin: 0; color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+    .summary-field p { margin: 0; color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .0.375rem; text-transform: uppercase; }
     .summary-field strong { display: block; margin-top: var(--space-1); overflow-wrap: anywhere; }
     .summary-grid > div { min-width: 0; }
-    .summary-grid > div > p { margin: 0; color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+    .summary-grid > div > p { margin: 0; color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .0.375rem; text-transform: uppercase; }
     .summary-grid > div > strong { display: block; margin-top: var(--space-1); overflow-wrap: anywhere; }
     .flow-filter { display: grid; gap: var(--space-4); padding: var(--space-4); }
     .flow-search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-3); }
@@ -275,19 +277,19 @@
     .choice-chip { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-sidebar); padding: var(--space-2) var(--space-3); font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; }
     .flow-summary { padding: var(--space-4); color: var(--text-secondary); }
     .flow-summary-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-    .file-drop { display: flex; min-height: 80px; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-light); border-radius: 8px; background: var(--bg-card); padding: var(--space-3); text-align: center; }
+    .file-drop { display: flex; min-height: 5rem; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-light); border-radius: 8px; background: var(--bg-card); padding: var(--space-3); text-align: center; }
     .danger-glow-card {
       position: relative;
       overflow: hidden;
       border: 1px solid rgba(255, 75, 75, .42);
       background: radial-gradient(circle at 16% 0%, rgba(255, 75, 75, .24), transparent 32%), linear-gradient(145deg, rgba(58, 24, 32, .97), rgba(34, 20, 31, .98));
-      box-shadow: inset 0 0 28px rgba(255, 75, 75, .05), 0 14px 34px rgba(0, 0, 0, .16);
+      box-shadow: inset 0 0 28px rgba(255, 75, 75, .05), 0 14px 2.125rem rgba(0, 0, 0, .16);
     }
     .danger-glow-card::after {
       content: "";
       position: absolute;
       inset: auto 12% -42px;
-      height: 88px;
+      height: 5.5rem;
       border-radius: 50%;
       background: rgba(255, 75, 75, .22);
       filter: blur(30px);
@@ -300,13 +302,13 @@
       overflow: hidden;
       border: 1px solid rgba(172, 102, 255, .46);
       background: radial-gradient(circle at 16% 0%, rgba(172, 102, 255, .26), transparent 32%), linear-gradient(145deg, rgba(44, 30, 72, .98), rgba(31, 24, 54, .98));
-      box-shadow: inset 0 0 28px rgba(172, 102, 255, .06), 0 14px 34px rgba(0, 0, 0, .16);
+      box-shadow: inset 0 0 28px rgba(172, 102, 255, .06), 0 14px 2.125rem rgba(0, 0, 0, .16);
     }
     .ready-glow-card::after {
       content: "";
       position: absolute;
       inset: auto 12% -42px;
-      height: 88px;
+      height: 5.5rem;
       border-radius: 50%;
       background: rgba(172, 102, 255, .24);
       filter: blur(30px);
@@ -314,19 +316,19 @@
     }
     .ready-glow-card > * { position: relative; z-index: 1; }
     html[data-theme="light"] .ready-glow-card { background: radial-gradient(circle at 16% 0%, rgba(172,102,255,.18), transparent 32%), #f5f0ff; }
-    .status-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; border-radius: 999px; padding: 0 10px; font-size: 11px; font-weight: 900; text-transform: uppercase; white-space: nowrap; }
+    .status-pill { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 1.625rem; border-radius: 62.4375rem; padding: 0 10px; font-size: 11px; font-weight: 900; text-transform: uppercase; white-space: nowrap; }
     .status-pill.is-work { background: rgba(255, 179, 71, .14); color: var(--warning); }
     .status-pill.is-ok { background: rgba(0, 200, 150, .14); color: var(--success); }
     .status-pill.is-danger { background: rgba(255, 75, 75, .14); color: var(--danger); }
     .status-pill.is-info { background: rgba(0, 229, 255, .12); color: var(--accent-2); }
-    .empty-state { display: grid; place-items: center; min-height: 180px; border: 1px dashed var(--border-light); border-radius: 8px; background: color-mix(in srgb, var(--bg-card) 78%, transparent); padding: 28px; text-align: center; color: var(--text-secondary); }
-    .empty-state strong { display: block; color: var(--text-primary); font-size: 16px; margin-bottom: 6px; }
+    .empty-state { display: grid; place-items: center; min-height: 11.25rem; border: 1px dashed var(--border-light); border-radius: 8px; background: color-mix(in srgb, var(--bg-card) 78%, transparent); padding: 28px; text-align: center; color: var(--text-secondary); }
+    .empty-state strong { display: block; color: var(--text-primary); font-size: 16px; margin-bottom: 0.375rem; }
     .form-section { margin-top: 16px; padding: 18px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
     .form-section:first-of-type { margin-top: 0; }
     .form-section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
     .form-section-title h2, .form-section-title h3 { margin: 0; font-size: 15px; font-weight: 900; text-transform: uppercase; }
-    .form-section-title p { margin: 3px 0 0; color: var(--text-secondary); font-size: 12px; }
-    .field-help { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.35; }
+    .form-section-title p { margin: 0.1875rem 0 0; color: var(--text-secondary); font-size: 12px; }
+    .field-help { margin-top: 0.375rem; color: var(--text-secondary); font-size: 12px; line-height: 1.35; }
     .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
     .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
     .data-table thead { background: rgba(16, 19, 31, .62); color: var(--text-secondary); }
@@ -338,7 +340,7 @@
     textarea { min-height: 52px; resize: vertical; }
     input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(75, 102, 255, .18); }
     input[type="checkbox"] { min-height: 16px; width: 16px; accent-color: var(--accent); }
-    label, .field-label { display: block; margin-bottom: 5px; color: #9aa7d3; font-size: 11px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; }
+    label, .field-label { display: block; margin-bottom: 0.3125rem; color: #9aa7d3; font-size: 11px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; }
     .btn-primary, .btn-secondary, .btn-danger { min-height: calc(var(--control-height) * var(--ui-scale)); border-radius: 8px; border: 1px solid transparent; padding: 0 var(--space-3); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); text-decoration: none; cursor: pointer; white-space: nowrap; }
     .btn-primary { background: var(--accent); color: white; }
     .btn-secondary { background: var(--bg-input); border-color: var(--border-light); color: var(--text-primary); }
@@ -360,8 +362,8 @@
     .bulk-select {
       display: inline-grid;
       place-items: center;
-      width: 34px;
-      height: 34px;
+      width: 2.125rem;
+      height: 2.125rem;
       border: 1px solid var(--border-light);
       border-radius: 10px;
       background: rgba(16, 19, 31, .86);
@@ -398,7 +400,7 @@
     .widget-prazos-items {
       display: flex;
       gap: 8px;
-      max-width: min(72vw, 760px);
+      max-width: min(72vw, 47.5rem);
       overflow-x: auto;
       overflow-y: hidden;
       scrollbar-width: none;
@@ -433,13 +435,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 9px;
+      font-size: 0.5625rem;
       font-weight: 800;
       text-align: center;
       padding: 2px;
       color: var(--text-primary);
     }
-    .widget-prazo-label { font-size: 9px; line-height: 1; text-align: center; }
+    .widget-prazo-label { font-size: 0.5625rem; line-height: 1; text-align: center; }
     .widget-prazos-close,
     .notif-assistencia-close {
       width: 28px;
@@ -456,7 +458,7 @@
       top: 18px;
       right: 18px;
       z-index: 99;
-      width: min(420px, calc(100vw - 32px));
+      width: min(26.25rem, calc(100vw - 32px));
       border: 1px solid var(--border-light);
       border-radius: 14px;
       background: rgba(21, 24, 35, .96);
@@ -477,20 +479,21 @@
     .notif-assistencia p { margin: 0; color: var(--text-primary); font-weight: 700; line-height: 1.35; }
     .notif-assistencia a { color: var(--accent-2); font-weight: 800; text-decoration: none; }
     .hidden { display: none !important; }
-    @media (max-width: 1200px) {
+    .offline-banner { position: fixed; z-index: 1000; top: 0; left: 50%; transform: translateX(-50%); background: #ffb347; color: #171a29; padding: 0.3125rem 18px; border-radius: 0 0 8px 8px; font-weight: 900; text-decoration: none; }
+    @media (max-width: 75rem) {
       .app-shell { width: calc(100vw - 16px); margin: 8px auto; height: calc(100vh - 16px); border-radius: 18px; }
       .workspace { padding: 18px 16px 24px; }
       .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .filter-grid { grid-template-columns: minmax(0, 1fr) 200px auto auto; }
+      .filter-grid { grid-template-columns: minmax(0, 1fr) 12.5rem auto auto; }
       .order-grid { grid-template-columns: 1fr; }
       .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
-    @media (max-width: 980px) {
+    @media (max-width: 61.25rem) {
       body { overflow: auto; }
       .app-shell { grid-template-columns: 1fr; height: auto; min-height: 100vh; margin: 0; border-radius: 0; }
       .sidebar { display: none; }
       .main { height: auto; min-height: 100vh; }
-      .top-tab { min-width: 130px; }
+      .top-tab { min-width: 8.125rem; }
       .top-meta { display: none; }
       .topbar { padding: 0 16px; }
       .title-row h1 { font-size: 18px; }
@@ -501,17 +504,17 @@
       .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .flow-filter-groups { grid-template-columns: 1fr; }
     }
-    @media (max-width: 680px) {
+    @media (max-width: 42.5rem) {
       .filter-grid, .summary-grid, .flow-search { grid-template-columns: 1fr; }
       .order-card-head, .order-card-foot { align-items: stretch; flex-direction: column; }
       .order-card-value, .order-card-date { text-align: left; }
     }
-  </style>
+    </style>
   {% block head %}{% endblock %}
 </head>
 <body data-app="{% if modo_producao %}producao{% else %}gestor{% endif %}">
   {% if runtime_offline %}
-    <a href="{% url 'sincronizacao_painel' %}" style="position:fixed;z-index:1000;top:0;left:50%;transform:translateX(-50%);background:#ffb347;color:#171a29;padding:5px 18px;border-radius:0 0 8px 8px;font-weight:900;text-decoration:none;">CENTRAL INDISPONIVEL · MODO OFFLINE RESTRITO · {{ sincronizacao_pendentes }} PENDENTE(S)</a>
+    <a href="{% url 'sincronizacao_painel' %}" class="offline-banner">CENTRAL INDISPONIVEL · MODO OFFLINE RESTRITO · {{ sincronizacao_pendentes }} PENDENTE(S)</a>
   {% endif %}
   <div class="app-shell">
     <aside class="sidebar">
@@ -523,7 +526,10 @@
         </div>
       </div>
       <nav class="side-nav">
-        {% if not modo_producao %}<a href="{% url 'pedido_create' %}" class="side-link {% if active == 'novo_pedido' or active == 'pedidos' %}active{% endif %}">
+        {% if not modo_producao %}<a href="{% url 'home' %}" class="side-link {% if active == 'home' %}active{% endif %}">
+          <i data-lucide="home" class="h-5 w-5"></i> Início
+        </a>
+        <a href="{% url 'pedido_create' %}" class="side-link {% if active == 'novo_pedido' or active == 'pedidos' %}active{% endif %}">
           <i data-lucide="messages-square" class="h-5 w-5"></i> Gestor de Pedidos
         </a>
         <a href="{% url 'atendimento_list' %}" class="side-link {% if active == 'atendimento' %}active{% endif %}">
@@ -550,6 +556,9 @@
             <i data-lucide="package-check" class="h-5 w-5"></i> Entregas
           </a>
         </div>
+        <a href="{% url 'whatsapp_home' %}" class="side-link {% if active == 'whatsapp' %}active{% endif %}">
+          <i data-lucide="message-circle" class="h-5 w-5"></i> WhatsApp
+        </a>
         <a href="{% url 'aprendizado_home' %}" class="side-link {% if active == 'aprendizado' %}active{% endif %}">
           <i data-lucide="brain-circuit" class="h-5 w-5"></i> Mheibos Aprendizado
         </a>
@@ -561,6 +570,9 @@
         </a>
         <a href="{% url 'missoes_lista' %}" class="side-link {% if active == 'missoes' %}active{% endif %}">
           <i data-lucide="target" class="h-5 w-5"></i><span>Missões</span>
+        </a>
+        <a href="{% url 'cognicao_assistente' %}" class="side-link {% if active == 'cognicao' %}active{% endif %}">
+          <i data-lucide="sparkles" class="h-5 w-5"></i><span>Mheibos</span>
         </a>
         {% if operador_atual.is_admin %}<a href="{% url 'auditoria_lista' %}" class="side-link {% if active == 'auditoria' %}active{% endif %}">
           <i data-lucide="history" class="h-5 w-5"></i> Auditoria
@@ -634,6 +646,32 @@
     </div>
   {% endif %}
 
+  <section id="alertasIntervencao" class="alertas-intervencao hidden" role="alert" aria-live="assertive" aria-atomic="false" aria-hidden="true" aria-labelledby="alertasIntervencaoTitulo">
+    <div class="alertas-intervencao-header">
+      <div>
+        <strong id="alertasIntervencaoTitulo">Decisão necessária</strong>
+        <p id="alertasIntervencaoResumo">Há uma decisão operacional pendente.</p>
+      </div>
+    </div>
+    <div id="alertasIntervencaoItens" class="alerta-intervencao-list"></div>
+  </section>
+
+  {% if not modo_producao %}
+    <button id="interfaceVivaToggle" class="interface-viva-toggle" type="button" aria-label="Abrir Interface Viva" aria-expanded="false" title="Falar com Mheibos">
+      <i data-lucide="sparkles" class="h-6 w-6"></i><span id="interfaceVivaAlertasButtonBadge" class="interface-viva-alert-badge hidden" aria-hidden="true">0</span>
+    </button>
+    <aside id="interfaceVivaDrawer" class="interface-viva-drawer" aria-label="Assistência do Mheibos" aria-hidden="true">
+      <header class="interface-viva-header"><div><span class="kicker">Interface Viva</span><h2>Mheibos</h2><p>Ajuda contextual, com ações confirmáveis.</p></div><button id="interfaceVivaClose" class="interface-viva-close" type="button" aria-label="Fechar">×</button></header>
+      <section id="interfaceVivaAlertas" class="interface-viva-alertas" aria-labelledby="interfaceVivaAlertasTitulo">
+        <div class="interface-viva-alertas-heading"><strong id="interfaceVivaAlertasTitulo">Alertas operacionais</strong><span id="interfaceVivaAlertasBadge" class="interface-viva-alertas-count">0</span></div>
+        <p id="interfaceVivaAlertasResumo">Nenhum alerta ativo.</p>
+        <div id="interfaceVivaAlertasLista" class="interface-viva-alertas-list"></div>
+      </section>
+      <div id="interfaceVivaMessages" class="interface-viva-messages" aria-live="polite"><article class="interface-viva-message mheibos"><p>Posso localizar telas, destacar campos, pesquisar pedidos e preparar dados para você revisar.</p></article></div>
+      <div id="interfaceVivaStatus" class="text-xs text-[var(--text-secondary)]" aria-live="polite"></div>
+      <form id="interfaceVivaForm" class="interface-viva-form"><textarea id="interfaceVivaInput" maxlength="4000" placeholder="Ex.: onde informo a data de entrega?" required></textarea><button class="btn-primary" type="submit">Enviar</button></form>
+    </aside>
+  {% endif %}
   <div id="gestorConfirmModal" class="confirm-backdrop" aria-hidden="true">
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="gestorConfirmTitle">
       <h3 id="gestorConfirmTitle">Deseja salvar?</h3>
@@ -648,7 +686,7 @@
   <script>lucide.createIcons();</script>
   <script src="{% static 'js/gestor_widgets.js' %}"></script>
   <script>
-    const GestorConfirm = (() => {
+    const GestorConfirm = window.GestorConfirm = (() => {
       const modal = document.getElementById("gestorConfirmModal");
       const title = document.getElementById("gestorConfirmTitle");
       const message = document.getElementById("gestorConfirmMessage");
@@ -709,7 +747,7 @@
 
     document.addEventListener("click", async (event) => {
       const button = event.target instanceof HTMLElement ? event.target.closest("button") : null;
-      if (!button || button.type === "submit" || button.dataset.confirmedClick === "true") return;
+      if (!button || button.type === "submit" || button.dataset.confirmedClick === "true" || button.closest(".interface-viva-action")) return;
       if (button.closest("#gestorConfirmModal") || button.closest(".modal-backdrop") || button.dataset.openModal) return;
       const text = (button.textContent || "").trim().toLowerCase();
       if (!/\bsalvar\b/.test(text)) return;
@@ -821,6 +859,7 @@
       sync();
     });
   </script>
+  <script src="{% static 'js/interface_viva.js' %}?v=7"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

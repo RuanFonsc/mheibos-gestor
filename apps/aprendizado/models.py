@@ -35,6 +35,9 @@ class ConversaAprendizado(models.Model):
     tem_sinal_pedido = models.BooleanField(default=False)
     util_para_treinamento = models.BooleanField(default=False)
     revisado = models.BooleanField(default=False)
+    favorita = models.BooleanField(default=False)
+    arquivada = models.BooleanField(default=False)
+    lida_em = models.DateTimeField(blank=True, null=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -150,3 +153,21 @@ class MemoriaOperacional(models.Model):
 
     def __str__(self):
         return f"{self.operador} · {self.chave}"
+
+class EtiquetaConversaWhatsApp(models.Model):
+    conversa = models.ForeignKey(
+        ConversaAprendizado,
+        on_delete=models.CASCADE,
+        related_name="etiquetas",
+    )
+    nome = models.CharField(max_length=48)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["nome", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["conversa", "nome"],
+                name="aprendizado_etiqueta_conversa_nome_uniq",
+            )
+        ]

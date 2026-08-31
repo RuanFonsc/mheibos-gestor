@@ -1,0 +1,76 @@
+.interface-viva-toggle { position: fixed; right: 28px; bottom: 28px; z-index: 75; display: grid; width: 52px; height: 52px; place-items: center; border: 0; border-radius: 50%; background: var(--accent); color: #fff; box-shadow: 0 12px 30px rgba(75,102,255,.42); cursor: pointer; }
+.interface-viva-toggle.interface-viva-has-notification { box-shadow: 0 0 0 5px rgba(255,179,71,.22), 0 12px 30px rgba(75,102,255,.42); }
+.interface-viva-drawer { position: fixed; z-index: 80; top: 12px; right: 12px; bottom: 12px; width: min(calc(400px + var(--space-5)), calc(100vw - 24px)); display: grid; grid-template-rows: auto auto minmax(0,1fr) auto auto; gap: 12px; padding: 16px; border: 1px solid var(--border-light); border-radius: 12px; background: var(--bg-card); box-shadow: -18px 0 calc(44px + 2px) rgba(0,0,0,.32); transform: translateX(calc(100% + 24px)); transition: transform .22s ease; }
+.interface-viva-drawer.is-open { transform: translateX(0); }
+.interface-viva-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.interface-viva-header h2 { margin: 0; font-size: calc(16px + 1px); }
+.interface-viva-header p { margin: 4px 0 0; color: var(--text-secondary); font-size: 12px; }
+.interface-viva-close { border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-primary); width: 32px; height: 32px; cursor: pointer; }
+.interface-viva-messages { min-height: 0; overflow: auto; display: grid; align-content: start; gap: 10px; padding-right: 4px; }
+.interface-viva-message { max-width: 92%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--workspace-bg); }
+.interface-viva-message.user { justify-self: end; background: var(--accent); border-color: transparent; color: #fff; }
+.interface-viva-message p { margin: 0; white-space: pre-wrap; line-height: 1.4; }
+.interface-viva-action { display: block; width: 100%; margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(0,229,255,.38); border-radius: 8px; background: rgba(0,229,255,.10); color: var(--text-primary); text-align: left; cursor: pointer; font-weight: 700; }
+.interface-viva-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.interface-viva-form textarea { min-height: 64px; resize: vertical; }
+.interface-viva-highlight { outline: calc(2px + 1px) solid var(--accent-2) !important; outline-offset: calc(2px + 1px); box-shadow: 0 0 0 calc(4px + 2px + 1px) rgba(0,229,255,.16) !important; }
+.alertas-intervencao {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 97;
+  width: min(30rem, calc(100vw - 36px));
+  max-height: min(78vh, 44rem);
+  overflow: auto;
+  padding: 14px;
+  border: 2px solid var(--danger);
+  border-radius: 14px;
+  background: rgba(58, 24, 32, .98);
+  color: var(--text-primary);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, .46);
+}
+html[data-theme="light"] .alertas-intervencao { background: #fff1f2; }
+.alertas-intervencao.is-new { animation: alerta-intervencao-pulse .9s ease-out; }
+.alertas-intervencao-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.alertas-intervencao-header strong { display: block; font-size: 1rem; line-height: 1.2; }
+.alertas-intervencao-header p { margin: 4px 0 0; color: var(--text-secondary); font-size: .75rem; }
+.alerta-intervencao-list { display: grid; gap: 10px; }
+.alerta-intervencao-item { padding: 11px; border: 1px solid rgba(255, 179, 71, .55); border-radius: 10px; background: rgba(23, 26, 41, .68); }
+.alerta-intervencao-item.is-critico { border-color: var(--danger); background: rgba(58, 24, 32, .72); }
+html[data-theme="light"] .alerta-intervencao-item { background: rgba(255, 255, 255, .78); }
+.alerta-intervencao-badge { display: inline-flex; margin-bottom: 5px; color: #ffd1d1; font-size: .65rem; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+html[data-theme="light"] .alerta-intervencao-badge { color: #b42318; }
+.alerta-intervencao-item h3 { margin: 0; font-size: .93rem; line-height: 1.3; }
+.alerta-intervencao-item p { margin: 6px 0 0; font-size: .78rem; line-height: 1.4; }
+.alerta-intervencao-meta { color: var(--text-secondary); }
+.alerta-intervencao-action { display: inline-flex; align-items: center; min-height: 34px; margin-top: 10px; border-radius: 8px; background: var(--accent); color: #fff; padding: 0 11px; font-size: .78rem; font-weight: 900; text-decoration: none; }
+@keyframes alerta-intervencao-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 75, 75, .55), 0 20px 52px rgba(0,0,0,.46); } 100% { box-shadow: 0 0 0 12px rgba(255, 75, 75, 0), 0 20px 52px rgba(0,0,0,.46); } }
+@media (prefers-reduced-motion: reduce) { .alertas-intervencao.is-new { animation: none; } }
+@media (max-width: calc(320px + 320px + 40px)) { .interface-viva-toggle { right: 18px; bottom: 18px; } .interface-viva-drawer { top: calc(4px + 2px); right: calc(4px + 2px); bottom: calc(4px + 2px); width: calc(100vw - 12px); } }
+
+.interface-viva-alert-badge { position: absolute; top: -5px; right: -5px; display: grid; min-width: 20px; height: 20px; place-items: center; border: 2px solid var(--bg-dark); border-radius: 999px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 900; }
+.interface-viva-alertas { min-height: 0; max-height: min(34vh, 300px); overflow: auto; border: 1px solid rgba(255, 179, 71, .55); border-radius: 10px; background: color-mix(in srgb, var(--workspace-bg) 80%, transparent); padding: 10px; }
+.interface-viva-alertas-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.interface-viva-alertas-heading strong { font-size: 12px; }
+.interface-viva-alertas-count { display: inline-grid; min-width: 22px; height: 22px; place-items: center; border-radius: 999px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 900; }
+.interface-viva-alertas > p { margin: 4px 0 8px; color: var(--text-secondary); font-size: 11px; }
+.interface-viva-alertas-list { display: grid; gap: 8px; }
+.interface-viva-alerta { border-left: 3px solid var(--warning); border-radius: 7px; background: var(--bg-card); padding: 8px; }
+.interface-viva-alerta.is-critical { border-left-color: var(--danger); }
+.interface-viva-alerta strong { display: block; font-size: 11px; line-height: 1.3; }
+.interface-viva-alerta p { margin: 4px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.35; }
+.interface-viva-alerta a { display: inline-flex; margin-top: 7px; color: var(--accent-2); font-size: 11px; font-weight: 800; text-decoration: none; }
+.interface-viva-alertas.is-empty { border-color: var(--border); }
+.home-alerts-panel { padding: var(--space-5); }
+.home-alerts-panel.is-attention { border-color: rgba(255, 75, 75, .55); }
+.home-alerts-list { display: grid; gap: 10px; }
+.home-alert-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid rgba(255, 179, 71, .5); border-radius: 10px; background: var(--workspace-bg); padding: 14px; }
+.home-alert-card.is-critical { border: 2px solid var(--danger); background: rgba(58, 24, 32, .72); }
+.home-alert-card.is-required { border-color: var(--warning); }
+.home-alert-card h3 { margin: 2px 0 0; font-size: 14px; line-height: 1.3; }
+.home-alert-card p { margin: 5px 0 0; color: var(--text-secondary); font-size: 12px; }
+.home-alert-card small { display: block; margin-top: 5px; color: var(--text-secondary); font-size: 11px; }
+.home-alert-badge { color: var(--warning); font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.home-alert-card.is-critical .home-alert-badge { color: #ffd1d1; }
+.home-empty-panel { padding: var(--space-5); }
+@media (max-width: 42.5rem) { .home-alert-card { align-items: stretch; flex-direction: column; } }
