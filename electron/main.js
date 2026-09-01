@@ -6,6 +6,7 @@ const path = require("path");
 const { fileURLToPath } = require("url");
 const { decryptSecret, protectConfigSecrets } = require("./secure_config");
 const { offlineRuntimeConfig, readOfflineIdentity } = require("./offline_runtime");
+const { resolveRemoteBaseUrl } = require("./runtime_profile");
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.MHEIBOS_PORT || 8765);
@@ -25,7 +26,11 @@ function readClientConfig() {
   return {};
 }
 const CLIENT_CONFIG = readClientConfig();
-const REMOTE_BASE_URL = process.env.MHEIBOS_BASE_URL || CLIENT_CONFIG.serverUrl || "";
+const REMOTE_BASE_URL = resolveRemoteBaseUrl({
+  appName: app.getName(),
+  envBaseUrl: process.env.MHEIBOS_BASE_URL,
+  clientConfig: CLIENT_CONFIG,
+});
 const REMOTE_CLIENT = Boolean(REMOTE_BASE_URL);
 const REMOTE_URL = REMOTE_BASE_URL.replace(/\/$/, "");
 const LOCAL_PORT = REMOTE_CLIENT ? Number(process.env.MHEIBOS_OFFLINE_PORT || 8766) : PORT;

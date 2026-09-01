@@ -9,6 +9,15 @@
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || "";
   let conversationId = "";
 
+  function registrarAtividade(tipo, alvoTipo = "", alvoId = "", dados = {}) {
+    fetch("/cognicao/atividade/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+      credentials: "same-origin",
+      body: JSON.stringify({ tipo, alvo_tipo: alvoTipo, alvo_id: alvoId, dados }),
+    }).catch(() => {});
+  }
+
   const open = () => { toggle?.classList.remove("interface-viva-has-notification"); drawer?.classList.add("is-open"); drawer?.setAttribute("aria-hidden", "false"); toggle?.setAttribute("aria-expanded", "true"); input?.focus(); };
   const hide = () => { drawer?.classList.remove("is-open"); drawer?.setAttribute("aria-hidden", "true"); toggle?.setAttribute("aria-expanded", "false"); };
   toggle?.addEventListener("click", open); close?.addEventListener("click", hide);
@@ -19,10 +28,45 @@
     button.addEventListener("click", () => executar(command));
     return button;
   }
-  function message(text, role, commands = []) {
+  function feedbackButton(interventionId, response) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "interface-viva-feedback";
+    button.textContent = response === "aceitar" ? "Entendi" : response === "resolver" ? "Marcar como tratada" : "Não agora";
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        const result = await fetch(`/cognicao/assistente/intervencoes/${interventionId}/resposta/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+          credentials: "same-origin",
+          body: JSON.stringify({ resposta: response }),
+        });
+        const data = await result.json();
+        if (!result.ok) throw new Error(data.erro || "Não foi possível registrar a resposta.");
+        button.parentElement?.querySelectorAll("button").forEach((item) => { item.disabled = true; });
+        button.parentElement?.setAttribute("aria-label", "Resposta da intervenção registrada");
+        status.textContent = "Resposta registrada.";
+      } catch (error) {
+        button.disabled = false;
+        status.textContent = error.message;
+      }
+    });
+    return button;
+  }
+  function message(text, role, commands = [], interventionId = null) {
     const item = document.createElement("article"); item.className = `interface-viva-message ${role}`;
     const body = document.createElement("p"); body.textContent = text; item.appendChild(body);
     commands.forEach((command) => item.appendChild(actionButton(command.rotulo || "Executar", command)));
+    if (interventionId) {
+      const feedback = document.createElement("div");
+      feedback.className = "interface-viva-feedback-list";
+      feedback.setAttribute("aria-label", "Resposta à intervenção");
+      feedback.appendChild(feedbackButton(interventionId, "aceitar"));
+      feedback.appendChild(feedbackButton(interventionId, "resolver"));
+      feedback.appendChild(feedbackButton(interventionId, "ignorar"));
+      item.appendChild(feedback);
+    }
     messages?.appendChild(item); messages?.scrollTo({ top: messages.scrollHeight, behavior: "smooth" });
   }
   function selectorFor(command) {
@@ -91,7 +135,7 @@
       if (!response.ok) return;
       const data = await response.json();
       (data.notificacoes || []).forEach((notificacao) => {
-        message(notificacao.texto, "mheibos", notificacao.comandos || []);
+        message(notificacao.texto, "mheibos", notificacao.comandos || [], notificacao.intervencao_id);
         toggle?.classList.add("interface-viva-has-notification");
         toggle?.setAttribute("aria-label", "Abrir Interface Viva — nova análise de alerta");
         if (Number(notificacao.alerta?.nivel) >= 4) {
@@ -167,6 +211,9 @@
   const query = new URLSearchParams(window.location.search); const initialFocus = query.get("iv_focus"); const initialFill = query.get("iv_fill"); if (initialFill) { try { const values = JSON.parse(initialFill); setTimeout(() => { Object.entries(values).forEach(([name, value]) => { const element = document.querySelector(`[name="${CSS.escape(name)}"]`); if (!element) return; element.value = value; element.dispatchEvent(new Event("input", { bubbles: true })); element.dispatchEvent(new Event("change", { bubbles: true })); }); }, 60); } catch (_) {} } if (initialFocus) { const element = document.querySelector(`[name="${CSS.escape(initialFocus)}"]`); if (element) { element.scrollIntoView({ block: "center" }); element.classList.add("interface-viva-highlight"); element.focus(); setTimeout(() => element.classList.remove("interface-viva-highlight"), 3500); } }
   function prepare(text) { if (input) { input.value = text || ""; input.focus(); } open(); }
   window.InterfaceViva = { open, executar, prepare };
+  const pedidoId = document.body?.dataset.pedidoId || "";
+  registrarAtividade("tela_aberta", "Tela", "", { rota: window.location.pathname, titulo: document.title });
+  if (pedidoId) registrarAtividade("pedido_aberto", "Pedido", pedidoId, { rota: window.location.pathname, titulo: document.title });
   setTimeout(pollAlertasIA, 1200);
   setInterval(pollAlertasIA, 15000);
 })();

@@ -8,7 +8,7 @@
   <title>{% block title %}Gestor de Pedidos{% endblock %}</title>
   {{ preferencias_ui_json|json_script:"gestor-prefs-server" }}
   <script src="{% static 'js/gestor_prefs.js' %}"></script>
-  <link rel="stylesheet" href="{% static 'css/interface_viva.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/interface_viva.css' %}?v=3">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -516,7 +516,7 @@
     </style>
   {% block head %}{% endblock %}
 </head>
-<body data-app="{% if modo_producao %}producao{% else %}gestor{% endif %}">
+<body data-app="{% if modo_producao %}producao{% else %}gestor{% endif %}" data-pedido-id="{{ pedido.pk|default:'' }}">
   {% if runtime_offline %}
     <a href="{% url 'sincronizacao_painel' %}" class="offline-banner">CENTRAL INDISPONIVEL · MODO OFFLINE RESTRITO · {{ sincronizacao_pendentes }} PENDENTE(S)</a>
   {% endif %}
@@ -863,7 +863,7 @@
       sync();
     });
   </script>
-  <script src="{% static 'js/interface_viva.js' %}?v=7"></script>
+  <script src="{% static 'js/interface_viva.js' %}?v=8"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -8,14 +8,15 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.http import require_http_methods
 
 from apps.auditoria.services import registrar_evento
-from apps.catalogo.permissions import operador_atual
+from apps.catalogo.permissions import operador_atual, pode_editar_pedido
 from apps.aprendizado.models import ConversaAprendizado, DirecaoMensagem, EtiquetaConversaWhatsApp
 from apps.operacao.projections import queryset_com_projecao
 from apps.pedidos.models import Pedido
 
 from .gateway import gateway_configurado
 from .interface_viva import INTERFACE_INVENTARIO
-from .models import ConversaCognitiva, EstadoTarefaCognitiva, MensagemCognitiva, TarefaCognitiva
+from .models import EstadoIntervencaoIA, ConversaCognitiva, EstadoTarefaCognitiva, IntervencaoIA, MensagemCognitiva, TarefaCognitiva
+from .monitoramento import auditar_intervencao, registrar_atividade
 from .services import resumir_pedido
 from apps.pedidos.use_cases import alterar_status_pedido
 
@@ -236,14 +237,82 @@ def notificacoes_alertas(request):
     notificacoes = []
     for tarefa in tarefas:
         resultado = tarefa.resultado or {}
+        intervencao = getattr(tarefa, "intervencao", None)
+        if intervencao is not None:
+            if intervencao.estado == EstadoIntervencaoIA.GERADA:
+                intervencao.estado = EstadoIntervencaoIA.EXIBIDA
+                intervencao.exibida_em = timezone.now()
+                intervencao.save(update_fields=["estado", "exibida_em"])
+            intervencao_id = intervencao.pk
+            resposta_intervencao = intervencao.resposta_usuario
+        else:
+            intervencao_id = None
+            resposta_intervencao = ""
         notificacoes.append({
             "tarefa_id": tarefa.pk,
             "texto": resultado.get("texto") or "A IA não conseguiu concluir a análise deste alerta.",
             "disponivel": bool(resultado.get("disponivel", False)),
             "comandos": resultado.get("comandos") or [],
             "alerta": tarefa.contexto.get("alerta") or {},
+            "alertas": tarefa.contexto.get("alertas") or [],
+            "intervencao_id": intervencao_id,
+            "resposta_intervencao": resposta_intervencao,
+            "modelo": resultado.get("modelo") or tarefa.modelo,
+            "estrategia": resultado.get("estrategia") or tarefa.workload,
         })
     return JsonResponse({"notificacoes": notificacoes})
+
+
+@require_POST
+def registrar_atividade_view(request):
+    operador = operador_atual(request)
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"sucesso": False, "erro": "Atividade inválida."}, status=400)
+    tipo = str(payload.get("tipo") or "")[:48]
+    alvo_tipo = str(payload.get("alvo_tipo") or "")[:48]
+    alvo_id = str(payload.get("alvo_id") or "")[:80]
+    dados = payload.get("dados") if isinstance(payload.get("dados"), dict) else {}
+    dados = {
+        "rota": str(dados.get("rota") or "")[:240],
+        "titulo": str(dados.get("titulo") or "")[:180],
+    }
+    if alvo_tipo == "Pedido" and alvo_id:
+        try:
+            pedido = Pedido.objects.get(pk=int(alvo_id))
+        except (Pedido.DoesNotExist, TypeError, ValueError):
+            return JsonResponse({"sucesso": False, "erro": "Pedido não encontrado."}, status=404)
+        if not operador.is_admin and not pode_editar_pedido(pedido, operador):
+            return JsonResponse({"sucesso": False, "erro": "Pedido fora do escopo autorizado."}, status=403)
+    evento = registrar_atividade(operador=operador, tipo=tipo, alvo_tipo=alvo_tipo, alvo_id=alvo_id, dados=dados)
+    if evento is None:
+        return JsonResponse({"sucesso": False, "erro": "Tipo de atividade não permitido."}, status=400)
+    return JsonResponse({"sucesso": True, "evento_id": evento.pk})
+
+
+@require_POST
+def responder_intervencao(request, pk):
+    operador = operador_atual(request)
+    intervencao = get_object_or_404(IntervencaoIA, pk=pk, operador=operador)
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"sucesso": False, "erro": "Resposta inválida."}, status=400)
+    aliases = {"aceitar": "ACEITA", "aceita": "ACEITA", "recusar": "RECUSADA", "recusada": "RECUSADA", "ignorar": "IGNORADA", "ignorada": "IGNORADA", "resolver": "RESOLVIDA", "resolvida": "RESOLVIDA"}
+    resposta = aliases.get(str(payload.get("resposta") or "").strip().casefold(), "")
+    if resposta not in {item.value for item in EstadoIntervencaoIA}:
+        return JsonResponse({"sucesso": False, "erro": "Resposta de intervenção não permitida."}, status=400)
+    if intervencao.respondida_em and intervencao.estado != resposta:
+        return JsonResponse({"sucesso": False, "erro": "Esta intervenção já recebeu uma resposta."}, status=409)
+    agora = timezone.now()
+    intervencao.estado = resposta
+    intervencao.resposta_usuario = resposta
+    intervencao.respondida_em = agora
+    intervencao.save(update_fields=["estado", "resposta_usuario", "respondida_em"])
+    registrar_atividade(operador=operador, tipo="intervencao_resposta", alvo_tipo="IntervencaoIA", alvo_id=str(intervencao.pk), dados={"resposta": resposta})
+    auditar_intervencao(intervencao=intervencao, operador=operador, acao="responder", resultado=resposta)
+    return JsonResponse({"sucesso": True, "estado": intervencao.estado})
 
 
 @require_POST

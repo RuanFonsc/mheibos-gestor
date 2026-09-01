@@ -5,9 +5,10 @@ import time
 
 from apps.catalogo.models import OperadorGestor
 from apps.cognicao.alertas import encaminhar_alertas_para_ia
-from apps.cognicao.gateway import SolicitacaoCognitiva, gateway_configurado
-from apps.cognicao.models import EstadoTarefaCognitiva, TarefaCognitiva
+from apps.cognicao.gateway import RespostaCognitiva, SolicitacaoCognitiva, gateway_configurado
+from apps.cognicao.models import AlertaCognitiva, EstadoIntervencaoIA, EstadoTarefaCognitiva, IntervencaoIA, TarefaCognitiva
 from apps.cognicao.tools import executar_ferramenta
+from apps.cognicao.monitoramento import fingerprint_contexto, orçamento_disponivel
 
 
 class Command(BaseCommand):
@@ -82,17 +83,11 @@ class Command(BaseCommand):
                 tarefa.concluida_em = timezone.now()
                 tarefa.save(update_fields=["estado", "resultado", "concluida_em"])
                 return
-            contexto_modelo = {
-                "solicitacao": tarefa.contexto.get("texto", ""),
-                "interface_visivel": tarefa.contexto.get("interface", {}),
-            }
             if tarefa.contexto.get("tipo") == "gatilho_alerta":
-                contexto_modelo["alerta_operacional"] = tarefa.contexto.get("alerta", {})
-            solicitacao = SolicitacaoCognitiva(
-                capacidade="assistente_operacional",
-                contexto=__import__("json").dumps(contexto_modelo, ensure_ascii=False),
-            )
-            resposta = gateway_configurado().solicitar(solicitacao)
+                resposta, triagem = _avaliar_alertas(tarefa)
+            else:
+                resposta = _solicitar(tarefa, workload=tarefa.workload or "assistant")
+                triagem = None
             tarefa.estado = EstadoTarefaCognitiva.CONCLUIDA
             tarefa.resultado = {
                 "texto": resposta.texto,
@@ -101,14 +96,165 @@ class Command(BaseCommand):
                 "modelo": resposta.modelo,
                 "codigo": resposta.codigo,
                 "comandos": resposta.comandos,
+                "estrategia": resposta.estrategia,
+                "intervir": resposta.intervir,
+                "motivo": resposta.motivo,
+                "intervencao": bool(resposta.intervir) if resposta.estrategia == "intervention" else False,
             }
+            tarefa.provider = resposta.provider
+            tarefa.modelo = resposta.modelo
+            tarefa.tokens_input = resposta.tokens_input
+            tarefa.tokens_output = resposta.tokens_output
+            tarefa.thinking_tokens = resposta.thinking_tokens
+            tarefa.duracao_ms = resposta.duracao_ms
+            tarefa.custo_estimado = resposta.custo_estimado
             tarefa.concluida_em = timezone.now()
-            tarefa.save(update_fields=["estado", "resultado", "concluida_em"])
+            campos = ["estado", "resultado", "provider", "modelo", "tokens_input", "tokens_output", "thinking_tokens", "duracao_ms", "custo_estimado", "concluida_em"]
+            tarefa.save(update_fields=campos)
+            if tarefa.contexto.get("tipo") == "gatilho_alerta":
+                AlertaCognitiva.objects.filter(
+                    operador=tarefa.conversa.operador,
+                    chave__in=tarefa.contexto.get("alerta_chaves") or [],
+                ).update(ultima_avaliacao_em=timezone.now())
+            if tarefa.contexto.get("tipo") == "gatilho_alerta" and resposta.intervir is not True:
+                tarefa.notificado_em = timezone.now()
+                tarefa.save(update_fields=["notificado_em"])
         except Exception as exc:  # pragma: no cover - última barreira do worker
             tarefa.estado = EstadoTarefaCognitiva.FALHOU
             tarefa.erro = str(exc)
             tarefa.concluida_em = timezone.now()
             tarefa.save(update_fields=["estado", "erro", "concluida_em"])
+
+
+def _resposta_orcamento_bloqueado(*, workload: str, motivo: str) -> RespostaCognitiva:
+    return RespostaCognitiva(
+        "A assistência generativa foi reduzida por limite local. Os alertas determinísticos continuam disponíveis.",
+        False,
+        "none",
+        "",
+        motivo,
+        estrategia=workload,
+    )
+
+
+def _solicitar(tarefa, *, workload: str) -> RespostaCognitiva:
+    disponivel, motivo = orçamento_disponivel(operador=tarefa.conversa.operador, fase=workload)
+    if not disponivel:
+        return _resposta_orcamento_bloqueado(workload=workload, motivo=motivo)
+    contexto_modelo = {
+        "solicitacao": tarefa.contexto.get("texto", ""),
+        "interface_visivel": tarefa.contexto.get("interface", {}),
+    }
+    solicitacao = SolicitacaoCognitiva(
+        capacidade="assistente_operacional",
+        contexto=__import__("json").dumps(contexto_modelo, ensure_ascii=False),
+        workload=workload,
+    )
+    return gateway_configurado(workload=workload).solicitar(solicitacao)
+
+
+def _avaliar_alertas(tarefa) -> tuple[RespostaCognitiva, RespostaCognitiva]:
+    contexto_modelo = {
+        "alertas_operacionais": tarefa.contexto.get("alertas") or [tarefa.contexto.get("alerta", {})],
+        "atividade_usuario": tarefa.contexto.get("atividade", {}),
+        "interface_autorizada": tarefa.contexto.get("interface", {}),
+        "instrucao": tarefa.contexto.get("texto", ""),
+    }
+    pedidos = (tarefa.contexto.get("atividade") or {}).get("pedidos") or {}
+    alertas = contexto_modelo["alertas_operacionais"]
+    if alertas and all((pedidos.get(str(item.get("pedido_id"))) or {}).get("pedido_aberto_pelo_usuario") for item in alertas):
+        resposta = RespostaCognitiva(
+            "O pedido relacionado já está aberto e em atividade. Mantive a intervenção generativa em silêncio para não interromper o trabalho em andamento.",
+            True,
+            "deterministic",
+            "",
+            "ATIVIDADE_EM_ANDAMENTO",
+            estrategia="triage",
+            intervir=False,
+            motivo="O usuário já está trabalhando no pedido relacionado.",
+        )
+        return resposta, resposta
+    disponivel, motivo = orçamento_disponivel(operador=tarefa.conversa.operador, fase="triage")
+    if not disponivel:
+        bloqueado = _resposta_orcamento_bloqueado(workload="triage", motivo=motivo)
+        return bloqueado, bloqueado
+    triagem = gateway_configurado(workload="triage").solicitar(
+        SolicitacaoCognitiva(
+            capacidade="triagem_alertas_operacionais",
+            contexto=__import__("json").dumps(contexto_modelo, ensure_ascii=False),
+            workload="triage",
+        )
+    )
+    if not triagem.disponivel or not triagem.intervir:
+        return triagem, triagem
+    contexto_modelo["decisao_triagem"] = {"motivo": triagem.motivo, "texto": triagem.texto}
+    disponivel, motivo = orçamento_disponivel(operador=tarefa.conversa.operador, fase="intervention")
+    if not disponivel:
+        return _resposta_orcamento_bloqueado(workload="intervention", motivo=motivo), triagem
+    intervencao = gateway_configurado(workload="intervention").solicitar(
+        SolicitacaoCognitiva(
+            capacidade="intervencao_contextual_alertas",
+            contexto=__import__("json").dumps(contexto_modelo, ensure_ascii=False),
+            workload="intervention",
+        )
+    )
+    if not intervencao.disponivel:
+        return intervencao, triagem
+    total_input = _somar_metricas(triagem.tokens_input, intervencao.tokens_input)
+    total_output = _somar_metricas(triagem.tokens_output, intervencao.tokens_output)
+    total_thinking = _somar_metricas(triagem.thinking_tokens, intervencao.thinking_tokens)
+    total_duration = _somar_metricas(triagem.duracao_ms, intervencao.duracao_ms)
+    total_cost = (triagem.custo_estimado or 0) + (intervencao.custo_estimado or 0)
+    resposta = RespostaCognitiva(
+        intervencao.texto,
+        intervencao.disponivel,
+        intervencao.provider,
+        intervencao.modelo,
+        intervencao.codigo,
+        intervencao.comandos,
+        estrategia="intervention",
+        intervir=True,
+        motivo=triagem.motivo,
+        tokens_input=total_input,
+        tokens_output=total_output,
+        thinking_tokens=total_thinking,
+        duracao_ms=total_duration,
+        custo_estimado=total_cost,
+    )
+    _registrar_intervencao(tarefa, resposta)
+    return resposta, triagem
+
+
+def _somar_metricas(*valores):
+    presentes = [valor for valor in valores if valor is not None]
+    return sum(presentes) if presentes else None
+
+
+def _registrar_intervencao(tarefa, resposta: RespostaCognitiva):
+    alertas = tarefa.contexto.get("alertas") or [tarefa.contexto.get("alerta", {})]
+    principal_chave = str((alertas[0] or {}).get("id") or "")
+    principal = tarefa.conversa.operador.alertacognitiva_set.filter(chave=principal_chave).first()
+    IntervencaoIA.objects.update_or_create(
+        tarefa=tarefa,
+        defaults={
+            "operador": tarefa.conversa.operador,
+            "alerta_principal": principal,
+            "alertas": alertas,
+            "provider": resposta.provider,
+            "modelo": resposta.modelo,
+            "estrategia": resposta.estrategia,
+            "mensagem": resposta.texto,
+            "acoes_disponiveis": resposta.comandos,
+            "contexto_hash": fingerprint_contexto({"alertas": alertas, "atividade": tarefa.contexto.get("atividade", {})}),
+            "estado": EstadoIntervencaoIA.GERADA,
+            "resultado": {"codigo": resposta.codigo, "motivo": resposta.motivo},
+            "tokens_input": resposta.tokens_input,
+            "tokens_output": resposta.tokens_output,
+            "thinking_tokens": resposta.thinking_tokens,
+            "duracao_ms": resposta.duracao_ms,
+            "custo_estimado": resposta.custo_estimado,
+        },
+    )
 
 
 def _proposta_deterministica(texto, tarefa):

@@ -8,13 +8,14 @@ from apps.clientes.models import Cliente
 from apps.pedidos.models import Pedido
 from apps.aprendizado.models import ConversaAprendizado, MensagemAprendizado, OrigemConversa, DirecaoMensagem
 
-from .gateway import FALLBACK_RESUMO, GatewayIA, SolicitacaoCognitiva, _normalizar_resposta
+from .gateway import FALLBACK_RESUMO, GeracaoIA, GatewayIA, RespostaCognitiva, SolicitacaoCognitiva, gateway_configurado, _normalizar_resposta
 from .configuracoes_ia import resolve_ai_policy, normalizar_configuracoes_ia
 from .alertas import encaminhar_alertas_para_ia
-from .models import AlertaCognitiva, ConversaCognitiva, MensagemCognitiva, TarefaCognitiva
+from .models import AlertaCognitiva, ConversaCognitiva, EstadoIntervencaoIA, EventoAtividadeCognitiva, IntervencaoIA, MensagemCognitiva, TarefaCognitiva
 from .tools import ComandoInterface, executar_ferramenta
 from .whatsapp import espelhar_mensagem_whatsapp
 from .management.commands.processar_cognicao import _proposta_deterministica
+from .management.commands.processar_cognicao import Command
 
 
 class GatewayIATests(TestCase):
@@ -81,6 +82,39 @@ class GatewayIATests(TestCase):
 
         self.assertTrue(resposta.disponivel)
         self.assertEqual(resposta.texto, "Resumo sugerido")
+
+    @override_settings(
+        MHEIBOS_IA_ENABLED=True,
+        MHEIBOS_IA_PROVIDER="gemini",
+        GEMINI_API_KEY="same-key",
+        MHEIBOS_IA_MODEL_FLASH_LITE="lite-model",
+        MHEIBOS_IA_MODEL_FLASH="flash-model",
+    )
+    @patch("apps.cognicao.gateway.ProvedorGemini")
+    def test_workload_selects_models_with_the_same_credential(self, provider):
+        gateway_configurado(workload="triage")
+        provider.assert_called_once_with(api_key="same-key", modelo="lite-model")
+        provider.reset_mock()
+        gateway_configurado(workload="intervention")
+        provider.assert_called_once_with(api_key="same-key", modelo="flash-model")
+
+    @override_settings(
+        MHEIBOS_IA_CUSTO_INPUT_FLASH_1K=1.0,
+        MHEIBOS_IA_CUSTO_OUTPUT_FLASH_1K=2.0,
+    )
+    def test_provider_usage_is_returned_as_metrics(self):
+        provider = Mock(nome="gemini")
+        provider.gerar.return_value = GeracaoIA("Resumo", 100, 50, 3, 8)
+
+        resposta = GatewayIA(provider, modelo="flash-model", workload="intervention").solicitar(
+            SolicitacaoCognitiva("teste", "fatos", workload="intervention")
+        )
+
+        self.assertEqual(resposta.tokens_input, 100)
+        self.assertEqual(resposta.tokens_output, 50)
+        self.assertEqual(resposta.thinking_tokens, 3)
+        self.assertEqual(resposta.duracao_ms, 8)
+        self.assertEqual(str(resposta.custo_estimado), "0.200000")
 
 
 class ResumoPedidoTests(TestCase):
@@ -460,3 +494,53 @@ class AlertTriggerTests(TestCase):
         self.assertEqual(segunda.json()["notificacoes"], [])
         tarefa.refresh_from_db()
         self.assertIsNotNone(tarefa.notificado_em)
+
+    @override_settings(MHEIBOS_IA_ENABLED=True, MHEIBOS_IA_PROVIDER="gemini", GEMINI_API_KEY="test-key")
+    @patch("apps.cognicao.alertas.alertas_operacionais")
+    def test_related_alerts_are_aggregated_in_one_task(self, consultar):
+        segundo = {**self.alerta, "id": "arquivo-ausente-9", "categoria_id": "ausencia-arquivo-oficial", "titulo": "Arquivo oficial ausente"}
+        consultar.return_value = {"alertas": [self.alerta, segundo], "total_alertas": 2, "total_criticos": 2, "total_exige_acao": 2, "exige_acao": True}
+
+        tarefas = encaminhar_alertas_para_ia(operador=self.operador)
+
+        self.assertEqual(len(tarefas), 1)
+        self.assertEqual(len(tarefas[0].contexto["alertas"]), 2)
+        self.assertEqual(set(tarefas[0].contexto["alerta_chaves"]), {self.alerta["id"], segundo["id"]})
+        self.assertEqual(tarefas[0].workload, "triage")
+
+    @override_settings(MHEIBOS_IA_ENABLED=True, MHEIBOS_IA_PROVIDER="gemini", GEMINI_API_KEY="test-key")
+    @patch("apps.cognicao.management.commands.processar_cognicao.gateway_configurado")
+    @patch("apps.cognicao.alertas.alertas_operacionais")
+    def test_triage_escalates_to_intervention_and_persists_metrics(self, consultar, configured_gateway):
+        consultar.return_value = {"alertas": [self.alerta], "total_alertas": 1, "total_criticos": 1, "total_exige_acao": 1, "exige_acao": True}
+        tarefa = encaminhar_alertas_para_ia(operador=self.operador)[0]
+        triagem = Mock(solicitar=Mock(return_value=RespostaCognitiva("Priorizar", True, "gemini", "lite", "SUCESSO", estrategia="triage", intervir=True, motivo="Risco")))
+        resposta = Mock(solicitar=Mock(return_value=RespostaCognitiva("Intervenção útil", True, "gemini", "flash", "SUCESSO", estrategia="intervention", intervir=True, tokens_input=4, tokens_output=5, duracao_ms=6)))
+        configured_gateway.side_effect = [triagem, resposta]
+
+        Command._processar(tarefa)
+
+        tarefa.refresh_from_db()
+        self.assertEqual(tarefa.resultado["estrategia"], "intervention")
+        self.assertEqual(tarefa.resultado["intervencao"], True)
+        self.assertEqual(IntervencaoIA.objects.get(tarefa=tarefa).mensagem, "Intervenção útil")
+
+    def test_activity_endpoint_and_intervention_response_are_audited(self):
+        response = self.client.post(
+            "/cognicao/atividade/",
+            data='{"tipo":"pedido_aberto","alvo_tipo":"Pedido","alvo_id":"42","dados":{"rota":"/pedidos/42/","titulo":"Pedido"}}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 404)
+
+        intervencao = IntervencaoIA.objects.create(operador=self.operador, mensagem="Priorize o pedido.")
+        response = self.client.post(
+            f"/cognicao/assistente/intervencoes/{intervencao.pk}/resposta/",
+            data='{"resposta":"aceitar"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        intervencao.refresh_from_db()
+        self.assertEqual(intervencao.estado, EstadoIntervencaoIA.ACEITA)
+        self.assertTrue(EventoAtividadeCognitiva.objects.filter(tipo="intervencao_resposta").exists())
+        self.assertTrue(EventoOperacional.objects.filter(tipo="IntervencaoIAAtualizada").exists())
