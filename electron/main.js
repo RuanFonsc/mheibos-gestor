@@ -7,6 +7,7 @@ const { fileURLToPath } = require("url");
 const { decryptSecret, protectConfigSecrets } = require("./secure_config");
 const { offlineRuntimeConfig, readOfflineIdentity } = require("./offline_runtime");
 const { resolveRemoteBaseUrl } = require("./runtime_profile");
+const { createManagedProcess } = require("./managed_process");
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.MHEIBOS_PORT || 8765);
@@ -36,7 +37,8 @@ const REMOTE_URL = REMOTE_BASE_URL.replace(/\/$/, "");
 const LOCAL_PORT = REMOTE_CLIENT ? Number(process.env.MHEIBOS_OFFLINE_PORT || 8766) : PORT;
 const LOCAL_BASE_URL = `http://${HOST}:${LOCAL_PORT}`;
 let activeBaseUrl = REMOTE_URL || LOCAL_BASE_URL;
-let djangoProcess = null;
+const djangoService = createManagedProcess({ spawnProcess: spawn });
+const cognitiveService = createManagedProcess({ spawnProcess: spawn });
 let mainWindow = null;
 let offlineIdentityCandidate = null;
 let syncTimer = null;
@@ -295,27 +297,53 @@ async function prepareOfflineBackend(config) {
 }
 
 async function startLocalDjango(config) {
-  if (await serverOnline(LOCAL_BASE_URL)) return true;
-  const invocation = backendInvocation(["runserver", `${HOST}:${LOCAL_PORT}`, "--noreload"]);
-  if (!invocation) return false;
+  if (!(await serverOnline(LOCAL_BASE_URL))) {
+    if (!(await runBackendCommand(config, ["migrate", "--noinput"]))) {
+      dialog.showErrorBox(
+        "Mheibos",
+        "Nao foi possivel preparar o banco local. Verifique a configuracao do banco de dados."
+      );
+      return false;
+    }
+    const invocation = backendInvocation(["runserver", `${HOST}:${LOCAL_PORT}`, "--noreload"]);
+    if (!invocation) return false;
+    const started = await djangoService.start({
+      command: invocation.command,
+      args: invocation.args,
+      options: {
+        cwd: invocation.cwd,
+        windowsHide: true,
+        env: envFromConfig(config),
+        stdio: "ignore",
+      },
+    });
+    if (!started) return false;
 
-  djangoProcess = spawn(invocation.command, invocation.args, {
-    cwd: invocation.cwd,
-    windowsHide: true,
-    env: envFromConfig(config),
-  });
-  djangoProcess.on("exit", () => {
-    djangoProcess = null;
-  });
-
-  const ok = await waitForServer(LOCAL_BASE_URL);
-  if (!ok) {
-    dialog.showErrorBox(
-      "Mheibos",
-      "Nao foi possivel iniciar o servidor local. Verifique a configuracao do banco de dados."
-    );
+    const ok = await waitForServer(LOCAL_BASE_URL);
+    if (!ok) {
+      djangoService.stop();
+      dialog.showErrorBox(
+        "Mheibos",
+        "Nao foi possivel iniciar o servidor local. Verifique a configuracao do banco de dados."
+      );
+      return false;
+    }
   }
-  return ok;
+
+  const workerInvocation = backendInvocation(["processar_cognicao", "--loop"]);
+  if (workerInvocation) {
+    await cognitiveService.start({
+      command: workerInvocation.command,
+      args: workerInvocation.args,
+      options: {
+        cwd: workerInvocation.cwd,
+        windowsHide: true,
+        env: envFromConfig(config),
+        stdio: "ignore",
+      },
+    });
+  }
+  return true;
 }
 
 async function ensureDjango(config) {
@@ -371,12 +399,14 @@ async function switchToCentral(config) {
     clearInterval(syncTimer);
     syncTimer = null;
   }
-  if (djangoProcess) {
-    djangoProcess.kill();
-    djangoProcess = null;
-  }
+  stopLocalServices();
   mainWindow.setEnabled(true);
   return true;
+}
+
+function stopLocalServices() {
+  djangoService.stop();
+  cognitiveService.stop();
 }
 
 async function offerOnlineReturn(config) {
@@ -571,8 +601,5 @@ app.on("before-quit", () => {
     clearInterval(syncTimer);
     syncTimer = null;
   }
-  if (djangoProcess) {
-    djangoProcess.kill();
-    djangoProcess = null;
-  }
+  stopLocalServices();
 });
