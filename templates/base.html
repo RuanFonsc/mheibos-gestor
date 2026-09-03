@@ -8,7 +8,7 @@
   <title>{% block title %}Gestor de Pedidos{% endblock %}</title>
   {{ preferencias_ui_json|json_script:"gestor-prefs-server" }}
   <script src="{% static 'js/gestor_prefs.js' %}"></script>
-  <link rel="stylesheet" href="{% static 'css/interface_viva.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/interface_viva.css' %}?v=4">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -448,8 +448,7 @@
     .widget-prazo-label { font-size: 0.5625rem; line-height: 1; text-align: center; }
     .widget-prazos-close,
     .notif-assistencia-close {
-      width: 28px;
-      height: 28px;
+      width: 32px; min-height: 32px; height: 32px;
       border: 1px solid var(--border-light);
       border-radius: 8px;
       background: var(--bg-card);
@@ -669,6 +668,16 @@
       <section id="interfaceVivaAlertas" class="interface-viva-alertas" aria-labelledby="interfaceVivaAlertasTitulo">
         <div class="interface-viva-alertas-heading"><strong id="interfaceVivaAlertasTitulo">Alertas operacionais</strong><span id="interfaceVivaAlertasBadge" class="interface-viva-alertas-count">0</span></div>
         <p id="interfaceVivaAlertasResumo">Nenhum alerta ativo.</p>
+        <div id="interfaceVivaSugestao" class="interface-viva-missao-sugestao hidden" aria-live="polite" aria-hidden="true">
+          <span class="kicker"><i data-lucide="route" class="h-3 w-3"></i> Sugestão operacional</span>
+          <strong id="interfaceVivaSugestaoTitulo"></strong>
+          <p id="interfaceVivaSugestaoMotivo"></p>
+          <small id="interfaceVivaSugestaoResumo"></small>
+          <div class="interface-viva-missao-actions">
+            <a id="interfaceVivaSugestaoLink" class="interface-viva-action" href="#">Revisar proposta</a>
+            <a id="interfaceVivaSugestaoPedidos" class="interface-viva-missao-link" href="#">Ver pedidos atrasados</a>
+          </div>
+        </div>
         <div id="interfaceVivaAlertasLista" class="interface-viva-alertas-list"></div>
       </section>
       <div id="interfaceVivaMessages" class="interface-viva-messages" aria-live="polite"><article class="interface-viva-message mheibos"><p>Posso localizar telas, destacar campos, pesquisar pedidos e preparar dados para você revisar.</p></article></div>

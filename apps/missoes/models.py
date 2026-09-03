@@ -7,6 +7,7 @@ from django.db.models import Q
 class OrigemMissao(models.TextChoices):
     VOLUNTARIA = "VOLUNTARIA", "Voluntária"
     ADMINISTRATIVA = "ADMINISTRATIVA", "Administrativa"
+    SUGESTAO_ACEITA = "SUGESTAO_ACEITA", "Sugestão do sistema aceita"
     IA_ACEITA = "IA_ACEITA", "Sugestão da IA aceita"
 
 
@@ -99,6 +100,37 @@ class Missao(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class ReferenciaPedidoMissao(models.Model):
+    """Referência explícita a um Pedido sem duplicar seus dados oficiais."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    missao = models.ForeignKey(
+        Missao,
+        related_name="referencias_pedido",
+        on_delete=models.PROTECT,
+    )
+    pedido = models.ForeignKey(
+        "pedidos.Pedido",
+        related_name="referencias_missoes",
+        on_delete=models.PROTECT,
+    )
+    registrada_por = models.ForeignKey(
+        "catalogo.OperadorGestor",
+        related_name="referencias_pedido_missao_registradas",
+        on_delete=models.PROTECT,
+    )
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["pedido_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["missao", "pedido"],
+                name="missoes_missao_pedido_unico",
+            )
+        ]
 
 
 class ParticipacaoMissao(models.Model):

@@ -4,6 +4,7 @@ from .models import PapelParticipacao, TipoManifestacaoConvite
 
 
 class CriarMissaoIndividualForm(forms.Form):
+    sugestao = forms.CharField(required=False, widget=forms.HiddenInput)
     titulo = forms.CharField(max_length=160, label="Título")
     objetivo = forms.CharField(widget=forms.Textarea, label="Objetivo")
     criterio_conclusao = forms.CharField(widget=forms.Textarea, label="Como saberemos que terminou?")

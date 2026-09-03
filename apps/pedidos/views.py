@@ -95,6 +95,7 @@ def pedido_list(request):
     busca = request.GET.get("q", "").strip()
     status = request.GET.get("status", "").strip()
     categoria = request.GET.get("categoria", "").strip()
+    atrasados = request.GET.get("atrasados") == "1"
     modo_visualizacao = request.GET.get("visualizacao", "grade").strip()
     if modo_visualizacao not in {"grade", "lista"}:
         modo_visualizacao = "grade"
@@ -117,6 +118,10 @@ def pedido_list(request):
 
     if busca:
         pedidos = pesquisar_pedidos_por_artes(pedidos, busca)
+    if atrasados:
+        pedidos = pedidos.filter(data_entrega__lt=timezone.localdate()).exclude(
+            status__in=[StatusPedido.ENTREGUE, StatusPedido.CANCELADO]
+        )
     if status == StatusPedido.EM_PRODUCAO:
         pedidos = pedidos.filter(status__in=STATUS_FUNIL_GESTOR)
     elif status:
@@ -135,6 +140,7 @@ def pedido_list(request):
         "pedidos": pedidos_lista,
         "busca": busca,
         "status_atual": status,
+        "atrasados": atrasados,
         "categoria_atual": categoria,
         "modo_visualizacao": modo_visualizacao,
         "categorias_tabs": CategoriaServico.objects.filter(ativa=True),

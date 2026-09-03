@@ -16,6 +16,7 @@ from .forms import (
     SairMissaoForm,
 )
 from .task_forms import TarefaMissaoForm, NotaMissaoForm, MensagemChatMissaoForm
+from .sugestoes import proposta_missao_pedidos_atrasados
 from .models import Missao, ParticipacaoMissao, TipoMissao
 from .services import (
     bloquear_missao,
@@ -23,6 +24,7 @@ from .services import (
     convidar_participante,
     criar_missao_coletiva_espontanea,
     criar_missao_individual_voluntaria,
+    aceitar_sugestao_missao_pedidos_atrasados,
     iniciar_missao,
     manifestar_convite,
     pausar_missao,
@@ -46,20 +48,73 @@ def _visiveis(operador):
 
 
 def lista_missoes(request):
-    return render(request, "missoes/lista.html", {"active": "missoes", "missoes": _visiveis(operador_atual(request))[:200]})
+    operador = operador_atual(request)
+    return render(
+        request,
+        "missoes/lista.html",
+        {
+            "active": "missoes",
+            "missoes": _visiveis(operador)[:200],
+            "proposta_missao": proposta_missao_pedidos_atrasados(operador=operador),
+        },
+    )
 
 
 def criar_missao(request):
-    form = CriarMissaoIndividualForm(request.POST or None)
+    operador = operador_atual(request)
+    sugestao = (request.POST.get("sugestao") or request.GET.get("sugestao") or "").strip()
+    proposta = (
+        proposta_missao_pedidos_atrasados(operador=operador)
+        if sugestao == "pedidos_atrasados"
+        else None
+    )
+    initial = {}
+    if proposta:
+        initial = {
+            "sugestao": proposta["id"],
+            "titulo": proposta["titulo"],
+            "objetivo": proposta["objetivo"],
+            "criterio_conclusao": proposta["criterio_conclusao"],
+            "resultado_esperado": proposta["resultado_esperado"],
+        }
+    form = CriarMissaoIndividualForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
+        dados = {
+            "titulo": form.cleaned_data["titulo"],
+            "objetivo": form.cleaned_data["objetivo"],
+            "criterio_conclusao": form.cleaned_data["criterio_conclusao"],
+            "resultado_esperado": form.cleaned_data["resultado_esperado"],
+        }
         try:
-            missao = criar_missao_individual_voluntaria(operador=operador_atual(request), **form.cleaned_data)
+            if form.cleaned_data["sugestao"] == "pedidos_atrasados":
+                proposta_atual = proposta_missao_pedidos_atrasados(operador=operador)
+                if not proposta_atual:
+                    raise ValidationError("A proposta não possui mais pedidos atrasados elegíveis.")
+                missao = aceitar_sugestao_missao_pedidos_atrasados(
+                    operador=operador,
+                    pedido_ids=proposta_atual["pedido_ids"],
+                    **dados,
+                )
+            else:
+                missao = criar_missao_individual_voluntaria(
+                    operador=operador,
+                    **dados,
+                )
         except (PermissionDenied, ValidationError) as exc:
             form.add_error(None, str(exc))
         else:
             messages.success(request, "Missão planejada e preservada no workspace.")
             return redirect("missao_detalhe", missao_id=missao.pk)
-    return render(request, "missoes/criar.html", {"active": "missoes", "form": form})
+    return render(
+        request,
+        "missoes/criar.html",
+        {
+            "active": "missoes",
+            "form": form,
+            "proposta_missao": proposta,
+            "e_sugestao": sugestao == "pedidos_atrasados",
+        },
+    )
 
 
 def criar_missao_coletiva(request):
@@ -67,8 +122,9 @@ def criar_missao_coletiva(request):
     form = CriarMissaoColetivaForm(request.POST or None, operador=operador)
     if request.method == "POST" and form.is_valid():
         try:
+            dados = {key: value for key, value in form.cleaned_data.items() if key != "sugestao"}
             missao = criar_missao_coletiva_espontanea(
-                operador=operador, **form.cleaned_data
+                operador=operador, **dados
             )
         except (PermissionDenied, ValidationError) as exc:
             form.add_error(None, str(exc))

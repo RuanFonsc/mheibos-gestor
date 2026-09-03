@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_submodules
+
 ROOT = Path.cwd()
 
 
@@ -34,7 +36,14 @@ a = Analysis(
         "psycopg_binary",
         "PIL",
         "decouple",
-    ],
+        "cryptography",
+        "cryptography.exceptions",
+        "cryptography.hazmat",
+        "cryptography.hazmat.primitives",
+        "cryptography.hazmat.primitives.asymmetric",
+        "cryptography.hazmat.primitives.asymmetric.ed25519",
+        "cryptography.hazmat.primitives.serialization",
+    ] + collect_submodules("reportlab") + collect_submodules("google.genai"),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

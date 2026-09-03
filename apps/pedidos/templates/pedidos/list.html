@@ -4,6 +4,7 @@
 {% block top_tabs %}
   <a href="{% url 'pedido_create' %}" class="top-tab"><i data-lucide="plus" class="h-5 w-5"></i> Novo Pedido</a>
   <a href="{% url 'pedido_list' %}?status=EM_PRODUCAO" class="top-tab {% if status_atual == 'EM_PRODUCAO' or status_atual == 'AGUARDANDO_ARTE' %}active{% endif %}"><i data-lucide="loader" class="h-5 w-5"></i> Em Produção</a>
+  <a href="{% url 'pedido_list' %}?atrasados=1" class="top-tab {% if atrasados %}active{% endif %}"><i data-lucide="alarm-clock" class="h-5 w-5"></i> Atrasados</a>
   <a href="{% url 'pedido_list' %}?status=PRONTO" class="top-tab {% if status_atual == 'PRONTO' %}active{% endif %}"><i data-lucide="check-square" class="h-5 w-5"></i> Prontos</a>
   <a href="{% url 'pedido_list' %}?status=CANCELADO" class="top-tab {% if status_atual == 'CANCELADO' %}active{% endif %}"><i data-lucide="x" class="h-5 w-5"></i> Cancelados</a>
 {% endblock %}
@@ -28,6 +29,7 @@
 
 <form class="card filter-grid" method="get">
   {% if status_atual %}<input type="hidden" name="status" value="{{ status_atual }}">{% endif %}
+  {% if atrasados %}<input type="hidden" name="atrasados" value="1">{% endif %}
   <input name="q" value="{{ busca }}" placeholder="Buscar pedido, cliente, telefone, produto, tema ou arquivo">
   <select name="categoria">
     <option value="">Todas categorias</option>
@@ -36,8 +38,8 @@
     {% endfor %}
   </select>
   <div class="view-toggle">
-    <a class="{% if modo_visualizacao == 'grade' %}bg-[#4b66ff] text-white{% endif %}" href="?status={{ status_atual }}&categoria={{ categoria_atual }}&q={{ busca }}&visualizacao=grade">Grade</a>
-    <a class="{% if modo_visualizacao == 'lista' %}bg-[#4b66ff] text-white{% endif %}" href="?status={{ status_atual }}&categoria={{ categoria_atual }}&q={{ busca }}&visualizacao=lista">Lista</a>
+    <a class="{% if modo_visualizacao == 'grade' %}bg-[#4b66ff] text-white{% endif %}" href="?status={{ status_atual }}&atrasados={% if atrasados %}1{% endif %}&categoria={{ categoria_atual }}&q={{ busca }}&visualizacao=grade">Grade</a>
+    <a class="{% if modo_visualizacao == 'lista' %}bg-[#4b66ff] text-white{% endif %}" href="?status={{ status_atual }}&atrasados={% if atrasados %}1{% endif %}&categoria={{ categoria_atual }}&q={{ busca }}&visualizacao=lista">Lista</a>
   </div>
   <button class="btn-primary" type="submit">Filtrar</button>
 </form>

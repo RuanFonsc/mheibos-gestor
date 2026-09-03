@@ -3,10 +3,12 @@ from django.db import transaction
 from django.utils import timezone
 from apps.auditoria.services import registrar_evento
 from apps.catalogo.models import PapelOperador
+from .sugestoes import pedidos_atrasados_elegiveis
 from .models import (
     EstadoMissao,
     EstadoParticipacao,
     Missao,
+    ReferenciaPedidoMissao,
     OrigemMissao,
     PapelParticipacao,
     ParticipacaoMissao,
@@ -24,6 +26,98 @@ def criar_missao_individual_voluntaria(*, operador, titulo, objetivo, criterio_c
         raise ValidationError("Título, objetivo e critério de conclusão são obrigatórios.")
     missao = Missao.objects.create(**campos, resultado_esperado=(resultado_esperado or "").strip(), origem=OrigemMissao.VOLUNTARIA, estado=EstadoMissao.PLANEJADA, criador=operador, responsavel_principal=operador)
     registrar_evento(tipo="MissaoCriada", operador=operador, origem="missoes_web", alvo_tipo="Missao", alvo_id=str(missao.pk), acao="criar_missao_individual_voluntaria", valores_anteriores={}, valores_posteriores={"origem": missao.origem, "estado": missao.estado, "responsavel_principal_id": operador.pk})
+    return missao
+
+
+@transaction.atomic
+def aceitar_sugestao_missao_pedidos_atrasados(
+    *,
+    operador,
+    titulo,
+    objetivo,
+    criterio_conclusao,
+    resultado_esperado="",
+    pedido_ids=None,
+):
+    """Aceita uma proposta explícita e registra as referências oficiais."""
+
+
+    if not operador or not operador.ativo or operador.papel == PapelOperador.TEMPORARIO:
+        raise PermissionDenied("Somente uma identidade ativa pode aceitar uma sugestão.")
+    pedidos_elegiveis = {
+        pedido.pk: pedido
+        for pedido in pedidos_atrasados_elegiveis(operador=operador)
+    }
+    ids_solicitados = {int(item) for item in (pedido_ids or [])}
+    pedidos = [
+        pedidos_elegiveis[pedido_id]
+        for pedido_id in sorted(ids_solicitados)
+        if pedido_id in pedidos_elegiveis
+    ]
+    if not pedidos:
+        raise ValidationError("A proposta não possui mais pedidos atrasados elegíveis.")
+    campos = {
+        "titulo": (titulo or "").strip(),
+        "objetivo": (objetivo or "").strip(),
+        "criterio_conclusao": (criterio_conclusao or "").strip(),
+    }
+    if not all(campos.values()):
+        raise ValidationError("Título, objetivo e critério de conclusão são obrigatórios.")
+    missao = Missao.objects.create(
+        **campos,
+        resultado_esperado=(resultado_esperado or "").strip(),
+        origem=OrigemMissao.SUGESTAO_ACEITA,
+        estado=EstadoMissao.PLANEJADA,
+        criador=operador,
+        responsavel_principal=operador,
+    )
+    ReferenciaPedidoMissao.objects.bulk_create(
+        [
+            ReferenciaPedidoMissao(
+                missao=missao,
+                pedido=pedido,
+                registrada_por=operador,
+            )
+            for pedido in pedidos
+        ]
+    )
+    registrar_evento(
+        tipo="MissaoCriada",
+        operador=operador,
+        origem="missoes_web",
+        alvo_tipo="Missao",
+        alvo_id=str(missao.pk),
+        acao="aceitar_sugestao_pedidos_atrasados",
+        valores_anteriores={},
+        valores_posteriores={
+            "origem": missao.origem,
+            "estado": missao.estado,
+            "responsavel_principal_id": operador.pk,
+        },
+        metadados={
+            "tipo_sugestao": "pedidos_atrasados",
+            "modo_sugestao": "deterministico",
+            "pedidos_referenciados": [pedido.pk for pedido in pedidos],
+        },
+    )
+    adicionar_tarefa_missao(
+        missao=missao,
+        operador=operador,
+        titulo="Triar pedidos por urgência",
+        descricao="Ordenar os pedidos referenciados por atraso, prazo e bloqueio visível.",
+    )
+    adicionar_tarefa_missao(
+        missao=missao,
+        operador=operador,
+        titulo="Registrar a próxima ação de cada pedido",
+        descricao="Atualizar ou encaminhar cada pedido somente após revisar sua situação oficial.",
+    )
+    adicionar_tarefa_missao(
+        missao=missao,
+        operador=operador,
+        titulo="Revisar bloqueios com a equipe",
+        descricao="Consolidar dependências que exigem decisão ou ajuda humana.",
+    )
     return missao
 
 

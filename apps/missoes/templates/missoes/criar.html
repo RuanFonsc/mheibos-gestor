@@ -1,3 +1,49 @@
-{% extends "base.html" %}{% block title %}Nova missão{% endblock %}{% block page_title %}Nova missão individual{% endblock %}{% block content %}
-<div class="page-content max-w-3xl"><div class="card p-6"><h2 class="section-title">Planejar um objetivo temporário</h2><p class="mb-5 text-[var(--text-secondary)]">Esta etapa cria uma missão voluntária somente para você. Colaboração será adicionada com convite e aceite explícitos.</p><form method="post" class="space-y-4">{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}<div><label>{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}<button class="btn-primary" type="submit">Criar missão planejada</button></form></div></div>
+{% extends "base.html" %}
+{% block title %}Nova missão{% endblock %}
+{% block page_title %}Nova missão individual{% endblock %}
+{% block content %}
+<div class="page-content max-w-4xl">
+  {% if e_sugestao and proposta_missao %}
+    <section class="missao-sugestao missao-sugestao-review card">
+      <div class="missao-sugestao-main">
+        <span class="kicker"><i data-lucide="sparkles" class="h-4 w-4"></i> Proposta operacional</span>
+        <h2 class="section-title">{{ proposta_missao.titulo }}</h2>
+        <p class="missao-sugestao-motivo">{{ proposta_missao.motivo }}</p>
+        <p class="missao-sugestao-resumo">{{ proposta_missao.resumo }}</p>
+      </div>
+      <div class="missao-sugestao-orders">
+        {% for pedido in proposta_missao.pedidos %}
+          <a class="missao-sugestao-order" href="{{ pedido.href }}">
+            <span><strong>{{ pedido.rotulo }}</strong><small>{{ pedido.cliente }} · entrega {{ pedido.data_entrega_label }}</small></span>
+            <span class="missao-sugestao-delay">{{ pedido.dias_atraso }}d</span>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  <div class="card p-6">
+    <h2 class="section-title">{% if e_sugestao %}Revise antes de aceitar{% else %}Planejar um objetivo temporário{% endif %}</h2>
+    <p class="mb-5 text-[var(--text-secondary)]">
+      {% if e_sugestao %}
+        Ajuste o plano se necessário. A confirmação cria a missão e registra referências aos pedidos; não altera status nem executa ações por você.
+      {% else %}
+        Esta etapa cria uma missão voluntária somente para você. Colaboração será adicionada com convite e aceite explícitos.
+      {% endif %}
+    </p>
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      {{ form.sugestao }}
+      {{ form.non_field_errors }}
+      {% for field in form.visible_fields %}
+        <div>
+          <label>{{ field.label }}</label>
+          {{ field }}
+          {{ field.errors }}
+        </div>
+      {% endfor %}
+      <button class="btn-primary" type="submit">{% if e_sugestao %}Aceitar e criar missão{% else %}Criar missão planejada{% endif %}</button>
+    </form>
+  </div>
+</div>
 {% endblock %}

@@ -9,6 +9,7 @@ from apps.cognicao.gateway import RespostaCognitiva, SolicitacaoCognitiva, gatew
 from apps.cognicao.models import AlertaCognitiva, EstadoIntervencaoIA, EstadoTarefaCognitiva, IntervencaoIA, TarefaCognitiva
 from apps.cognicao.tools import executar_ferramenta
 from apps.cognicao.monitoramento import fingerprint_contexto, orçamento_disponivel
+from apps.missoes.sugestoes import proposta_missao_pedidos_atrasados
 
 
 class Command(BaseCommand):

@@ -56,6 +56,7 @@ from apps.catalogo.os_config import cores_linha_cabecalho_form, lista_campos_os,
 from apps.catalogo.permissions import operador_atual
 from apps.catalogo.ui_prefs import carregar_preferencias, garantir_operadores_padrao, salvar_preferencias
 from apps.catalogo.widget_data import alertas_operacionais, pedidos_para_widget
+from apps.missoes.sugestoes import proposta_missao_pedidos_atrasados
 from apps.arquivos.models import (
     ArquivoOficialArte,
     EstadoPreparacaoArte,
@@ -946,11 +947,13 @@ def api_widget_prazos(request):
 
 def api_notificacao_assistencia(request):
     categorias = _categorias_da_requisicao(request)
+    operador = operador_atual(request)
     contrato = alertas_operacionais(
         categorias_ids=categorias,
-        operador=operador_atual(request),
+        operador=operador,
         limite=100,
     )
+    contrato["missao_sugestao"] = proposta_missao_pedidos_atrasados(operador=operador)
     contrato["total"] = contrato["total_alertas"]
     contrato["alerta"] = contrato["total_alertas"] > 0
     contrato["url"] = reverse("preparacao_arte" if contrato["exige_acao"] else "assistencia_envio")

@@ -1,12 +1,17 @@
 from unittest.mock import patch
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase, override_settings
+from django.utils import timezone
+from datetime import timedelta
+from apps.clientes.models import Cliente
+from apps.pedidos.models import Pedido, StatusPedido
 from apps.auditoria.models import EventoOperacional
 from apps.catalogo.models import OperadorGestor, PapelOperador
 from .models import (
     EstadoMissao,
     EstadoParticipacao,
     Missao,
+    ReferenciaPedidoMissao,
     OrigemMissao,
     PapelParticipacao,
     ParticipacaoMissao,
@@ -20,6 +25,7 @@ from .services import (
     convidar_participante,
     criar_missao_coletiva_espontanea,
     criar_missao_individual_voluntaria,
+    aceitar_sugestao_missao_pedidos_atrasados,
     iniciar_missao,
     manifestar_convite,
     pausar_missao,
@@ -73,6 +79,84 @@ class MissaoIndividualTests(TestCase):
         response = self.client.post("/missoes/nova/", {"titulo": "Offline", "objetivo": "Objetivo", "criterio_conclusao": "Fim"})
         self.assertEqual(response.status_code, 409)
         self.assertFalse(Missao.objects.exists())
+
+
+
+
+class SugestaoMissaoAtrasadosTests(TestCase):
+    def setUp(self):
+        self.operador = OperadorGestor.objects.create(
+            nome="Operador Atrasos",
+            senha="segura",
+            papel=PapelOperador.ADMIN,
+        )
+        cliente = Cliente.objects.create(nome="Cliente em atraso")
+        hoje = timezone.localdate()
+        self.atrasados = [
+            Pedido.objects.create(
+                cliente=cliente,
+                legado_id=801 + indice,
+                data_entrega=hoje - timedelta(days=indice + 2),
+                status=StatusPedido.AGUARDANDO_ARTE,
+                usuario_cadastro=self.operador.nome,
+            )
+            for indice in range(2)
+        ]
+        Pedido.objects.create(
+            cliente=cliente,
+            legado_id=899,
+            data_entrega=hoje - timedelta(days=20),
+            status=StatusPedido.ENTREGUE,
+            usuario_cadastro=self.operador.nome,
+        )
+        Pedido.objects.create(
+            cliente=cliente,
+            legado_id=898,
+            data_entrega=hoje + timedelta(days=2),
+            status=StatusPedido.EM_PRODUCAO,
+            usuario_cadastro=self.operador.nome,
+        )
+
+    def _entrar(self):
+        session = self.client.session
+        session["operador_id"] = self.operador.pk
+        session.save()
+
+    def test_proposta_exibe_e_nao_cria_missao_sozinha(self):
+        self._entrar()
+        response = self.client.get("/missoes/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Recuperar pedidos atrasados")
+        self.assertContains(response, "2 pedidos estão com a data de entrega vencida")
+        self.assertFalse(Missao.objects.exists())
+
+    def test_aceite_cria_missao_tarefas_referencias_e_evento(self):
+        self._entrar()
+        response = self.client.get("/missoes/nova/?sugestao=pedidos_atrasados")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Aceitar e criar missão")
+        proposta = response.context["proposta_missao"]
+        post = self.client.post(
+            "/missoes/nova/?sugestao=pedidos_atrasados",
+            {
+                "sugestao": "pedidos_atrasados",
+                "titulo": proposta["titulo"],
+                "objetivo": proposta["objetivo"],
+                "criterio_conclusao": proposta["criterio_conclusao"],
+                "resultado_esperado": proposta["resultado_esperado"],
+            },
+        )
+        self.assertEqual(post.status_code, 302)
+        missao = Missao.objects.get()
+        self.assertEqual(missao.origem, OrigemMissao.SUGESTAO_ACEITA)
+        self.assertEqual(ReferenciaPedidoMissao.objects.filter(missao=missao).count(), 2)
+        self.assertEqual(missao.tarefas.count(), 3)
+        evento = EventoOperacional.objects.get(
+            tipo="MissaoCriada",
+            alvo_id=str(missao.pk),
+        )
+        self.assertEqual(evento.acao, "aceitar_sugestao_pedidos_atrasados")
+        self.assertEqual(evento.metadados["modo_sugestao"], "deterministico")
 
 
 class CicloVidaMissaoTests(TestCase):

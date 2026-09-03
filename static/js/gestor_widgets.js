@@ -13,6 +13,12 @@
   const vivaToggleBadge = document.getElementById("interfaceVivaAlertasButtonBadge");
   const vivaAlertasResumo = document.getElementById("interfaceVivaAlertasResumo");
   const vivaAlertasLista = document.getElementById("interfaceVivaAlertasLista");
+  const vivaSugestao = document.getElementById("interfaceVivaSugestao");
+  const vivaSugestaoTitulo = document.getElementById("interfaceVivaSugestaoTitulo");
+  const vivaSugestaoMotivo = document.getElementById("interfaceVivaSugestaoMotivo");
+  const vivaSugestaoResumo = document.getElementById("interfaceVivaSugestaoResumo");
+  const vivaSugestaoLink = document.getElementById("interfaceVivaSugestaoLink");
+  const vivaSugestaoPedidos = document.getElementById("interfaceVivaSugestaoPedidos");
   const vivaToggle = document.getElementById("interfaceVivaToggle");
   const toast = document.getElementById("notifAssistencia");
   const toastText = document.getElementById("notifAssistenciaTexto");
@@ -127,6 +133,7 @@
 
   function renderInterfaceVivaAlertas(resumo) {
     if (!vivaAlertas || !vivaAlertasLista) return;
+    renderMissaoSugestao(resumo.missao_sugestao);
     const itens = resumo.alertas || [];
     const total = Number(resumo.total_alertas || itens.length);
     vivaAlertasLista.innerHTML = "";
@@ -163,6 +170,19 @@
     });
   }
 
+  function renderMissaoSugestao(sugestao) {
+    if (!vivaSugestao) return;
+    if (!sugestao) {
+      alternar(vivaSugestao, false);
+      return;
+    }
+    vivaSugestaoTitulo.textContent = sugestao.titulo || "Organizar problema operacional";
+    vivaSugestaoMotivo.textContent = sugestao.motivo || "Há um conjunto de pedidos que precisa de acompanhamento contínuo.";
+    vivaSugestaoResumo.textContent = sugestao.resumo || "Revise a proposta antes de criar a missão.";
+    vivaSugestaoLink.href = sugestao.revisar_url || "/missoes/nova/";
+    vivaSugestaoPedidos.href = sugestao.pedidos_url || "/pedidos/?atrasados=1";
+    alternar(vivaSugestao, true);
+  }
   function renderIntervencao(resumo) {
     if (!intervention || !interventionItems) return;
     const itens = (resumo.alertas || []).filter((item) => item.exige_acao || Number(item.nivel) >= 3);
@@ -295,8 +315,8 @@
     try {
       const dados = await fetchJson("/api/notificacoes/assistencia/" + categoriasQuery(prefs().widgets.prazos.categorias));
       const exigeAcao = Boolean(dados.exige_acao);
-      if (!dados.total && !dados.total_alertas) {
-        renderInterfaceVivaAlertas({alertas: [], total_alertas: 0});
+      if (!dados.total && !dados.total_alertas && !dados.missao_sugestao) {
+        renderInterfaceVivaAlertas({alertas: [], total_alertas: 0, missao_sugestao: null});
         esconderIntervencao();
         esconderToast();
         if (cicloCompleto) agendarAssistencia(conf, conf.intervalo_minutos * 60 * 1000);
